@@ -48,17 +48,19 @@
 
   <!-- Unicode case mapping and normalization. ContactNames normalizes on purpose: it is the check that two
        contacts cannot look alike. The others compare names the user typed or chose (hosts, folders, jump hosts,
-       ssh_config keywords) to find duplicates: no security decision. SharingDialogs also finds the twin of a
+       ssh_config keywords) to find duplicates or the host asked for by "lemuri -s": no security decision. SharingDialogs also finds the twin of a
        received host, with an exact lower-case comparison of the address (not equalsIgnoreCase). -->
   <Match>
     <Bug pattern="IMPROPER_UNICODE" />
     <Or>
+      <Class name="~lemuri\.Cli(\$.*)?" />
       <Class name="~lemuri\.be\.util\.ContactNames(\$.*)?" />
       <Class name="~lemuri\.be\.terminal\.Jumps(\$.*)?" />
       <Class name="~lemuri\.be\.util\.SshConfig(\$.*)?" />
       <Class name="~lemuri\.fe\.c\.HostController(\$.*)?" />
       <Class name="~lemuri\.fe\.m\.AppState(\$.*)?" />
       <Class name="~lemuri\.fe\.v\.Actions(\$.*)?" />
+      <Class name="~lemuri\.fe\.v\.HostDialog(\$.*)?" />
       <Class name="~lemuri\.fe\.v\.SharingDialogs(\$.*)?" />
       <Class name="~lemuri\.fe\.v\.SshImportDialog(\$.*)?" />
     </Or>
@@ -94,14 +96,38 @@
     <Bug pattern="UNENCRYPTED_SOCKET,UNENCRYPTED_SERVER_SOCKET" />
   </Match>
 
-  <!-- JSch's UserInfo and the X11 replies use null for "cancelled" or "not there". -->
+  <!-- JSch's UserInfo and the X11 replies use null for "cancelled" or "not there"; so do the password read from
+       the terminal by "lemuri -s" (an empty one is a real answer) and the name under the mouse in a terminal. -->
   <Match>
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
     <Or>
+      <Class name="lemuri.Cli$Terminal" />
+      <Class name="lemuri.fe.v.terminal.Terminal" />
       <Class name="~lemuri\.be\.monitoring\.Metrics(\$.*)?" />
       <Class name="~lemuri\.be\.terminal\.SshTransport(\$.*)?" />
       <Class name="lemuri.be.util.X11" />
     </Or>
+  </Match>
+
+  <!-- The session and the shell channel are opened on the terminal's own thread and closed from the JavaFX one:
+       keep() and close() hand them over under the object's lock, and a close that comes first wins (see keep). -->
+  <Match>
+    <Class name="lemuri.be.terminal.SshTransport" />
+    <Bug pattern="AT_UNSAFE_RESOURCE_ACCESS_IN_THREAD" />
+  </Match>
+
+  <!-- "lemuri -s" runs stty with a fixed program name and a mode chosen in the code ("echo" or "-echo"). -->
+  <Match>
+    <Class name="lemuri.Cli$Terminal" />
+    <Method name="stty" />
+    <Bug pattern="COMMAND_INJECTION" />
+  </Match>
+
+  <!-- A download is saved in the folder the user chose under the server's file name, and only after
+       SftpFiles.safeLocalName has refused names with "/", "..", control characters and the like. -->
+  <Match>
+    <Class name="~lemuri\.fe\.v\.Transfers(\$.*)?" />
+    <Bug pattern="PATH_TRAVERSAL_IN" />
   </Match>
 
   <!-- Casts dictated by JSch (ChannelSftp.ls) and JavaFX (Window, TreeItem) APIs. -->

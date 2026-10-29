@@ -58,7 +58,7 @@ final class PortalFiles {
             public Response(String path, UInt32 response, Map<String, Variant<?>> results) throws DBusException {
                 super(path, response, results);
                 this.response = response;
-                this.results = results;
+                this.results = Map.copyOf(results);
             }
         }
     }

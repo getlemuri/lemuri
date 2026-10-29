@@ -22,7 +22,8 @@ import lemuri.be.dto.Host;
 /**
  * The terminal is resized while the connection is still being made (its first size can come before it is laid
  * out, one or two columns wide): the shell must end up with the last size, or bash draws the prompt and the
- * typed text for a terminal that narrow, and nothing shows. On a slow SSH server in memory.
+ * typed text for a terminal that narrow, and nothing shows. And a terminal closed while it connects must not
+ * leave the connection open behind it. On a slow SSH server in memory.
  */
 class TerminalSizeTest {
     private SshServer server;
@@ -51,13 +52,12 @@ class TerminalSizeTest {
         @Override public void destroy(ChannelSession channel) {}
     }
 
-    @Test
-    void theShellGetsTheLastSizeEvenIfItChangedWhileConnecting() throws Exception {
+    /** A far server: the sign-in takes a while, and meanwhile the terminal gets its real size (or is closed). */
+    private SshTransport slowServer() throws Exception {
         server = SshServer.setUpDefaultServer();
         server.setHost("127.0.0.1");
         server.setPort(0);
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider(Path.of(System.getProperty("user.home"), "sshd-size.key")));
-        // A far server: the sign-in takes a while, and meanwhile the terminal gets its real size.
         server.setPasswordAuthenticator((user, password, session) -> {
             try {
                 Thread.sleep(800);
@@ -76,12 +76,17 @@ class TerminalSizeTest {
         h.port = server.getPort();
         h.user = "u";
         h.authMethod = Host.AuthMethod.PASSWORD;
-        SshTransport t = new SshTransport(h, x -> new SshTransport.UserPrompts() {
+        return new SshTransport(h, x -> new SshTransport.UserPrompts() {
             @Override public boolean confirm(String message) { return true; }
             @Override public String password(String message) { return "x"; }
             @Override public String passphrase(String message) { return null; }
             @Override public String reply(String question) { return null; }
         });
+    }
+
+    @Test
+    void theShellGetsTheLastSizeEvenIfItChangedWhileConnecting() throws Exception {
+        SshTransport t = slowServer();
         try {
             t.launch(2, 1);
             t.resize(180, 50);
@@ -91,5 +96,16 @@ class TerminalSizeTest {
         } finally {
             t.close();
         }
+    }
+
+    @Test
+    void closingWhileSigningInLeavesNoConnection() throws Exception {
+        SshTransport t = slowServer();
+        t.launch(80, 24);
+        t.close();
+        // The sign-in goes on on the server for a while, then the connection opened for nothing must go away.
+        for (int i = 0; i < 100 && (i < 30 || !server.getActiveSessions().isEmpty()); i++) Thread.sleep(50);
+        assertTrue(server.getActiveSessions().isEmpty(), "no connection left open");
+        assertEquals(1, shell.getCount(), "no shell started");
     }
 }

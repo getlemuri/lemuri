@@ -99,14 +99,14 @@ public class SshTransport implements Transport {
     private void connect() {
         try {
             Session s = open(host, h -> new Prompts(h, requests.apply(h)), data, 15_000);
-            session = s;
+            if (!keep(s, null)) return;
 
             ChannelShell c = (ChannelShell) s.openChannel("shell");
             int asked = columns, high = lines;
             c.setPtyType("xterm-256color", asked, high, 0, 0);
             InputStream in = c.getInputStream();
             output = c.getOutputStream();
-            channel = c;
+            if (!keep(s, c)) return;
             c.connect(10_000);
             // Resized while the shell was being opened: those sizes were not sent, the last one goes now.
             if (columns != asked || lines != high) c.setPtySize(columns, lines, 0, 0);
@@ -130,10 +130,28 @@ public class SshTransport implements Transport {
             data.accept("\r\n\u001b[31mssh: " + msg + "\u001b[0m\r\n");
             // What JSch said, in grey: the sentence above may hide a detail that matters.
             if (!detail.equals(msg)) data.accept("\u001b[90m" + I18n.t("ssh.err.details", detail) + "\u001b[0m\r\n");
-            isClosed = true;
+            Session s;
+            synchronized (this) {
+                isClosed = true;
+                s = session;
+            }
             state.accept(SessionStatus.ERROR, msg);
-            if (session != null) session.disconnect();
+            if (s != null) s.disconnect();
         }
+    }
+
+    /**
+     * Hands the session (and then its channel) over to close(), unless the terminal was closed while they were
+     * being opened: then nobody would close them, so they are disconnected here and false comes back.
+     */
+    private synchronized boolean keep(Session s, ChannelShell c) {
+        if (isClosed) {
+            s.disconnect();
+            return false;
+        }
+        session = s;
+        if (c != null) channel = c;
+        return true;
     }
 
     /**
@@ -326,10 +344,16 @@ public class SshTransport implements Transport {
 
     @Override
     public void close() {
-        if (isClosed) return;
-        isClosed = true;
-        if (channel != null) channel.disconnect();
-        if (session != null) session.disconnect();
+        ChannelShell c;
+        Session s;
+        synchronized (this) {
+            if (isClosed) return;
+            isClosed = true;
+            c = channel;
+            s = session;
+        }
+        if (c != null) c.disconnect();
+        if (s != null) s.disconnect();
         state.accept(SessionStatus.CLOSED, null);
     }
 
