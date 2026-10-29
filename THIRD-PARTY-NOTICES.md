@@ -24,6 +24,6 @@ Lemuri includes the following components. Their license texts are in [licenses/]
 | [javafx media](https://openjdk.java.net/projects/openjfx/) | 21.0.13 | GPLv2+CE | GPL-2.0-only.txt, Classpath-exception-2.0.txt, openjfx/javafx.media/ |
 | [javafx web](https://openjdk.java.net/projects/openjfx/) | 21.0.13 | GPLv2+CE | GPL-2.0-only.txt, Classpath-exception-2.0.txt, openjfx/javafx.web/ |
 | [SLF4J API Module](http://www.slf4j.org) | 2.0.19 | MIT | slf4j-LICENSE.txt |
-| [SLF4J JDK14 Provider](http://www.slf4j.org) | 2.0.17 | MIT | slf4j-LICENSE.txt |
+| [SLF4J JDK14 Provider](http://www.slf4j.org) | 2.0.20 | MIT | slf4j-LICENSE.txt |
 
 The JavaFX jars include native libraries with their own notices, copied from the `legal/` folder of the OpenJFX SDK into [licenses/openjfx/](licenses/openjfx/): WebKit, ICU, libxml2 and libxslt in javafx-web; GStreamer, GLib and libffi in javafx-media; Mesa and the IJG JPEG library in javafx-graphics. The native part of JNA includes libffi (MIT).

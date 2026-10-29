@@ -42,7 +42,7 @@ import lemuri.fe.v.terminal.Terminal;
  * Main window: top bar, activity bar on the left, host tree, central area with
  * the content of the node, log and status bar at the bottom.
  */
-public class Console extends BorderPane {
+public final class Console extends BorderPane {
     // No side menu: the node chosen on the left decides the content, which takes the whole width.
     // The only alternative view is the console of a host, opened by the buttons.
 

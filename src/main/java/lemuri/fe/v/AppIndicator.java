@@ -245,7 +245,7 @@ final class AppIndicator {
 
         @Override
         public Map<String, Variant<?>> GetAll(String iface) {
-            return properties;
+            return new LinkedHashMap<>(properties);
         }
 
         @Override
@@ -346,7 +346,7 @@ final class AppIndicator {
 
         @Override
         public Map<String, Variant<?>> GetAll(String iface) {
-            return properties;
+            return new LinkedHashMap<>(properties);
         }
 
         @Override

@@ -116,6 +116,16 @@
     <Bug pattern="AT_UNSAFE_RESOURCE_ACCESS_IN_THREAD" />
   </Match>
 
+  <!-- JSch's interfaces: a Proxy hands JSch the streams of the jump channel, and the prompts keep the session they
+       answer for (to recognise a changed host key). Copies would not work. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    <Or>
+      <Class name="lemuri.be.terminal.JumpProxy" />
+      <Class name="lemuri.be.terminal.SshTransport$Prompts" />
+    </Or>
+  </Match>
+
   <!-- "lemuri -s" runs stty with a fixed program name and a mode chosen in the code ("echo" or "-echo"). -->
   <Match>
     <Class name="lemuri.Cli$Terminal" />

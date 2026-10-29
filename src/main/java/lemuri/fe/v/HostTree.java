@@ -222,7 +222,7 @@ public class HostTree extends TreeView<HostTree.Item> {
         return !dest.equals(Folders.parent(c)) && !Folders.inside(dest, c);
     }
 
-    private class ItemCell extends TreeCell<Item> {
+    private final class ItemCell extends TreeCell<Item> {
         ItemCell() {
             setOnDragDetected(e -> {
                 Item v = getItem();
