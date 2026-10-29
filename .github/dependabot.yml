@@ -4,10 +4,21 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # One pull request for the minor and patch versions; a major one comes on its own.
+    groups:
+      maven:
+        update-types: [minor, patch]
+    ignore:
+      # JavaFX stays on 21, the long-term support line, like the Java version the app is built for.
+      - dependency-name: "org.openjfx:*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
   # The xterm.js files are copied into the app by hand: this only reports new versions (see package.json there).
   - package-ecosystem: npm
     directory: /src/main/resources/lemuri/terminal
