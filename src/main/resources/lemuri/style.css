@@ -1,0 +1,899 @@
+/* Theme: dense grey console, 12-13 px text,
+   thin borders and blue only for selection and the main action. */
+
+.root {
+    -bg: #f5f5f5;
+    -surface: #ffffff;
+    -border: #cfcfcf;
+    -border-light: #e3e3e3;
+    -text: #222222;
+    -text-faint: #666666;
+    -head-panel: #f0f0f0;
+    -blue: #3892d4;
+    -blue-dark: #2a78b3;
+    -selection: #d4e6f7;
+    -on: #ececec;
+    -ok: #21bf4b;
+    -idle: #9a9a9a;
+    -warn: #fbab19;
+    -critical: #e3323f;
+
+    /* Modena base colours derived from the palette, so the standard controls follow the theme too. */
+    -fx-base: -head-panel;
+    -fx-background: -surface;
+    -fx-control-inner-background: -surface;
+    -fx-control-inner-background-alt: -surface;
+    -fx-accent: -blue;
+    -fx-focus-color: -blue;
+    -fx-faint-focus-color: transparent;
+    -fx-selection-bar: -selection;
+    -fx-selection-bar-non-focused: -selection;
+    -fx-selection-bar-text: -text;
+    -fx-text-base-color: -text;
+    -fx-text-background-color: -text;
+    -fx-dark-text-color: -text;
+    -fx-mid-text-color: -text;
+    -fx-light-text-color: -text;
+    -fx-prompt-text-fill: -text-faint;
+    -fx-box-border: -border;
+    -fx-text-box-border: -border;
+
+    -fx-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -fx-font-size: 12px;
+    -fx-background-color: -bg;
+}
+
+.root.dark {
+    -bg: #1e1e1e;
+    -surface: #262626;
+    -border: #3c3c3c;
+    -border-light: #333333;
+    -text: #e6e6e6;
+    -text-faint: #a0a0a0;
+    -head-panel: #2d2d2d;
+    -selection: #1f4a6e;
+    -on: #303030;
+}
+
+.label, .button, .toggle-button, .menu-button, .check-box, .text-field, .text-area, .combo-box {
+    -fx-text-fill: -text;
+}
+
+.faint, .faint .text { -fx-text-fill: -text-faint; }
+.strong { -fx-font-weight: bold; }
+.code { -fx-font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; -fx-font-size: 11px; }
+.warn-text { -fx-text-fill: derive(-warn, -35%); }
+
+/* ── Icons ─────────────────────────────────────────────────────────────── */
+
+.icon {
+    -fx-fill: transparent;
+    -fx-stroke: -text;
+    -fx-stroke-width: 2;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+}
+.icon.status-active { -fx-stroke: -ok; }
+.icon.status-idle { -fx-stroke: -idle; }
+.icon.status-error { -fx-stroke: -critical; }
+.icon.status-warn { -fx-stroke: -warn; }
+.icon.folder-icon { -fx-stroke: -warn; }
+.icon.faint-icon { -fx-stroke: -text-faint; }
+.btn-primary .icon { -fx-stroke: white; }
+
+/* ── Top bar ───────────────────────────────────────────────────────────── */
+
+.top-bar {
+    -fx-padding: 0 8 0 8;
+    -fx-min-height: 42;
+    -fx-pref-height: 42;
+    -fx-background-color: -surface;
+    -fx-border-color: transparent transparent -border transparent;
+}
+.brand-name { -fx-font-size: 15px; -fx-font-weight: bold; }
+.brand-version { -fx-text-fill: -text-faint; }
+
+.search {
+    -fx-alignment: center-left;
+    -fx-padding: 0 8 0 8;
+    -fx-min-height: 26;
+    -fx-pref-height: 26;
+    -fx-max-height: 26;
+    -fx-border-color: -border;
+    -fx-border-radius: 3;
+    -fx-background-color: -surface;
+    -fx-background-radius: 3;
+}
+.search .icon { -fx-stroke: -text-faint; }
+.search .text-field {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-pref-width: 200;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.btn, .dialog-pane .button {
+    -fx-min-height: 26;
+    -fx-pref-height: 26;
+    -fx-padding: 0 10 0 10;
+    -fx-graphic-text-gap: 5;
+    -fx-border-color: -border;
+    -fx-border-radius: 3;
+    -fx-background-color: -surface;
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+    -fx-text-fill: -text;
+    -fx-cursor: hand;
+}
+.btn:hover, .dialog-pane .button:hover { -fx-background-color: -on; }
+.btn:focused, .dialog-pane .button:focused { -fx-border-color: -blue; }
+.btn:disabled { -fx-opacity: 0.5; }
+.btn-primary, .dialog-pane .button.btn-primary {
+    -fx-border-color: -blue-dark;
+    -fx-background-color: -blue;
+    -fx-text-fill: white;
+}
+.btn-primary:hover, .dialog-pane .button.btn-primary:hover { -fx-background-color: -blue-dark; }
+.btn-danger, .dialog-pane .button.btn-danger { -fx-text-fill: -critical; }
+.btn-danger .icon { -fx-stroke: -critical; }
+.toggle-button.btn:selected { -fx-background-color: -selection; -fx-border-color: -blue; }
+.menu-button.btn .arrow-button { -fx-padding: 0 0 0 6; -fx-background-color: transparent; }
+.menu-button.btn .arrow { -fx-background-color: -text-faint; }
+
+.action {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-min-height: 20;
+    -fx-pref-height: 20;
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+    -fx-border-radius: 3;
+    -fx-background-color: transparent;
+    -fx-background-radius: 3;
+    -fx-cursor: hand;
+}
+.action .icon { -fx-stroke: -text-faint; }
+.action:hover { -fx-border-color: -border; -fx-background-color: -surface; }
+.action:hover .icon { -fx-stroke: -blue; }
+
+.action:disabled { -fx-opacity: 0.35; }
+
+/* ── Resource column ───────────────────────────────────────────────────── */
+
+.main-split { -fx-background-color: -bg; -fx-padding: 4; -fx-box-border: transparent; }
+.main-split > .split-pane-divider { -fx-background-color: -bg; -fx-padding: 0 2 0 2; }
+
+.column-resources { -fx-background-color: -surface; -fx-border-color: -border; }
+
+.tree { -fx-background-color: -surface; -fx-border-width: 0; -fx-padding: 2 0 2 0; }
+.tree .tree-cell { -fx-pref-height: 24; -fx-padding: 0 6 0 0; -fx-background-color: -surface; -fx-text-fill: -text; }
+.tree .tree-cell:hover { -fx-background-color: -on; }
+.tree .tree-cell:selected { -fx-background-color: -selection; }
+.tree .tree-cell .label { -fx-text-fill: -text; }
+.tree .tree-cell .faint { -fx-text-fill: -text-faint; -fx-font-size: 11px; }
+.tree .tree-disclosure-node .arrow { -fx-background-color: -text-faint; }
+/* Folder a host or another folder is being dropped on. */
+.tree .tree-cell.tree-target { -fx-background-color: -selection; -fx-border-color: -blue; -fx-border-width: 1; }
+.tree-sessions {
+    -fx-min-width: 16;
+    -fx-padding: 0 4 0 4;
+    -fx-background-color: -blue;
+    -fx-background-radius: 8;
+    -fx-font-size: 10px;
+    -fx-alignment: center;
+}
+.tree .tree-cell .tree-sessions { -fx-text-fill: white; }
+/* Wider indent to read nested folders easily. */
+.tree .tree-cell { -fx-indent: 14; }
+.tree .tree-cell .tree-root .label { -fx-font-weight: bold; }
+
+/* ── Central area ──────────────────────────────────────────────────────── */
+
+.area { -fx-background-color: -surface; -fx-border-color: -border; }
+.area-head {
+    -fx-padding: 4 10 4 10;
+    -fx-min-height: 34;
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent transparent -border transparent;
+}
+.area-title { -fx-font-size: 13px; -fx-font-weight: bold; }
+
+.contents { -fx-background-color: -surface; }
+.contents-scroll, .contents-scroll > .viewport { -fx-background-color: -surface; -fx-background-insets: 0; -fx-padding: 0; }
+.contents-scroll { -fx-border-width: 0; }
+.empty-state { -fx-padding: 16; }
+.empty-state .label { -fx-text-fill: -text-faint; }
+.empty-state .strong { -fx-text-fill: -text; -fx-font-size: 13px; }
+
+/* ── Sections, bars, panels ────────────────────────────────────────────── */
+
+.section { -fx-spacing: 8; -fx-padding: 8; }
+
+.toolbar {
+    -fx-padding: 4;
+    -fx-border-color: -border;
+    -fx-background-color: -head-panel;
+}
+
+.panel { -fx-border-color: -border; -fx-background-color: -surface; }
+.panel-head {
+    -fx-padding: 6 8 6 8;
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent transparent -border transparent;
+    -fx-font-weight: bold;
+}
+.panel-body { -fx-padding: 8; }
+.panel-head .icon.panel-icon { -fx-stroke: -blue; }
+
+.health { -fx-min-height: 150; }
+.health-block { -fx-padding: 10; }
+.health-block.separated { -fx-border-color: transparent transparent transparent -border-light; }
+.health-title { -fx-font-size: 13px; -fx-font-weight: bold; }
+.health-link { -fx-background-color: transparent; -fx-padding: 0; -fx-cursor: hand; }
+.health-link:hover .label { -fx-underline: true; }
+
+.list-simple { -fx-vgap: 0; }
+.list-simple > .label { -fx-padding: 4 0 4 0; -fx-border-color: transparent transparent -border-light transparent; }
+
+.counter {
+    -fx-padding: 8 10 8 10;
+    -fx-border-color: -border -border -border -blue;
+    -fx-border-width: 1 1 1 3;
+    -fx-background-color: -surface;
+}
+.counter-ok { -fx-border-color: -border -border -border -ok; }
+.counter-warn { -fx-border-color: -border -border -border -warn; }
+.counter-error { -fx-border-color: -border -border -border -critical; }
+.counter-value { -fx-font-size: 18px; -fx-font-weight: bold; }
+.counter-caption { -fx-text-fill: -text-faint; }
+
+.resources { -fx-min-height: 150; -fx-padding: 8; }
+.gauge-title { -fx-font-size: 13px; -fx-font-weight: bold; }
+.gauge-bg { -fx-fill: transparent; -fx-stroke: -border-light; -fx-stroke-width: 9; }
+.gauge-value { -fx-fill: transparent; -fx-stroke-width: 9; }
+.gauge-normal { -fx-stroke: -blue; }
+.gauge-warn { -fx-stroke: -warn; }
+.gauge-critical { -fx-stroke: -critical; }
+.gauge-text { -fx-font-size: 17px; -fx-font-weight: bold; }
+.gauge-detail { -fx-text-fill: -text-faint; }
+.column { -fx-fill: -blue; }
+
+.details .details-row { -fx-padding: 3 0 3 0; -fx-border-color: transparent transparent -border-light transparent; }
+.details-caption { -fx-text-fill: -text-faint; }
+
+.status {
+    -fx-padding: 0 6 0 6;
+    -fx-background-radius: 3;
+    -fx-font-size: 11px;
+}
+.status-tone-ok { -fx-background-color: derive(-ok, 75%); -fx-text-fill: derive(-ok, -45%); }
+.status-tone-warn { -fx-background-color: derive(-warn, 70%); -fx-text-fill: derive(-warn, -55%); }
+.status-tone-error { -fx-background-color: derive(-critical, 80%); -fx-text-fill: -critical; }
+.status-tone-info { -fx-background-color: derive(-blue, 75%); -fx-text-fill: derive(-blue, -40%); }
+.status-tone-neutral { -fx-background-color: -on; -fx-text-fill: -text-faint; }
+/* An icon in a status badge takes the colour of its text. */
+.status-tone-ok .icon { -fx-stroke: derive(-ok, -45%); }
+.status-tone-warn .icon { -fx-stroke: derive(-warn, -55%); }
+.status-tone-error .icon { -fx-stroke: -critical; }
+.status-tone-neutral .icon { -fx-stroke: -text-faint; }
+.dark .status-tone-ok .icon { -fx-stroke: derive(-ok, 40%); }
+.dark .status-tone-warn .icon { -fx-stroke: derive(-warn, 30%); }
+.dark .status-tone-error .icon { -fx-stroke: derive(-critical, 35%); }
+.dark .status-tone-ok { -fx-background-color: derive(-ok, -65%); -fx-text-fill: derive(-ok, 40%); }
+.dark .status-tone-warn { -fx-background-color: derive(-warn, -65%); -fx-text-fill: derive(-warn, 30%); }
+.dark .status-tone-error { -fx-background-color: derive(-critical, -65%); -fx-text-fill: derive(-critical, 35%); }
+.dark .status-tone-info { -fx-background-color: derive(-blue, -60%); -fx-text-fill: derive(-blue, 45%); }
+
+.caption {
+    -fx-padding: 0 5 0 5;
+    -fx-border-color: -border;
+    -fx-border-radius: 3;
+    -fx-background-color: -bg;
+    -fx-font-size: 11px;
+}
+
+.note-host { -fx-font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; }
+.text-field, .text-area .content, .spinner .text-field {
+    -fx-background-color: -surface;
+}
+.text-field, .text-area {
+    -fx-background-color: -border, -surface;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 3;
+}
+.text-area .content { -fx-background-radius: 3; }
+.text-field:focused, .text-area:focused { -fx-background-color: -blue, -surface; }
+
+/* ── Grids ─────────────────────────────────────────────────────────────── */
+
+.grid {
+    -fx-border-color: -border;
+    -fx-background-color: -surface;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-table-cell-border-color: -border-light;
+}
+.grid .column-header-background { -fx-background-color: -head-panel; }
+.grid .column-header, .grid .filler {
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent -border-light -border transparent;
+    -fx-size: 26;
+}
+.grid .column-header .label { -fx-font-weight: bold; -fx-alignment: center; -fx-padding: 0 4 0 4; }
+.grid .table-row-cell {
+    -fx-background-color: -border-light, -surface;
+    -fx-background-insets: 0, 0 0 1 0;
+    -fx-cell-size: 26;
+}
+.grid .table-row-cell:hover { -fx-background-color: -border-light, -on; }
+.grid .table-row-cell:selected { -fx-background-color: -border-light, -selection; }
+/* Every table centred, header and cells. */
+.grid .table-row-cell .table-cell { -fx-text-fill: -text; -fx-border-color: transparent; -fx-padding: 0 8 0 8; -fx-alignment: center; }
+.grid .table-row-cell.error-row .table-cell { -fx-text-fill: -critical; }
+.grid .placeholder .label { -fx-text-fill: -text-faint; }
+
+/* ── Log at the bottom ─────────────────────────────────────────────────── */
+
+.log { -fx-background-color: -surface; -fx-border-color: -border; }
+.log-head {
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-alignment: center-left;
+    -fx-padding: 0 4 0 0;
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent transparent -border transparent;
+}
+.log-tab {
+    -fx-pref-height: 28;
+    -fx-padding: 0 12 0 12;
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent -border transparent transparent;
+    -fx-text-fill: -text-faint;
+}
+.log-tab:selected { -fx-background-color: -surface; -fx-text-fill: -text; -fx-font-weight: bold; }
+.log-body .grid { -fx-border-width: 0; }
+
+/* ── Windows ───────────────────────────────────────────────────────────── */
+
+.dialog-pane.window {
+    -fx-background-color: -surface;
+    -fx-padding: 0;
+}
+.dialog-pane.window > .content { -fx-padding: 10; }
+.window-title {
+    -fx-padding: 6 8 6 8;
+    -fx-background-color: -blue;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+.dialog-pane.window > .button-bar > .container {
+    -fx-padding: 8;
+    -fx-background-color: -head-panel;
+    -fx-border-color: -border transparent transparent transparent;
+}
+.form { -fx-hgap: 8; -fx-vgap: 8; }
+.field-caption { -fx-text-fill: -text-faint; }
+
+/* ── SSH console ───────────────────────────────────────────────────────── */
+
+.contents-full { -fx-padding: 0; }
+.terminal { -fx-background-color: -surface; }
+.terminal-tabs {
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-alignment: center-left;
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent transparent -border transparent;
+}
+.terminal-tabs > .action { -fx-translate-x: 4; }
+.terminal-tab {
+    -fx-padding: 0 4 0 10;
+    -fx-border-color: transparent -border transparent transparent;
+    -fx-cursor: hand;
+}
+.terminal-tab .label { -fx-text-fill: -text-faint; }
+.terminal-tab.active { -fx-background-color: -surface; }
+.terminal-tab.active .label { -fx-text-fill: -text; -fx-font-weight: bold; }
+.terminal-info { -fx-padding: 0 8 0 8; }
+/* Black, like ghost mode. */
+.terminal-slot, .terminal-screen { -fx-background-color: #000000; }
+/* A synced tab: every part edged in amber, typing goes to all of them. */
+.terminal-slot:synced { -fx-border-color: #e2a33d; -fx-border-width: 2; -fx-padding: 2; }
+
+.tooltip { -fx-background-color: -text; -fx-text-fill: -surface; -fx-font-size: 11px; -fx-background-radius: 3; }
+
+/* Context menus and tooltips: they are separate windows, the colours are redefined here. */
+/* Hand cursor on menu items (right click and drop-down menus), normal arrow on disabled ones. */
+.context-menu .menu-item { -fx-cursor: hand; }
+.context-menu .menu-item:disabled { -fx-cursor: default; }
+
+.context-menu.app-menu.dark { -fx-background-color: #3c3c3c, #262626; }
+.context-menu.app-menu.dark .menu-item .label { -fx-text-fill: #e6e6e6; }
+.context-menu.app-menu.dark .menu-item .icon { -fx-stroke: #e6e6e6; }
+/* Under the mouse a quiet grey instead of the bright blue of JavaFX: the text keeps its colour. */
+.context-menu.app-menu .menu-item:focused { -fx-background-color: #e3e7ec; }
+.context-menu.app-menu .menu-item:focused .label { -fx-text-fill: #1f2328; }
+.context-menu.app-menu.dark .menu-item:focused { -fx-background-color: #3a3f46; }
+.context-menu.app-menu.dark .menu-item:focused .label { -fx-text-fill: #ffffff; }
+.context-menu.app-menu.dark .menu-item:focused .icon { -fx-stroke: #ffffff; }
+/* Ghost mode: dark and see-through like the ghost, with the same light veil under the mouse as its buttons. */
+.context-menu.ghost-menu, .context-menu.app-menu.ghost-menu, .context-menu.app-menu.dark.ghost-menu {
+    -bg-menu: rgba(14, 16, 20, 0.92);
+    -text-menu: #d6dde6;
+    -on-menu: rgba(255, 255, 255, 0.12);
+    -accent-menu: #ffffff;
+    -fx-background-color: rgba(255, 255, 255, 0.14), -bg-menu;
+    -fx-background-insets: 0, 1;
+    -fx-background-radius: 9, 8;
+    -fx-padding: 5;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 18, 0, 0, 4);
+}
+.context-menu.ghost-menu .menu-item { -fx-background-color: transparent; -fx-padding: 6 14 6 10; -fx-background-radius: 6; }
+.context-menu.ghost-menu .menu-item .label { -fx-text-fill: #d6dde6; }
+.context-menu.ghost-menu .menu-item .icon { -fx-stroke: #d6dde6; }
+.context-menu.ghost-menu .menu-item .right-container .arrow { -fx-background-color: #9aa3ad; }
+.context-menu.ghost-menu .menu-item:focused, .context-menu.ghost-menu.app-menu.dark .menu-item:focused { -fx-background-color: rgba(255, 255, 255, 0.12); }
+.context-menu.ghost-menu .menu-item:focused .label, .context-menu.ghost-menu.app-menu.dark .menu-item:focused .label { -fx-text-fill: #ffffff; }
+.context-menu.ghost-menu .menu-item:focused .icon, .context-menu.ghost-menu.app-menu.dark .menu-item:focused .icon { -fx-stroke: #ffffff; }
+.context-menu.ghost-menu .menu-item:disabled .label { -fx-text-fill: #6e7781; }
+.context-menu.ghost-menu .separator:horizontal .line { -fx-border-color: rgba(255, 255, 255, 0.12) transparent transparent transparent; }
+
+/* ── Custom frame (integrated title bar) ───────────────────────────────── */
+
+/* The scene root is transparent: only the rounded console and its shadow are visible. */
+.root.outer-frame { -fx-background-color: transparent; }
+.window-shadow {
+    -fx-background-color: rgba(0, 0, 0, 0.5);
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.32), 14, 0, 0, 3);
+}
+.window-controls { -fx-padding: 0 0 0 8; }
+.window-control {
+    -fx-min-width: 40;
+    -fx-pref-width: 40;
+    -fx-min-height: 30;
+    -fx-pref-height: 30;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.window-control .icon { -fx-stroke: -text-faint; -fx-stroke-width: 1.8; }
+.window-control:hover { -fx-background-color: -on; }
+.window-control:hover .icon { -fx-stroke: -text; }
+.window-control:pressed { -fx-opacity: 0.8; }
+
+/* ── Usage bars (disks) ────────────────────────────────────────────────── */
+.usage-bar { -fx-spacing: 8; }
+.usage-bar-track { -fx-background-color: -border-light; -fx-background-radius: 4; -fx-min-height: 8; -fx-pref-height: 8; -fx-max-height: 8; }
+.usage-bar-value { -fx-background-radius: 4; -fx-min-height: 8; -fx-max-height: 8; }
+.usage-bar-value.normal { -fx-background-color: -blue; }
+.usage-bar-value.warn { -fx-background-color: -warn; }
+.usage-bar-value.critical { -fx-background-color: -critical; }
+
+.disks { -fx-spacing: 10; }
+.disk-dot { -fx-font-family: monospace; -fx-min-width: 120; }
+
+/* ── Keys and encrypted hosts as text ───────────────────────────────────── */
+.code-area { -fx-font-family: "DejaVu Sans Mono", monospace; -fx-font-size: 12px; }
+
+/* ── Console bar, fixed above the shell ────────────────────────────────────
+   Dark in every theme, so it forms a single piece with the terminal (always dark). */
+.overlay-bar {
+    /* No padding: the tabs touch the top edge and stand on the line under the bar; the first one starts at the left edge. */
+    -fx-padding: 0 10 0 0;
+    -fx-background-color: #101317;
+    -fx-border-color: transparent transparent rgba(255, 255, 255, 0.10) transparent;
+}
+.overlay-bar .label, .overlay-bar .button { -fx-text-fill: #d6dbe1; }
+.overlay-bar .icon { -fx-stroke: #c2c8cf; }
+.overlay-bar .faint, .overlay-bar .code { -fx-text-fill: #9aa3ad; }
+.overlay-bar .code { -fx-background-color: rgba(255, 255, 255, 0.07); }
+.overlay-bar .button {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-effect: null;
+}
+.overlay-bar .button:hover { -fx-background-color: rgba(255, 255, 255, 0.14); }
+.overlay-bar .button.action { -fx-background-color: transparent; -fx-border-color: transparent; }
+/* Compact: the tab row is as low as its text, to leave the height to the shells. */
+.overlay-bar .action { -fx-min-width: 20; -fx-pref-width: 20; -fx-min-height: 18; -fx-pref-height: 18; -fx-padding: 0; }
+.overlay-bar .terminal-tab .label { -fx-font-size: 12px; }
+.overlay-bar .terminal-tab .action { -fx-min-width: 18; -fx-pref-width: 18; -fx-min-height: 18; -fx-pref-height: 18; }
+.overlay-bar .button.action:hover { -fx-background-color: rgba(255, 255, 255, 0.14); }
+.overlay-bar .btn-danger, .overlay-bar .btn-danger .label { -fx-text-fill: #ff7b72; }
+.overlay-bar .btn-danger .icon { -fx-stroke: #ff7b72; }
+.overlay-bar .terminal-tab {
+    -fx-padding: 0 1 0 8;
+    -fx-background-color: transparent;
+    /* Top left as the corner of the area around it (radius 5), so the edges meet; top right rounded off; square
+       at the bottom, attached to the line below. */
+    -fx-background-radius: 5 9 0 0;
+    -fx-cursor: hand;
+}
+.overlay-bar .terminal-tab:hover { -fx-background-color: rgba(255, 255, 255, 0.08); }
+.overlay-bar .terminal-tab .label { -fx-text-fill: #9aa3ad; }
+.overlay-bar .terminal-tab.active { -fx-background-color: rgba(56, 146, 212, 0.30); }
+.overlay-bar .terminal-tab.active .label { -fx-text-fill: #ffffff; -fx-font-weight: bold; }
+
+/* Console tab row: it scrolls without scroll bars and lets the dark bar background show. */
+.tabs-scroll, .tabs-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.tabs-scroll { -fx-border-width: 0; }
+/* ── Window layout (class .layout on the console) ──────────────────────────
+   Dark activity bar on the left, flat side column, panels side by side with slightly rounded
+   corners and no shadows, status bar at the bottom in the same grey as the activity bar.
+   -gap: the thin space between the panels. */
+.root {
+    -gap: #dcdcdc;
+    -activity-bg: #2c2c2c;
+    -activity-icon: #8b8b8b;
+    -activity-active: #ffffff;
+    -side: #f3f3f3;
+    -status-bg: #007acc;
+}
+.root.dark {
+    -gap: #333333;
+    -activity-bg: #333333;
+    -side: #252526;
+}
+.root.layout.dark { -bg: #1e1e1e; -surface: #1e1e1e; -head-panel: #252526; -border: #2d2d2d; -border-light: #2d2d2d; -on: #2a2d2e; -selection: #37373d; }
+
+.activity-bar { -fx-background-color: -activity-bg; -fx-min-width: 48; -fx-pref-width: 48; -fx-max-width: 48; -fx-padding: 4 0 4 0; }
+.activity {
+    -fx-min-width: 48; -fx-pref-width: 48; -fx-min-height: 46; -fx-pref-height: 46;
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 2;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+.activity .icon { -fx-stroke: -activity-icon; -fx-stroke-width: 1.6; }
+.activity:hover .icon { -fx-stroke: -activity-active; }
+.activity:selected { -fx-border-color: transparent transparent transparent -activity-active; }
+.activity:selected .icon { -fx-stroke: -activity-active; }
+.activity:disabled { -fx-opacity: 0.35; -fx-cursor: default; }
+.activity:disabled .icon, .activity:disabled:hover .icon { -fx-stroke: -activity-icon; }
+.activity-number {
+    -fx-min-width: 16; -fx-padding: 0 4 0 4; -fx-translate-x: -7; -fx-translate-y: -7;
+    -fx-background-color: -status-bg; -fx-background-radius: 8;
+    -fx-text-fill: white; -fx-font-size: 9px; -fx-font-weight: bold; -fx-alignment: center;
+}
+
+/* Same grey as the activity bar and no line above: the two bars form a single L. */
+.status-bar {
+    -fx-background-color: -activity-bg; -fx-min-height: 22; -fx-pref-height: 22; -fx-padding: 0 6 0 6;
+}
+.status-bar .status-item { -fx-text-fill: #cccccc; -fx-font-size: 12px; -fx-padding: 2 8 2 8; -fx-cursor: hand; -fx-graphic-text-gap: 5; }
+.status-bar .status-item:hover { -fx-background-color: rgba(255, 255, 255, 0.14); }
+/* LAN pairing code: large, to be read aloud. */
+.pairing-code { -fx-font-family: "DejaVu Sans Mono", monospace; -fx-font-size: 30px; -fx-font-weight: bold; -fx-padding: 4 0 4 0; }
+.pairing-code-small { -fx-font-family: "DejaVu Sans Mono", monospace; -fx-font-size: 16px; -fx-font-weight: bold; }
+/* Upload and download in progress (Transfers.indicator). */
+.status-bar .transfer-bar { -fx-pref-width: 120; -fx-pref-height: 8; -fx-padding: 0; }
+.status-bar .transfer-bar > .bar { -fx-background-color: #3892d4; -fx-background-insets: 0; -fx-background-radius: 3; -fx-padding: 3; }
+.status-bar .transfer-bar > .track { -fx-background-color: rgba(255, 255, 255, 0.15); -fx-background-insets: 0; -fx-background-radius: 3; }
+.status-bar .transfer-cancel { -fx-min-width: 18; -fx-min-height: 18; -fx-pref-height: 18; -fx-padding: 0; }
+.status-bar .transfer-cancel .icon { -fx-stroke: #cccccc; }
+.status-bar .status-item.transfer-error { -fx-text-fill: #f48771; }
+/* The status bar icons, each with its own colour. */
+.status-bar .icon.color-sessions { -fx-stroke: #4fc1ff; }
+.status-bar .icon.color-sessions-idle { -fx-stroke: #4fc1ff; -fx-opacity: 0.6; }
+.status-bar .icon.color-team { -fx-stroke: #c586c0; }
+.status-bar .icon.color-vault { -fx-stroke: #e2c08d; }
+.status-bar .icon.color-ok { -fx-stroke: #89d185; }
+.status-bar .icon.color-error { -fx-stroke: #f48771; }
+
+/* The main containers are lightly rounded (the same radius clips their content, see Ui.rounded), with a thin
+   gap between them so the corners show. */
+.layout .main-split { -fx-padding: 0 3 3 0; -fx-background-color: -gap; }
+.layout .main-split > .split-pane-divider { -fx-padding: 0 0 0 3; -fx-background-color: -gap; }
+.layout .main-split .main-split { -fx-padding: 0; }
+.layout .column-resources, .layout .area, .layout .log {
+    -fx-background-radius: 5; -fx-border-radius: 5; -fx-effect: null; -fx-border-color: transparent;
+}
+.layout .column-resources { -fx-background-color: -side; }
+/* The icon commands, then a thin line above the tree. */
+.layout .host-column-head { -fx-padding: 8 6 6 16; -fx-border-color: transparent transparent -border transparent; }
+.layout .tree { -fx-background-color: transparent; -fx-background-radius: 0; }
+.layout .top-bar { -fx-padding: 0 10 0 0; -fx-min-height: 38; }
+/* The app icon: a square as wide as the activity bar, which sits below it,
+   from the top to the bottom of the top bar. */
+.brand-box { -fx-min-width: 34; -fx-pref-width: 34; -fx-max-width: 34; -fx-min-height: 34; -fx-pref-height: 34; -fx-max-height: 34; }
+.layout .brand-box { -fx-min-width: 48; -fx-pref-width: 48; -fx-max-width: 48; -fx-min-height: 38; -fx-pref-height: 38; -fx-max-height: 200; }
+.layout .area-head { -fx-min-height: 38; -fx-padding: 4 12 4 14; }
+.layout .area-title { -fx-font-size: 13px; }
+.layout .log-head { -fx-background-color: -head-panel; }
+
+/* Top bar: same grey as the activity bar, light texts, search slightly lighter.
+   No bottom border: together with the activity bar it forms a single L-shaped block. */
+.layout .top-bar {
+    -fx-background-color: -activity-bg;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+.layout .top-bar .brand-name { -fx-text-fill: #e0e0e0; }
+.layout .top-bar .brand-version { -fx-background-color: rgba(255, 255, 255, 0.10); -fx-text-fill: #cccccc; }
+.layout .top-bar .search {
+    -fx-min-height: 26; -fx-pref-height: 26; -fx-max-height: 26;
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-background-radius: 6; -fx-border-radius: 6;
+}
+.layout .top-bar .search .icon { -fx-stroke: #a0a0a0; }
+.layout .top-bar .search .text-field { -fx-text-fill: #e0e0e0; -fx-prompt-text-fill: #9a9a9a; -fx-highlight-fill: #264f78; -fx-highlight-text-fill: white; }
+.layout .top-bar .menu-button {
+    -fx-background-color: transparent; -fx-border-color: transparent; -fx-effect: null;
+}
+.layout .top-bar .menu-button:hover { -fx-background-color: rgba(255, 255, 255, 0.10); }
+.layout .top-bar .menu-button .label { -fx-text-fill: #cccccc; }
+.layout .top-bar .menu-button .icon { -fx-stroke: #cccccc; }
+.layout .top-bar .menu-button .arrow { -fx-background-color: #cccccc; }
+.layout .window-control .icon { -fx-stroke: #cccccc; }
+.layout .window-control:hover { -fx-background-color: rgba(255, 255, 255, 0.10); }
+
+/* Host tree: 28 px rows with rounded corners, a little away from the edges of the column; the selected
+   row is a tinted pill. Thin chevrons instead of triangles, neutral folder icons. */
+.root.layout { -tree-on: #eceef2; -tree-choice: #e2e8f6; -tree-focus: #2f6fdf; -tree-focus-choice: #d6e1f7; }
+.root.layout.dark { -tree-on: #2a2d31; -tree-choice: #2b3445; -tree-focus: #4c8dff; -tree-focus-choice: #2f3d57; }
+.layout .tree { -fx-padding: 2 6 6 6; }
+.layout .tree .tree-cell {
+    -fx-pref-height: 28; -fx-min-height: 28; -fx-indent: 14; -fx-padding: 0 10 0 4;
+    -fx-background-color: transparent; -fx-background-radius: 7; -fx-background-insets: 1 0 1 0; -fx-border-width: 0;
+}
+.layout .tree .tree-cell:hover { -fx-background-color: -tree-on; }
+.layout .tree .tree-cell:selected { -fx-background-color: -tree-choice; }
+/* With the keyboard in the tree the selection is a little stronger, as the focus. */
+.layout .tree:focused .tree-cell:selected { -fx-background-color: -tree-focus-choice; }
+.layout .tree .tree-cell .label { -fx-font-size: 14px; }
+.layout .tree .tree-cell:selected .label { -fx-font-weight: normal; -fx-text-fill: -text; }
+/* The top items (Hosts, contacts…) head the tree: bold. */
+.layout .tree .tree-cell .tree-root .label { -fx-font-size: 14px; -fx-font-weight: bold; }
+/* JavaFX puts the arrow at the top of the row at the height it needs: with 10 + 8 + 10 = 28 px it takes the whole row and sits in the middle. */
+.layout .tree .tree-disclosure-node { -fx-padding: 10 6 10 6; -fx-alignment: center; }
+.layout .tree .tree-disclosure-node > .arrow {
+    -fx-shape: "M0 0 L1.4 0 L5 4 L1.4 8 L0 8 L3.6 4 Z";
+    -fx-padding: 4 2.5 4 2.5;
+    /* Fixed colour and not -text-faint: the arrow is sometimes styled outside the root and the variable is not found. */
+    -fx-background-color: #8a8a8a;
+}
+.layout .tree .icon.folder-icon { -fx-stroke: -text-faint; }
+/* As specific as the rule for the tree labels (14 px), or that one would win: a small pill with a small number. */
+.layout .tree .tree-cell .tree-sessions {
+    -fx-background-color: -status-bg; -fx-background-radius: 7; -fx-padding: 0 4 0 4; -fx-min-width: 14; -fx-min-height: 14;
+    -fx-font-size: 9px; -fx-font-weight: bold; -fx-alignment: center;
+}
+/* White on its blue pill, also on the selected row (whose labels take the text colour). */
+.layout .tree .tree-cell .tree-sessions, .layout .tree .tree-cell:selected .tree-sessions { -fx-text-fill: white; }
+
+/* Over a terminal while its session connects: on the black of the terminal, in every theme. */
+.connecting { -fx-background-color: #000000; }
+.connecting-spinner { -fx-progress-color: #7cc4ff; -fx-pref-width: 34; -fx-pref-height: 34; }
+.connecting-title { -fx-text-fill: #e6edf3; -fx-font-size: 14px; }
+.connecting-where { -fx-text-fill: #8b949e; -fx-font-size: 12px; -fx-font-family: "DejaVu Sans Mono", monospace; }
+
+/* A split tab: thin lines between its terminals, a little brighter under the mouse; see-through in ghost mode too. */
+.terminal-split, .terminal-split > .split-pane-divider { -fx-background-color: #000000; -fx-padding: 0; -fx-background-insets: 0; -fx-box-border: transparent; }
+.terminal-split > .split-pane-divider { -fx-padding: 1; -fx-background-color: rgba(255, 255, 255, 0.14); }
+.terminal-split > .split-pane-divider:hover { -fx-background-color: rgba(255, 255, 255, 0.40); }
+.ghost .terminal-split { -fx-background-color: transparent; }
+.ghost .terminal-split > .split-pane-divider { -fx-background-color: rgba(255, 255, 255, 0.22); }
+.ghost .terminal-split > .split-pane-divider:hover { -fx-background-color: rgba(255, 255, 255, 0.55); }
+.overlay-bar .action.on { -fx-background-color: rgba(56, 146, 212, 0.35); }
+/* In the main window the tab row has the colours of the rest of the interface, as an editor's tabs: the side
+   colour for the row, the surface for the active tab. The ghost keeps its dark see-through row. */
+.layout .overlay-bar { -fx-background-color: -side; -fx-border-color: transparent transparent -border-light transparent; }
+.layout .overlay-bar .label, .layout .overlay-bar .button { -fx-text-fill: -text; }
+.layout .overlay-bar .icon { -fx-stroke: -text-faint; }
+.layout .overlay-bar .faint, .layout .overlay-bar .code { -fx-text-fill: -text-faint; }
+.layout .overlay-bar .button.action:hover, .layout .overlay-bar .terminal-tab:hover { -fx-background-color: -on; }
+.layout .overlay-bar .terminal-tab .label { -fx-text-fill: -text-faint; }
+.layout .overlay-bar .terminal-tab.active { -fx-background-color: -surface; }
+.layout .overlay-bar .terminal-tab.active .label { -fx-text-fill: -text; }
+.layout .overlay-bar .action.on { -fx-background-color: -selection; }
+/* The commands of a terminal, against its top right corner, on a flat patch in the colour of the tab bar, as if
+   the bar went on there (the terminal is black): the terminal shows everywhere else, the icons never mix with its characters. */
+.terminal-actions { -fx-padding: 2 6 2 6; -fx-alignment: center-right; -fx-background-color: #101317; }
+.terminal-actions .button, .terminal-actions .button.action {
+    -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0; -fx-background-radius: 5;
+    -fx-min-width: 20; -fx-pref-width: 20; -fx-min-height: 18; -fx-pref-height: 18;
+}
+.terminal-actions .button:hover { -fx-background-color: rgba(255, 255, 255, 0.14); }
+.terminal-actions .icon { -fx-stroke: #8b949e; }
+.terminal-actions .button:hover .icon { -fx-stroke: #e6edf3; }
+.terminal-actions .btn-danger .icon { -fx-stroke: #d9776f; }
+/* Sync on: yellow, like the edge of the parts that are listening. */
+.terminal-actions .action.on, .terminal-actions .action.on:hover { -fx-background-color: rgba(250, 204, 21, 0.22); }
+.terminal-actions .action.on .icon, .terminal-actions .action.on:hover .icon { -fx-stroke: #facc15; }
+
+/* Firewall in the host summary */
+.firewall-ports { -fx-hgap: 18; -fx-vgap: 6; }
+.firewall-heading { -fx-font-weight: bold; -fx-font-size: 11px; }
+.firewall-rules { -fx-font-size: 12px; }
+
+/* ── Settings (SettingsDialog) ─────────────────────────────────────
+   Sections with the search on the left, page on the right; the content goes edge to edge. */
+.dialog-pane.settings-window > .content { -fx-padding: 0; }
+/* The title is large, on the surface, with a line below. */
+.dialog-pane.settings-window .window-title {
+    -fx-padding: 16 22 14 22;
+    -fx-background-color: -surface;
+    -fx-text-fill: -text;
+    -fx-font-size: 17px;
+    -fx-font-weight: 800;
+    -fx-border-color: transparent transparent -border transparent;
+}
+.settings-left {
+    -fx-padding: 10 0 10 10;
+    -fx-background-color: -head-panel;
+    -fx-border-color: transparent -border transparent transparent;
+}
+.settings-search { -fx-pref-height: 28; }
+/* The prompt text stays visible even with the cursor in the field, which opens already focused. */
+.settings-search, .settings-search:focused { -fx-prompt-text-fill: -text-faint; }
+.settings-list, .settings-list > .virtual-flow > .clipped-container > .sheet {
+    -fx-background-color: transparent; -fx-background-insets: 0; -fx-border-width: 0; -fx-padding: 0;
+}
+.settings-list .list-cell {
+    -fx-background-color: transparent; -fx-padding: 5 10 5 10; -fx-graphic-text-gap: 8;
+    -fx-text-fill: -text; -fx-background-radius: 4 0 0 4;
+}
+.settings-list .list-cell:hover { -fx-background-color: -on; }
+.settings-list .list-cell:selected { -fx-background-color: -selection; -fx-font-weight: bold; }
+.settings-list .list-cell:empty { -fx-background-color: transparent; }
+.settings-right { -fx-padding: 14 18 10 22; }
+.settings-title { -fx-font-size: 16px; -fx-font-weight: bold; }
+.settings-scroll, .settings-scroll > .viewport { -fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0; -fx-border-width: 0; }
+.settings-page { -fx-padding: 6 6 12 0; }
+.settings-group { -fx-font-weight: bold; -fx-text-fill: -text-faint; -fx-font-size: 12px; }
+.settings-items { -fx-padding: 0 0 0 14; }
+.settings-note { -fx-font-size: 12px; -fx-padding: -4 0 0 0; }
+.setting-match { -fx-background-color: rgba(255, 200, 0, 0.28); -fx-background-radius: 3; -fx-padding: 0 4 0 2; }
+
+/* ── Dialogs with the app frame (DialogFrame) ──────────────────────────
+   The pane leaves 12 transparent px around for the shadow; inside, rounded corners like the main window.
+   The top bar is the one of the main window: same grey, light title, X. */
+.dialog-pane.window.framed {
+    -fx-background-color: -surface;
+    -fx-background-insets: 12;
+    -fx-background-radius: 10;
+    -fx-padding: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 12, 0, 0, 2);
+}
+.dialog-pane.window.framed > .window-bar {
+    -fx-background-color: -activity-bg;
+    -fx-background-radius: 10 10 0 0;
+    -fx-padding: 0 4 0 6;
+    -fx-min-height: 38; -fx-pref-height: 38;
+}
+.window-bar-title { -fx-text-fill: #e0e0e0; -fx-font-weight: bold; -fx-font-size: 13px; }
+/* A centred title keeps clear of the app icon on its left and of the X on its right. */
+.window-title.centred-title, .window-bar-title.centred-title { -fx-padding: 6 120 6 120; -fx-text-overrun: ellipsis; }
+/* "Lemuri v0.1" next to the icon: small and faded, the title of the dialog stays the thing to read. */
+.window-app-name { -fx-font-size: 12.5px; -fx-text-fill: rgba(255, 255, 255, 0.75); }
+/* The settings have a light title bar without the custom frame. */
+.dialog-pane.settings-window .window-app-name { -fx-text-fill: -text-faint; }
+.dialog-pane.settings-window.framed .window-app-name { -fx-text-fill: rgba(255, 255, 255, 0.75); }
+/* The X is not a dialog button: no border or background of .dialog-pane .button, as in the main window. */
+.dialog-pane .window-bar .button.window-control {
+    -fx-min-width: 40; -fx-pref-width: 40; -fx-min-height: 30; -fx-pref-height: 30; -fx-padding: 0;
+    -fx-background-color: transparent; -fx-background-radius: 8;
+    -fx-border-color: transparent; -fx-border-width: 0; -fx-effect: null;
+}
+.window-bar .window-control .icon { -fx-stroke: #cccccc; }
+.dialog-pane .window-bar .button.window-control:hover { -fx-background-color: rgba(255, 255, 255, 0.12); }
+.window-bar .window-control:hover .icon { -fx-stroke: white; }
+.dialog-pane.window.framed > .button-bar > .container { -fx-background-radius: 0 0 10 10; }
+
+/* ── Ghost mode (GhostMode) ───────────────────────────────────────────────
+   Tabs, host tree and terminal on a black see-through background with rounded corners, like a conky widget:
+   no panels of their own, light text, white veils for hover and selection. */
+.ghost {
+    -fx-background-color: rgba(0, 0, 0, 0.55); -fx-background-radius: 0; -fx-padding: 6;
+    /* Light text and icons, whatever the theme of the main window. */
+    -text: #d6dde6;
+    -text-faint: #9aa3ad;
+    -idle: #8b949e;
+}
+.ghost .terminal-screen, .ghost .terminal-slot { -fx-background-color: transparent; }
+.ghost .ghost-tabs { -fx-background-color: transparent; -fx-border-color: transparent transparent rgba(255, 255, 255, 0.10) transparent; }
+.ghost .ghost-tabs .terminal-tab.active { -fx-background-color: rgba(255, 255, 255, 0.16); }
+/* The base rule draws a line on the right of each tab in the border colour of the light theme: not here. */
+.ghost .ghost-tabs .terminal-tab { -fx-border-color: transparent; }
+
+.ghost .ghost-tree {
+    -fx-background-color: transparent;
+    -fx-min-width: 120;
+    -fx-padding: 4 4 4 0;
+}
+/* Above the ghost's tree: only the icon that closes it, on the right. */
+.ghost .ghost-tree-head { -fx-padding: 2 4 0 0; -fx-alignment: center-right; }
+.ghost .ghost-tree-head .action .icon { -fx-stroke: #9aa3ad; }
+.ghost .ghost-tree-head .action:hover { -fx-background-color: rgba(255, 255, 255, 0.12); -fx-border-color: transparent; }
+.ghost .ghost-tree-head .action:hover .icon { -fx-stroke: #ffffff; }
+.ghost .ghost-tree .virtual-flow, .ghost .ghost-tree .clipped-container, .ghost .ghost-tree .sheet { -fx-background-color: transparent; }
+.ghost .ghost-tree .tree-cell { -fx-background-color: transparent; -fx-text-fill: #d6dde6; -fx-background-radius: 5; }
+.ghost .ghost-tree .tree-cell .label { -fx-text-fill: #d6dde6; }
+.ghost .ghost-tree .tree-cell:hover { -fx-background-color: rgba(255, 255, 255, 0.08); }
+.ghost .ghost-tree .tree-cell:selected { -fx-background-color: rgba(255, 255, 255, 0.16); }
+.ghost .ghost-tree .tree-cell .tree-sessions { -fx-text-fill: #9aa3ad; -fx-background-color: transparent; }
+.ghost .ghost-tree .icon.folder-icon { -fx-stroke: #c2c8cf; }
+/* Thin chevrons instead of triangles, as in the main tree. */
+.ghost .ghost-tree .tree-disclosure-node { -fx-padding: 7 6 7 6; -fx-alignment: center; }
+.ghost .ghost-tree .tree-disclosure-node > .arrow {
+    -fx-shape: "M0 0 L1.4 0 L5 4 L1.4 8 L0 8 L3.6 4 Z";
+    -fx-padding: 4 2.5 4 2.5;
+    -fx-background-color: #c2c8cf;
+}
+/* Scroll bars like the separator lines, just a little wider: only the thumb, brighter under the mouse. */
+.ghost .ghost-tree .scroll-bar { -fx-background-color: transparent; -fx-padding: 0; -fx-pref-width: 3; -fx-pref-height: 3; }
+.ghost .ghost-tree .scroll-bar .track, .ghost .ghost-tree .scroll-bar .track-background { -fx-background-color: transparent; }
+.ghost .ghost-tree .scroll-bar .thumb { -fx-background-color: rgba(255, 255, 255, 0.22); -fx-background-radius: 2; -fx-background-insets: 0; }
+.ghost .ghost-tree .scroll-bar:hover .thumb, .ghost .ghost-tree .scroll-bar .thumb:pressed { -fx-background-color: rgba(255, 255, 255, 0.55); }
+.ghost .ghost-tree .scroll-bar .increment-button, .ghost .ghost-tree .scroll-bar .decrement-button { -fx-padding: 0; -fx-pref-width: 0; -fx-pref-height: 0; }
+.ghost .ghost-tree .scroll-bar .increment-arrow, .ghost .ghost-tree .scroll-bar .decrement-arrow { -fx-shape: null; -fx-padding: 0; }
+.ghost .ghost-tree .corner { -fx-background-color: transparent; }
+/* Between the host tree and the terminal: a thin line that can be dragged, brighter under the mouse. */
+.ghost .ghost-split, .ghost .ghost-split > .split-pane-divider { -fx-background-color: transparent; -fx-padding: 0; -fx-background-insets: 0; -fx-box-border: transparent; }
+.ghost .ghost-split > .split-pane-divider { -fx-padding: 0 3 0 3; -fx-border-color: transparent rgba(255, 255, 255, 0.22) transparent transparent; -fx-border-width: 0 1 0 0; -fx-cursor: h-resize; }
+.ghost .ghost-split > .split-pane-divider:hover { -fx-border-color: transparent rgba(255, 255, 255, 0.55) transparent transparent; }
+/* The separator above the local shell: a line along the top instead of on the right. */
+.ghost .ghost-split:vertical > .split-pane-divider { -fx-padding: 3; -fx-border-color: rgba(255, 255, 255, 0.22) transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-cursor: v-resize; }
+.ghost .ghost-split:vertical > .split-pane-divider:hover { -fx-border-color: rgba(255, 255, 255, 0.55) transparent transparent transparent; }
+/* The Terminal tab at the bottom of the ghost: only that one, in the colours of the ghost tabs. */
+.ghost .ghost-shell-head { -fx-padding: 4 0 0 0; -fx-alignment: bottom-left; }
+/* A tab against the line on the left: square there, rounded top right, open at the bottom towards the shell. */
+.ghost .ghost-shell-head .log-tab {
+    -fx-pref-height: 26; -fx-padding: 0 14 0 10; -fx-graphic-text-gap: 7;
+    -fx-background-color: rgba(255, 255, 255, 0.04); -fx-background-radius: 0 10 0 0; -fx-background-insets: 0;
+    -fx-border-color: rgba(255, 255, 255, 0.16); -fx-border-width: 1 1 0 0; -fx-border-radius: 0 10 0 0;
+    -fx-text-fill: -text-faint;
+}
+.ghost .ghost-shell-head .log-tab .icon { -fx-stroke: -text-faint; }
+.ghost .ghost-shell-head .log-tab:hover { -fx-background-color: rgba(255, 255, 255, 0.10); }
+.ghost .ghost-shell-head .log-tab:selected { -fx-background-color: rgba(255, 255, 255, 0.14); -fx-border-color: rgba(255, 255, 255, 0.30); -fx-text-fill: -text; -fx-font-weight: normal; }
+.ghost .ghost-shell-head .log-tab:selected .icon { -fx-stroke: #7cc4ff; }
+/* The activity column of the ghost: the app icon, then the datacenter button; a thin line on its right. */
+.ghost .ghost-activity {
+    -fx-min-width: 44; -fx-pref-width: 44; -fx-max-width: 44;
+    -fx-border-color: transparent rgba(255, 255, 255, 0.22) transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+.ghost .ghost-brand { -fx-min-height: 40; -fx-pref-height: 40; }
+.ghost .ghost-activity .activity { -fx-min-width: 43; -fx-pref-width: 43; -fx-min-height: 42; -fx-pref-height: 42; }
+.ghost .ghost-activity .activity .icon { -fx-stroke: #9aa3ad; }
+.ghost .ghost-activity .activity:hover .icon, .ghost .ghost-activity .activity:selected .icon { -fx-stroke: #ffffff; }
+.ghost .ghost-activity .activity:selected { -fx-border-color: transparent transparent transparent #ffffff; }
+/* The ghost button: coloured while the mode is on; pressed, it goes back to the normal window. */
+.ghost .ghost-activity .activity.ghost-on .icon, .ghost .ghost-activity .activity.ghost-on:hover .icon { -fx-stroke: #7cc7ff; }
+.ghost .ghost-activity .activity.ghost-on:selected { -fx-border-color: transparent transparent transparent #7cc7ff; }
+/* The status bar, lent by the main window: no background of its own, a thin line above and one below, light text. */
+.ghost .status-bar {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(255, 255, 255, 0.10) transparent rgba(255, 255, 255, 0.10) transparent;
+    -fx-border-width: 1 0 1 0;
+}
+.ghost .status-bar .status-item, .ghost .status-bar .label { -fx-text-fill: #c2c8cf; }
+.ghost .status-bar .status-item:hover { -fx-background-color: rgba(255, 255, 255, 0.08); }
+/* The opacity slider on the right of the ghost tabs. */
+/* Moved down to the middle of the tab labels: the tabs stand on the bottom line, so their centre is lower than the bar's. */
+.ghost .ghost-opacity { -fx-padding: 0 4 0 8; -fx-translate-y: 2; }
+.ghost .ghost-control { -fx-translate-y: 2; }
+/* While the inner edge of the docked ghost is dragged: a line where it will be. */
+.ghost-resize-guide { -fx-background-color: #7cc4ff; -fx-opacity: 0.9; }
+/* The side the ghost is docked to: lit, on a square patch. */
+.ghost .ghost-control.on .icon { -fx-stroke: #ffffff; }
+.ghost .ghost-control, .ghost .ghost-control:hover, .ghost .ghost-control.on { -fx-background-radius: 0; -fx-border-radius: 0; }
+.ghost .ghost-opacity .slider .track { -fx-background-color: rgba(255, 255, 255, 0.22); -fx-background-radius: 2; -fx-pref-height: 3; -fx-background-insets: 0; }
+.ghost .ghost-opacity .slider .thumb { -fx-background-color: #d6dde6; -fx-background-radius: 6; -fx-padding: 5; -fx-effect: null; }
+/* The list of the running transfers, opened from the status bar. */
+.transfer-list .transfer-bar { -fx-pref-width: 120; -fx-pref-height: 8; -fx-padding: 0; }
+.transfer-list .transfer-bar > .bar { -fx-background-color: #3892d4; -fx-background-insets: 0; -fx-background-radius: 3; -fx-padding: 3; }
+.transfer-list .transfer-bar > .track { -fx-background-color: rgba(127, 127, 127, 0.25); -fx-background-insets: 0; -fx-background-radius: 3; }
+.transfer-list .transfer-cancel { -fx-min-width: 18; -fx-min-height: 18; -fx-pref-height: 18; -fx-padding: 0; }
+.transfer-list .custom-menu-item { -fx-cursor: default; }
+.transfer-list .custom-menu-item:focused { -fx-background-color: transparent; }

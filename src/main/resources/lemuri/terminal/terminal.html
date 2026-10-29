@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="xterm.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000000; overflow: hidden; }
+  #screen { position: absolute; inset: 4px 0 2px 6px; }
+  /* Ghost mode: xterm paints its scroll area with the theme colour as an opaque one; here it must let the window show. */
+  body.ghost .xterm-viewport { background-color: transparent !important; }
+  /* The scroll bar as the one of the host tree (JavaFX): 12 px, always there, a line on its left, the thumb a
+     rounded bar with an edge; dark or light with the theme of the window. Ghost mode keeps the thin fading one. */
+  body:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical {
+    width: 12px !important; opacity: 1 !important; pointer-events: auto !important; box-sizing: border-box;
+    background: linear-gradient(to right, #252526, #2b2b2c 50%, #252526) !important; border-left: 1px solid #525252;
+  }
+  body:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+    width: 11px !important; left: 0 !important; background: transparent !important;
+  }
+  body:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider::after {
+    content: ''; position: absolute; top: 2px; bottom: 2px; left: 2px; right: 2px; border-radius: 4px;
+    border: 1px solid #404041; background: linear-gradient(to right, #303032, #242426);
+  }
+  body:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover::after,
+  body:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active::after { border-color: #5a5a5c; background: linear-gradient(to right, #3a3a3c, #2c2c2e); }
+  body.light:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical {
+    background: linear-gradient(to right, #e9e9e9, #f0f0f0 50%, #e9e9e9) !important; border-left-color: #dddddd;
+  }
+  body.light:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider::after { border-color: #b8b8b8; background: linear-gradient(to right, #f3f3f3, #e2e2e2); }
+  /* Ghost mode: as the scroll bar of the ghost's host tree, a thin light line on nothing, brighter under the mouse. */
+  body.ghost .xterm .xterm-scrollable-element > .scrollbar.vertical {
+    width: 7px !important; opacity: 1 !important; pointer-events: auto !important; background: transparent !important;
+  }
+  body.ghost .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider {
+    width: 7px !important; left: 0 !important; background: transparent !important;
+  }
+  body.ghost .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider::after {
+    content: ''; position: absolute; top: 0; bottom: 0; right: 2px; width: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.22);
+  }
+  body.ghost .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover::after,
+  body.ghost .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active::after { background: rgba(255, 255, 255, 0.55); }
+  body.light:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider:hover::after,
+  body.light:not(.ghost) .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active::after { border-color: #9a9a9a; background: linear-gradient(to right, #fafafa, #e8e8e8); }
+</style>
+<script src="xterm.js"></script>
+<script src="addon-fit.js"></script>
+</head>
+<body>
+<div id="screen"></div>
+<script>
+  // The Java side injects the `java` object (the bridge) and then calls start().
+  var term, fit;
+  var THEME = { background: '#000000', foreground: '#d6dde6', cursor: '#d6dde6', cursorAccent: '#000000', selectionBackground: '#264f78' };
+  function start(fontSize) {
+    term = new Terminal({
+      cursorBlink: true,
+      // Without focus xterm draws only the outline of the cursor, which is barely visible in the WebView.
+      cursorInactiveStyle: 'block',
+      fontFamily: '"DejaVu Sans Mono", "JetBrains Mono", Menlo, Consolas, monospace',
+      fontSize: fontSize,
+      scrollback: 5000,
+      // Needed for ghost mode, where the background lets the desktop show through.
+      allowTransparency: true,
+      theme: THEME
+    });
+    fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(document.getElementById('screen'));
+    term.onData(function (d) { java.input(d); });
+    // A paste event of the page itself would reach xterm unfiltered: it goes to the Java side, which cleans it.
+    term.element.addEventListener('paste', function (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      java.paste(e.clipboardData ? e.clipboardData.getData('text/plain') : '');
+    }, true);
+    term.onResize(function (e) { java.resize(e.cols, e.rows); });
+    fitToSize();
+    // While a window is being dragged larger or smaller the size changes at every frame: the columns and rows are
+    // worked out again at most every 80 ms, and once more when it stops, so the drawing keeps up with the mouse.
+    var fitLater = null, fitLast = 0;
+    window.addEventListener('resize', function () {
+      var now = Date.now();
+      if (now - fitLast >= 80) { fitLast = now; fitToSize(); }
+      clearTimeout(fitLater);
+      fitLater = setTimeout(function () { fitLast = Date.now(); fitToSize(); }, 80);
+    });
+    // Interactive mode, only if the shell is waiting for a command (see shellReady): never inside mysql, a REPL, the sudo
+    // password question or a running command. Double click on a name from the last ls: the Java side finds out what it is
+    // and decides. On the empty space at the prompt (its line or below, the view not scrolled back): ls.
+    term.element.addEventListener('dblclick', function (e) {
+      var x = Math.round(e.clientX), y = Math.round(e.clientY);
+      setTimeout(function () {
+        if (nameUnder) {
+          if (shellReady(rowUnder)) java.doubleClick(nameUnder, commandOf(rowUnder), x, y);
+        } else if (atPrompt(y) && shellReady()) {
+          // The double click has selected a word of the prompt: it is not what the user wanted.
+          term.clearSelection();
+          java.listHere();
+        }
+      }, 0);
+    });
+    term.registerLinkProvider({ provideLinks: clickableNames });
+    // Selecting text offers it as the primary selection (pasted elsewhere with the middle button).
+    term.onSelectionChange(function () { var s = term.getSelection(); if (s) java.selected(s); });
+    java.ready(term.cols, term.rows);
+  }
+
+  // ── Clickable names ──
+  // In the output of an ls (or of the double click, which leaves the prompt line empty) file and
+  // folder names become links: on hover the hand cursor and the underline appear. The link does nothing
+  // by itself: entering or opening is still the double click.
+  var nameUnder = null;   // the highlighted name under the mouse: the double click uses it, even if it contains spaces
+  var rowUnder = -1;     // and its row
+  // A shell prompt: "user@host:folder$ " (Debian, Ubuntu), "[user@host folder]# " (Fedora, CentOS),
+  // "user@host folder % " (zsh on Mac). These are not: "mysql> ", ">>> ", "[sudo] password for …:", "postgres=# ".
+  var PROMPT = /^\[?[\w.-]+@[\w.-]+(?::|\s+)[^$#%\]]*\]?[$#%] ?(.*)$/;
+  var LS = /^(ls|ll|la|l|dir)(\s|$)/;
+
+  function lineText(y) {
+    var l = term.buffer.active.getLine(y);
+    return l ? l.translateToString(true) : '';
+  }
+
+  /** Is row y (from 0) in the output of an ls? Walk back up to the prompt that produced it. */
+  function inLsOutput(y) {
+    if (PROMPT.test(lineText(y))) return false;
+    for (var i = y - 1, n = 0; i >= 0 && n < 300; i--, n++) {
+      var m = PROMPT.exec(lineText(i));
+      if (m) {
+        var command = m[1].trim();
+        return command === '' || LS.test(command);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The shell is waiting for a command: the cursor row is a prompt with nothing typed after it, and no
+   * full-screen program is running. Only then can hidden commands be sent without ending up in another
+   * program or mixing with what the user is typing. With {@code y} (row of a clicked name) that name
+   * must come from the last command: between it and the current prompt there are no other prompts.
+   */
+  function shellReady(y) {
+    var b = term.buffer.active;
+    if (b.type === 'alternate') return false;
+    var cursor = b.baseY + b.cursorY;
+    var m = PROMPT.exec(lineText(cursor));
+    if (!m || m[1].trim() !== '') return false;
+    if (y === undefined || y < 0) return true;
+    if (y >= cursor) return false;
+    for (var i = y + 1; i < cursor; i++) if (PROMPT.test(lineText(i))) return false;
+    return true;
+  }
+  function clickableNames(row, callback) {
+    var y = row - 1;
+    if (term.buffer.active.type === 'alternate' || !inLsOutput(y)) { callback(undefined); return; }
+    var t = lineText(y), link = [], m;
+    // ls -l: permissions, links, user, group, size, date... the name is the last part ("name -> target" for links).
+    var longFormat = /^[-dlcbps][-rwxsStT]{9}[.+@]?\s+\d+\s+\S+\s+\S+\s+[\d,]+\s+\S+\s+\S+\s+\S+\s+(.+)$/.exec(t);
+    if (longFormat) {
+      var name = longFormat[1].split(' -> ')[0];
+      addLink(link, name, t.lastIndexOf(name), y);
+    } else {
+      if (/^totale?\s+\d/.test(t)) { callback(undefined); return; }
+      // A quoted name (ls quotes names with spaces or special characters) is a single one.
+      var word = /'[^']*'|"[^"]*"|\S+/g;
+      while ((m = word.exec(t)) !== null) addLink(link, m[0], m.index, y);
+    }
+    callback(link.length ? link : undefined);
+  }
+
+  /**
+   * For the right click: the name under the mouse, if it comes from the last command, and that command (the
+   * ls that listed it, which may have been given a folder), on two lines; null if there is no such name.
+   */
+  function nameForMenu() {
+    if (!nameUnder || !shellReady(rowUnder)) return null;
+    return nameUnder + '\n' + commandOf(rowUnder);
+  }
+
+  /** The command whose output row y is in: the one on the prompt above it. */
+  function commandOf(y) {
+    for (var i = y - 1, n = 0; i >= 0 && n < 300; i--, n++) {
+      var m = PROMPT.exec(lineText(i));
+      if (m) return m[1].trim();
+    }
+    return '';
+  }
+
+  /** A point of the page (clientY) on the prompt line or below it, with the view at the bottom, not scrolled back. */
+  function atPrompt(clientY) {
+    var b = term.buffer.active;
+    if (b.viewportY !== b.baseY) return false;
+    var r = term.element.querySelector('.xterm-screen').getBoundingClientRect();
+    return Math.floor((clientY - r.top) / (r.height / term.rows)) >= b.cursorY;
+  }
+
+  function addLink(link, name, from, y) {
+    if (!name || from < 0) return;
+    link.push({
+      range: { start: { x: from + 1, y: y + 1 }, end: { x: from + name.length, y: y + 1 } },
+      text: name,
+      decorations: { pointerCursor: true, underline: true },
+      hover: function () { nameUnder = name; rowUnder = y; },
+      leave: function () { if (nameUnder === name) { nameUnder = null; rowUnder = -1; } },
+      activate: function () {}
+    });
+  }
+  function fitToSize() { try { fit.fit(); } catch (e) {} }
+  function write(d) { term.write(d); }
+  function selection() { return term.getSelection(); }
+  // xterm brackets it when the shell asked for bracketed paste, then hands it to onData like typing.
+  function paste(t) { term.paste(t); }
+  function focus() { term.focus(); }
+  // Ctrl+plus / Ctrl+minus on the Java side: the new size, then the columns and rows that fit.
+  function setFontSize(n) { term.options.fontSize = n; fitToSize(); term.scrollToBottom(); }
+  // The theme of the window: the scroll bar is light or dark like the one of the host tree.
+  function setLight(on) { document.body.classList.toggle('light', on); }
+  // Ghost mode: no background of its own, the window behind (black and see-through) gives it.
+  function setGhost(on) {
+    document.documentElement.style.background = on ? 'transparent' : '';
+    document.body.style.background = on ? 'transparent' : '';
+    document.body.classList.toggle('ghost', on);
+    term.options.theme = Object.assign({}, THEME, { background: on ? 'rgba(0, 0, 0, 0)' : THEME.background });
+    redraw();
+  }
+  // The terminal has just come back into view (tab change, move between views): the WebView may not have
+  // drawn what arrived in the meantime. Fit to the size again, redraw everything and scroll to the bottom.
+  // show() also gives it the keyboard, redraw() does not (the other parts of a split tab).
+  function show() {
+    redraw();
+    term.focus();
+  }
+  function redraw() {
+    fitToSize();
+    term.refresh(0, term.rows - 1);
+    term.scrollToBottom();
+  }
+</script>
+</body>
+</html>

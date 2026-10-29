@@ -1,0 +1,70 @@
+#!/bin/bash
+# lemuri -s HOST [command]: SSH shell to a host saved in Lemuri, in this terminal.
+# lemuri -l: the saved hosts. Anything else starts the app.
+# It can be linked from anywhere in the PATH (ln -s .../bin/lemuri ~/.local/bin/lemuri): it finds the sources from its own place.
+SELF=$(readlink -f "$0")
+APP=$(dirname "$(dirname "$SELF")")
+
+# Called by ssh as its SSH_ASKPASS, with the question as the only argument. A saved password is given once
+# per connection and host: if it is wrong, the next question goes to the user, so a stale password does not
+# pile up failed logins (fail2ban). Anything else (a new host key, a 2FA code) is asked in the terminal.
+if [ -n "$LEMURI_ASKPASS" ]; then
+    prompt=$1
+    target=
+    case "$prompt" in
+        "("*") Password:"*) target=${prompt#(}; target=${target%%)*} ;;
+        *"'s password:"*) target=${prompt%%"'s password:"*} ;;
+    esac
+    # The mark that the password was given lives only in the user's own runtime folder: in /tmp, with a name
+    # anyone can work out, another user could create it first and the saved password would never be given.
+    if [ -n "$target" ] && [ -n "$LEMURI_PASSWORDS" ] && [ -n "$XDG_RUNTIME_DIR" ] && [ -d "$XDG_RUNTIME_DIR" ] && [ -O "$XDG_RUNTIME_DIR" ]; then
+        mark="$XDG_RUNTIME_DIR/lemuri-askpass-$PPID-$(printf '%s' "$target" | sha256sum | cut -c1-16)"
+        if [ ! -e "$mark" ]; then
+            saved=$(printf '%s' "$LEMURI_PASSWORDS" | base64 -d | awk -F'\t' -v t="$target" '$1 == t { print $2; exit }')
+            if [ -n "$saved" ]; then
+                (umask 077; : > "$mark")
+                printf '%s\n' "$saved" | base64 -d
+                printf '\n'
+                exit 0
+            fi
+        fi
+    fi
+    if printf '%s' "$prompt" | grep -qiE 'password|passphrase|code|otp|token'; then
+        read -rs -p "$prompt" answer < /dev/tty 2> /dev/tty
+        printf '\n' > /dev/tty
+    else
+        read -r -p "$prompt" answer < /dev/tty 2> /dev/tty
+    fi
+    printf '%s\n' "$answer"
+    exit 0
+fi
+
+case "$1" in
+    -s|--shell|-l|--list|-h|--help) ;;
+    *) cd "$APP" && exec ./mvnw -q javafx:run ;;
+esac
+# The classpath, computed by Maven once and again only when the pom changes: then java starts in a moment.
+cp=~/.cache/lemuri/classpath
+if [ ! -s "$cp" ] || [ "$APP/pom.xml" -nt "$cp" ]; then
+    mkdir -p ~/.cache/lemuri
+    (cd "$APP" && ./mvnw -q -o dependency:build-classpath -Dmdep.outputFile="$cp") >&2 || exit 1
+fi
+[ -f "$APP/target/classes/lemuri/Cli.class" ] || (cd "$APP" && ./mvnw -q compile) >&2 || exit 1
+case "$1" in
+    -s|--shell)
+        # Java writes the ssh command (words separated by NUL); the shell gives the terminal to ssh with exec.
+        mapfile -d '' words < <(java -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@")
+        [ "${#words[@]}" -gt 0 ] || exit 1
+        command=()
+        for w in "${words[@]}"; do
+            # Environment for ssh (the saved passwords): exported, never passed as arguments that ps would show.
+            if [[ $w == env:* ]]; then export "${w#env:}"; else command+=("$w"); fi
+        done
+        # Without a runtime folder of the user's own the saved passwords are not used: ssh asks as usual.
+        if [ -n "$LEMURI_PASSWORDS" ] && [ -n "$XDG_RUNTIME_DIR" ] && [ -d "$XDG_RUNTIME_DIR" ] && [ -O "$XDG_RUNTIME_DIR" ]; then
+            find "$XDG_RUNTIME_DIR" -maxdepth 1 -name 'lemuri-askpass-*' -user "$(id -u)" -mmin +60 -delete 2>/dev/null
+            export LEMURI_ASKPASS=1 SSH_ASKPASS="$SELF" SSH_ASKPASS_REQUIRE=force
+        fi
+        exec "${command[@]}" ;;
+    *) exec java -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@" ;;
+esac

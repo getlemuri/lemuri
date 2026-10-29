@@ -1,0 +1,13 @@
+# SSH server for the distro test (src/test/distros/run.sh): user deploy, password deploy-pass, the test key.
+FROM debian:12
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-server procps && rm -f /etc/apt/apt.conf.d/docker-clean
+ARG PUBKEY
+RUN (id deploy 2>/dev/null || useradd -m -s /bin/bash deploy 2>/dev/null || adduser -D -s /bin/sh deploy) \
+ && echo "deploy:deploy-pass" | chpasswd \
+ && mkdir -p /home/deploy/.ssh && echo "$PUBKEY" > /home/deploy/.ssh/authorized_keys \
+ && chown -R deploy /home/deploy/.ssh && chmod 700 /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys \
+ && ssh-keygen -A && mkdir -p /run/sshd \
+ && sed -i "s/^#\?PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config \
+ && (grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config || echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config)
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

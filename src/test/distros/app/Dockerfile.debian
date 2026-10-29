@@ -1,0 +1,3 @@
+# The app built and tested on Debian 13 with its own Java 21 (src/test/distros/app.sh).
+FROM debian:13
+RUN apt-get update && apt-get install -y --no-install-recommends openjdk-21-jdk-headless openssh-client procps bash unzip ca-certificates fontconfig fonts-dejavu-core libgtk-3-0 libxslt1.1 && rm -rf /var/lib/apt/lists/*

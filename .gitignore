@@ -1,0 +1,22 @@
+target/
+node_modules/
+*.zip
+
+.idea/
+*.iml
+.DS_Store
+
+# App data and credentials: they live in ~/.lemuri, never in the repository.
+hosts.json
+hosts.json.bak
+cassaforte.json
+vault.json
+*.bak
+.env
+.env.*
+*.pem
+*.key
+*.p12
+id_rsa*
+id_ed25519*
+id_ecdsa*

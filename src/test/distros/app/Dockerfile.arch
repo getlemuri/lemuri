@@ -1,0 +1,3 @@
+# The app built and tested on Arch with its own Java 21 (src/test/distros/app.sh).
+FROM archlinux:latest
+RUN pacman -Syu --noconfirm jdk21-openjdk openssh procps-ng bash unzip fontconfig ttf-dejavu gtk3 libxslt && pacman -Scc --noconfirm

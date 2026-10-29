@@ -1,0 +1,3 @@
+# The app built and tested on Fedora 41 with its own Java 21 (src/test/distros/app.sh).
+FROM fedora:41
+RUN dnf -y install java-21-openjdk-devel openssh-clients procps-ng bash unzip fontconfig dejavu-sans-fonts dejavu-sans-mono-fonts gtk3 libxslt findutils tar gzip && dnf clean all

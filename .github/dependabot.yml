@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  # The xterm.js files are copied into the app by hand: this only reports new versions (see package.json there).
+  - package-ecosystem: npm
+    directory: /src/main/resources/lemuri/terminal
+    schedule:
+      interval: weekly
