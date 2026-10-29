@@ -424,9 +424,9 @@
     -text-menu: #d6dde6;
     -on-menu: rgba(255, 255, 255, 0.12);
     -accent-menu: #ffffff;
-    -fx-background-color: rgba(255, 255, 255, 0.14), -bg-menu;
-    -fx-background-insets: 0, 1;
-    -fx-background-radius: 9, 8;
+    -fx-background-color: -bg-menu;
+    -fx-background-insets: 0;
+    -fx-background-radius: 8;
     -fx-padding: 5;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 18, 0, 0, 4);
 }
@@ -804,6 +804,8 @@
 .ghost .ghost-tabs .terminal-tab.active { -fx-background-color: rgba(255, 255, 255, 0.16); }
 /* The base rule draws a line on the right of each tab in the border colour of the light theme: not here. */
 .ghost .ghost-tabs .terminal-tab { -fx-border-color: transparent; }
+/* The ghost's padding above the tabs looks like part of the bar: the commands sit in the middle of all of it. */
+.ghost .ghost-tabs .bar-commands { -fx-translate-y: -2; }
 
 .ghost .ghost-tree {
     -fx-background-color: transparent;
@@ -880,9 +882,9 @@
 .ghost .status-bar .status-item, .ghost .status-bar .label { -fx-text-fill: #c2c8cf; }
 .ghost .status-bar .status-item:hover { -fx-background-color: rgba(255, 255, 255, 0.08); }
 /* The opacity slider on the right of the ghost tabs. */
-/* Moved down to the middle of the tab labels: the tabs stand on the bottom line, so their centre is lower than the bar's. */
-.ghost .ghost-opacity { -fx-padding: 0 4 0 8; -fx-translate-y: 2; }
-.ghost .ghost-control { -fx-translate-y: 2; }
+.ghost .ghost-opacity { -fx-padding: 0 4 0 8; }
+/* Between the slider, the dock sides and minimize/maximize: a short line like the others of the ghost. */
+.ghost .ghost-bar-sep { -fx-min-width: 1; -fx-pref-width: 1; -fx-max-width: 1; -fx-pref-height: 14; -fx-max-height: 14; -fx-background-color: rgba(255, 255, 255, 0.18); }
 /* While the inner edge of the docked ghost is dragged: a line where it will be. */
 .ghost-resize-guide { -fx-background-color: #7cc4ff; -fx-opacity: 0.9; }
 /* The side the ghost is docked to: lit, on a square patch. */

@@ -115,10 +115,17 @@
   // "user@host folder % " (zsh on Mac). These are not: "mysql> ", ">>> ", "[sudo] password for …:", "postgres=# ".
   var PROMPT = /^\[?[\w.-]+@[\w.-]+(?::|\s+)[^$#%\]]*\]?[$#%] ?(.*)$/;
   var LS = /^(ls|ll|la|l|dir)(\s|$)/;
+  var CD_THEN = /^cd\s.*?&&\s*/;
 
   function lineText(y) {
     var l = term.buffer.active.getLine(y);
     return l ? l.translateToString(true) : '';
+  }
+
+  /** The ls of "cd app && ls", as typed by the double click on a folder; any other command as it is. */
+  function lsPart(command) {
+    var cd = CD_THEN.exec(command);
+    return cd ? command.substring(cd[0].length) : command;
   }
 
   /** Is row y (from 0) in the output of an ls? Walk back up to the prompt that produced it. */
@@ -128,7 +135,7 @@
       var m = PROMPT.exec(lineText(i));
       if (m) {
         var command = m[1].trim();
-        return command === '' || LS.test(command);
+        return command === '' || LS.test(lsPart(command));
       }
     }
     return false;
@@ -137,19 +144,32 @@
   /**
    * The shell is waiting for a command: the cursor row is a prompt with nothing typed after it, and no
    * full-screen program is running. Only then can hidden commands be sent without ending up in another
-   * program or mixing with what the user is typing. With {@code y} (row of a clicked name) that name
-   * must come from the last command: between it and the current prompt there are no other prompts.
+   * program or mixing with what the user is typing. With {@code y} (row of a clicked name) the name must come
+   * from the last command, or from an older ls run at the same prompt as the current one ("root@f1:~#" both
+   * times): same user, same host, same folder. So the names of an old ls work after other commands, but not
+   * after a cd elsewhere. The last command is always fine, even "cd app && ls", whose prompt is the old folder's.
    */
   function shellReady(y) {
     var b = term.buffer.active;
     if (b.type === 'alternate') return false;
     var cursor = b.baseY + b.cursorY;
-    var m = PROMPT.exec(lineText(cursor));
+    var now = lineText(cursor), m = PROMPT.exec(now);
     if (!m || m[1].trim() !== '') return false;
     if (y === undefined || y < 0) return true;
     if (y >= cursor) return false;
-    for (var i = y + 1; i < cursor; i++) if (PROMPT.test(lineText(i))) return false;
-    return true;
+    var last = true;
+    for (var j = y + 1; j < cursor && last; j++) if (PROMPT.test(lineText(j))) last = false;
+    if (last) return true;
+    for (var i = y - 1, n = 0; i >= 0 && n < 300; i--, n++) {
+      var t = lineText(i), p = PROMPT.exec(t);
+      if (p) return promptOf(t, p) === promptOf(now, m);
+    }
+    return false;
+  }
+
+  /** The prompt part of a prompt line, without the command typed after it: "root@f1:~#". */
+  function promptOf(line, match) {
+    return line.substring(0, line.length - match[1].length).trim();
   }
   function clickableNames(row, callback) {
     var y = row - 1;

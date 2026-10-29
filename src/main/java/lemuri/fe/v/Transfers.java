@@ -313,7 +313,7 @@ public final class Transfers {
                 }
                 boolean replace = target.exists();
                 if (replace && !Dialogs.confirm(I18n.t("transfer.download"), I18n.t("transfer.download.replace", target), I18n.t("transfer.overwrite"))) return;
-                start(ssh, new Transfer("↓", "\"" + what + "\"", hostKey(s), targets), (k, c) -> {
+                start(ssh, new Transfer("", "\"" + what + "\"", hostKey(s), targets), (k, c) -> {
                     // It did not exist when asked, but something has put it there while this one waited.
                     if (!replace && target.exists() && !askAgain(I18n.t("transfer.download"), I18n.t("transfer.download.replace", target), I18n.t("transfer.overwrite")))
                         k.cancelled = true;
@@ -537,7 +537,7 @@ public final class Transfers {
                     }
                 }
                 double q = total == 0 ? 0 : Math.min(1, done / (double) total);
-                show(String.join("", arrows) + " " + I18n.t("transfer.many", active.size()) + " · " + (int) (q * 100) + "% · " + measure(done) + " / " + measure(total), q, false);
+                show(prefix(String.join("", arrows)) + I18n.t("transfer.many", active.size()) + " · " + (int) (q * 100) + "% · " + measure(done) + " / " + measure(total), q, false);
                 closeTip.set(I18n.t("transfer.showAll"));
             }
             closable.set(true);
@@ -609,6 +609,11 @@ public final class Transfers {
         void give(String host) {
             hosts.get(host).release();
         }
+    }
+
+    /** The arrow before the text in the status bar, if there is one (uploads have it, downloads do not). */
+    private static String prefix(String arrow) {
+        return arrow.isEmpty() ? "" : arrow + " ";
     }
 
     /** A transfer waiting or running: what it moves, how far it is, whether the user cancelled it. */
@@ -685,12 +690,12 @@ public final class Transfers {
             String m;
             double q;
             if (!started) {
-                m = arrow + " " + what + " · " + I18n.t("transfer.waiting");
+                m = prefix(arrow) + what + " · " + I18n.t("transfer.waiting");
                 q = 0;
             } else {
                 long d = done.get();
                 q = Math.min(1, d / (double) total);
-                m = arrow + " " + (name.isEmpty() ? what : name) + " · " + (int) (q * 100) + "% · " + measure(d) + " / " + measure(total);
+                m = prefix(arrow) + (name.isEmpty() ? what : name) + " · " + (int) (q * 100) + "% · " + measure(d) + " / " + measure(total);
             }
             Platform.runLater(() -> {
                 line.set(m);

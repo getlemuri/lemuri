@@ -100,10 +100,12 @@ public final class Splash {
         double fadeOut = 1 - closed((t - (DURATION - 0.5)) / 0.5);
         g.setGlobalAlpha(fadeOut);
 
-        // The black disc, with the edge fading into transparency.
+        // The black disc: solid only in the middle, then fading slowly into transparency, with no visible edge.
         g.setFill(new RadialGradient(0, 0, c, c, SIDE / 2, false, CycleMethod.NO_CYCLE,
-                new Stop(0, Color.web("#161616")), new Stop(0.55, Color.web("#080808")),
-                new Stop(0.85, Color.web("#000000", 0.85)), new Stop(1, Color.web("#000000", 0))));
+                new Stop(0, Color.web("#161616")), new Stop(0.3, Color.web("#0a0a0a")),
+                new Stop(0.5, Color.web("#000000", 0.95)), new Stop(0.65, Color.web("#000000", 0.8)),
+                new Stop(0.78, Color.web("#000000", 0.5)), new Stop(0.88, Color.web("#000000", 0.22)),
+                new Stop(0.95, Color.web("#000000", 0.07)), new Stop(1, Color.web("#000000", 0))));
         g.fillOval(0, 0, SIDE, SIDE);
 
         // The vortex spins harder and harder, then tightens and calms down while the hash comes out.
@@ -167,7 +169,8 @@ public final class Splash {
             double s = (t - 1.1 - k * 0.25) / 1.1;
             if (s <= 0 || s >= 1) continue;
             double r = 40 + 170 * s;
-            g.setStroke(Color.web("#7fd3ff", 0.5 * (1 - s)));
+            // Faster than they grow: out where the disc fades they would draw its edge again.
+            g.setStroke(Color.web("#7fd3ff", 0.5 * (1 - s) * (1 - s)));
             g.setLineWidth(2 * (1 - s) + 0.5);
             g.strokeOval(c - r, c - r, r * 2, r * 2);
         }

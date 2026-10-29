@@ -169,6 +169,10 @@
             <prism.order>sw</prism.order>
             <java.awt.headless>true</java.awt.headless>
           </systemPropertyVariables>
+          <!-- Nor the real display through X11 (the work areas of the monitors, the windows): the same on every machine. -->
+          <excludedEnvironmentVariables>
+            <param>DISPLAY</param>
+          </excludedEnvironmentVariables>
         </configuration>
       </plugin>
       <!-- Static analysis with the security rules of FindSecBugs: ./mvnw spotbugs:check. The findings

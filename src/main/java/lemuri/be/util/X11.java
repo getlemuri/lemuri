@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -112,6 +113,25 @@ public final class X11 implements AutoCloseable {
             return window == 0 ? null : x.geometry(window);
         } catch (IOException | RuntimeException e) {
             return null;
+        }
+    }
+
+    /**
+     * The usable area of each monitor, {x, y, width, height} in X pixels, as GNOME computes it
+     * ({@code _GTK_WORKAREAS_D<desktop>}): with more monitors {@code _NET_WORKAREA}, where JavaFX looks, is one
+     * rectangle for the whole desktop and misses a dock or a bar that is on one monitor only. Empty if not known.
+     */
+    public static List<int[]> workAreas() {
+        String display = System.getenv("DISPLAY");
+        if (display == null || Os.MAC) return List.of();
+        try (X11 x = connect(display)) {
+            int[] desktop = ints(x.property(x.root, x.atom("_NET_CURRENT_DESKTOP")));
+            int[] v = ints(x.property(x.root, x.atom("_GTK_WORKAREAS_D" + (desktop.length == 1 ? desktop[0] : 0))));
+            List<int[]> out = new ArrayList<>();
+            for (int i = 0; i + 3 < v.length; i += 4) out.add(Arrays.copyOfRange(v, i, i + 4));
+            return out;
+        } catch (IOException | RuntimeException e) {
+            return List.of();
         }
     }
 

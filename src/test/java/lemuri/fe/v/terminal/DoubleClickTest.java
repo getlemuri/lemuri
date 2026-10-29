@@ -20,6 +20,8 @@ class DoubleClickTest {
         assertEquals("backups", Terminal.lsFolder("ll backups"));
         assertEquals("my files", Terminal.lsFolder("ls 'my files'"), "quotes are removed");
         assertNull(Terminal.lsFolder("ls a b"), "two folders: cannot tell");
+        assertNull(Terminal.lsFolder(" cd app && ls"), "a folder entered by double click: the ls is of the shell's folder");
+        assertEquals("sub", Terminal.lsFolder("cd 'my app' && ls -l sub"));
     }
 
     /** After "ls /var/log" the name is looked for there first, typed with its full path; then in the shell's folder. */

@@ -185,6 +185,28 @@ class SessionsUiTest extends UiTest {
         }
     }
 
+    /** Asks the terminal page something, as JavaScript. */
+    private Object script(Session s, String js) {
+        return get(() -> SessionViews.terminal(s).getChildrenUnmodifiable().stream().filter(n -> n instanceof WebView)
+                .map(n -> (WebView) n).findFirst().orElseThrow().getEngine().executeScript(js));
+    }
+
+    /**
+     * The double click on a folder types "cd app && ls": its names are listed under the old folder's prompt and
+     * the new prompt is another, yet they can be clicked. After a cd elsewhere they cannot.
+     */
+    @Test
+    void theNamesOfAFolderEnteredByDoubleClickCanBeClicked() {
+        Session s = openDb();
+        until(() -> SessionViews.terminal(s).shellReady(), "the prompt");
+        transport(s).print(" cd app && ls\r\nnotes.txt  sub\r\ndeploy@db-01:~/app$ ");
+        until(() -> String.valueOf(script(s, "lineText(2)")).startsWith("deploy@db-01:~/app$"), "the listing on screen");
+        assertEquals(true, script(s, "inLsOutput(1) && shellReady(1)"));
+        transport(s).print("cd /tmp\r\ndeploy@db-01:/tmp$ ");
+        until(() -> String.valueOf(script(s, "lineText(3)")).startsWith("deploy@db-01:/tmp$"), "the new prompt");
+        assertEquals(false, script(s, "shellReady(1)"), "another folder now");
+    }
+
     @Test
     void uploadIsOfferedOnlyOnALiveSession() {
         Session s = openDb();

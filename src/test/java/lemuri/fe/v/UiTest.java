@@ -478,6 +478,11 @@ abstract class UiTest {
             state.accept(SessionStatus.CLOSED, null);
         }
 
+        /** As if the server printed this. */
+        void print(String text) {
+            data.accept(text);
+        }
+
         /** As if the server ended the shell (exit). */
         void end() {
             Platform.runLater(this::close);

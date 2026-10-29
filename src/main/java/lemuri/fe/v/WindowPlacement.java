@@ -1,5 +1,6 @@
 package lemuri.fe.v;
 
+import java.util.List;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
 import javafx.stage.Screen;
@@ -79,7 +80,38 @@ final class WindowPlacement {
     /** The usable area (without the system panels) of the screen the rectangle is on. */
     static Rectangle2D screen(Rectangle2D r) {
         var screens = Screen.getScreensForRectangle(r);
-        return (screens.isEmpty() ? Screen.getPrimary() : screens.get(0)).getVisualBounds();
+        return usable(screens.isEmpty() ? Screen.getPrimary() : screens.get(0));
+    }
+
+    /**
+     * The usable area of a screen. JavaFX's visual bounds are wrong with more monitors (see X11.workAreas): a
+     * window maximized on the laptop next to an external monitor went under the Ubuntu dock. GNOME's area for
+     * that monitor is used when there is one; otherwise, as on the Mac, JavaFX's.
+     */
+    static Rectangle2D usable(Screen screen) {
+        Rectangle2D all = screen.getBounds();
+        double k = screen.getOutputScaleX();
+        for (int[] a : workAreas()) {
+            Rectangle2D w = new Rectangle2D(a[0] / k, a[1] / k, a[2] / k, a[3] / k);
+            if (!all.contains(w.getMinX() + w.getWidth() / 2, w.getMinY() + w.getHeight() / 2)) continue;
+            double x0 = Math.max(all.getMinX(), w.getMinX()), y0 = Math.max(all.getMinY(), w.getMinY());
+            double x1 = Math.min(all.getMaxX(), w.getMaxX()), y1 = Math.min(all.getMaxY(), w.getMaxY());
+            if (x1 > x0 && y1 > y0) return new Rectangle2D(x0, y0, x1 - x0, y1 - y0);
+        }
+        return screen.getVisualBounds();
+    }
+
+    private static List<int[]> areas = List.of();
+    private static long areasRead;
+
+    /** X11.workAreas, read again at most once a second: dragging the window asks for it at every move (JavaFX thread). */
+    private static List<int[]> workAreas() {
+        long now = System.currentTimeMillis();
+        if (now - areasRead > 1000) {
+            areas = X11.workAreas();
+            areasRead = now;
+        }
+        return areas;
     }
 
     /**

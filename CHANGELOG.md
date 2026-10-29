@@ -6,9 +6,16 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ### Fixed
 - A terminal closed while it was still signing in left its SSH connection open in the background.
+- The upload confirmation took about ten seconds to appear after the files were picked.
+- After a double click on a folder, the names it listed could not be clicked.
+- With a second monitor, a maximized window could go under the Ubuntu dock.
 
 ### Changed
 - Updated pty4j (local shell) to 0.14.0 and Maven to 3.10.0.
+- Interactive mode: the names of an earlier `ls` stay clickable as long as the prompt is the same.
+- Ghost mode: the controls on the right of the bar are centred and grouped by separators; no light border around its menus.
+- Downloads show no arrow in the status bar.
+- The splash screen fades out at its edge instead of ending in a dark disc.
 
 ## [0.1.0] - 2026-10-29
 

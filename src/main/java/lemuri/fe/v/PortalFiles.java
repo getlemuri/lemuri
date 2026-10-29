@@ -115,8 +115,9 @@ final class PortalFiles {
         }
         // Last resort if no signal ever comes: nobody keeps a file dialog open for an hour.
         answer.orTimeout(WAIT_HOURS, TimeUnit.HOURS).whenComplete((list, e) -> {
-            close(bus);
             Platform.runLater(() -> chosen.accept(list != null ? list : List.of()));
+            // This runs on the bus's own signal thread: closing from here waits on itself, so another thread does it.
+            Thread.ofVirtual().name("portal-close").start(() -> close(bus));
         });
         return true;
     }

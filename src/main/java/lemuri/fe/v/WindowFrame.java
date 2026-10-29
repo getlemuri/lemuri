@@ -217,7 +217,7 @@ public final class WindowFrame {
     /** Usable area of the screen the window is on, system panels excluded. */
     private Rectangle2D visible() {
         var screens = Screen.getScreensForRectangle(stage.getX() + SHADOW, stage.getY() + SHADOW, Math.max(1, stage.getWidth() - 2 * SHADOW), 1);
-        return (screens.isEmpty() ? Screen.getPrimary() : screens.get(0)).getVisualBounds();
+        return WindowPlacement.usable(screens.isEmpty() ? Screen.getPrimary() : screens.get(0));
     }
 
     /**

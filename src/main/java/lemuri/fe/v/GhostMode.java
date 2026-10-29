@@ -10,6 +10,7 @@ import javafx.beans.InvalidationListener;
 import javafx.beans.value.ChangeListener;
 import javafx.collections.ListChangeListener;
 import javafx.collections.MapChangeListener;
+import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
@@ -267,9 +268,9 @@ public final class GhostMode {
         TabBar bar = new TabBar(app, app.state.sessions, s, app.sessions::showSession,
                 () -> app.sessions.openSession(s.host), I18n.t("console.newSessionOn", s.host.name));
         bar.getStyleClass().add("ghost-tabs");
-        bar.addToRight(opacityControl());
+        bar.addToRight(opacityControl(), separator());
         for (String side : SIDES) bar.addToRight(dockButton(side));
-        bar.addToRight(minimizeButton(), maximizeButton());
+        bar.addToRight(separator(), minimizeButton(), maximizeButton());
         inner.setTop(bar);
         slot.getChildren().setAll(SessionViews.tab(s));
     }
@@ -410,6 +411,14 @@ public final class GhostMode {
         opacity.getStyleClass().add("ghost-opacity");
         Tooltip.install(opacity, new Tooltip(I18n.t("ghost.opacity")));
         return opacity;
+    }
+
+    /** A short vertical line between groups of commands on the right of the tabs. */
+    private static Node separator() {
+        Region r = new Region();
+        r.getStyleClass().add("ghost-bar-sep");
+        HBox.setMargin(r, new Insets(0, 6, 0, 6));
+        return r;
     }
 
     /** On the right of the slider: the ghost goes down to the dock, and comes back from it or from a click on the tray icon. */

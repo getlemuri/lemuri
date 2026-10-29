@@ -85,6 +85,7 @@ public final class TabBar extends HBox {
             e.consume();
         });
         right.setAlignment(Pos.CENTER_RIGHT);
+        right.getStyleClass().add("bar-commands");
         right.setMinWidth(Region.USE_PREF_SIZE);
         // The bar has padding only at the top (the tabs stand on its bottom line): the same below, so the commands sit in the middle.
         HBox.setMargin(right, new Insets(0, 0, 2, 0));

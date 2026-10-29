@@ -18,7 +18,7 @@ import lemuri.be.terminal.SshTransport;
 import lemuri.be.util.I18n;
 
 /**
- * Interactive mode, the double click on a name listed by the last ls: a folder is entered and listed, a text
+ * Interactive mode, the double click on a name listed by an ls at the current prompt: a folder is entered and listed, a text
  * file is opened with nano, a binary file or one over {@link FileCheck#MAX_TEXT} is not opened, and a note near
  * the mouse says why. What the name is, is asked before typing anything, to the server over SFTP on the same
  * connection (to this computer for a local shell), in the folder the ls listed if it was given one. The

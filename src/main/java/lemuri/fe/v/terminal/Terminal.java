@@ -150,7 +150,8 @@ public final class Terminal extends StackPane {
     public static String lsFolder(String command) {
         if (command == null) return null;
         // Words as the shell splits them, a quoted one being a single word ('my files').
-        Matcher m = Pattern.compile("'[^']*'|\"[^\"]*\"|\\S+").matcher(command.trim());
+        // "cd app && ls" (the double click on a folder): the ls part, which runs in the folder just entered.
+        Matcher m = Pattern.compile("'[^']*'|\"[^\"]*\"|\\S+").matcher(command.trim().replaceFirst("^cd\\s.*?&&\\s*", ""));
         String only = null;
         for (boolean first = true; m.find(); first = false) {
             String w = m.group();
@@ -277,7 +278,7 @@ public final class Terminal extends StackPane {
 
     /** The name as ls writes it, without the marks it adds. */
     /**
-     * The file or folder name under the mouse in the output of the last ls, cleaned as for the double click, and
+     * The file or folder name under the mouse in the output of an ls at the current prompt, cleaned as for the double click, and
      * the ls command that listed it: {name, command}. Null if the mouse is not on such a name.
      */
     public String[] nameForMenu() {
