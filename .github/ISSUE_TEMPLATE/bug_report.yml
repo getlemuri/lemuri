@@ -1,0 +1,48 @@
+name: Bug report
+description: Something does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! For a security problem, please use the **Security** tab instead (see SECURITY.md).
+        Do not paste passwords, keys or real server addresses: replace them with made-up ones.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a terminal on a host
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Lemuri version or commit
+      description: Shown in Settings → About, or `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. Ubuntu 24.04 (Wayland), macOS 15
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server side, if it matters
+      placeholder: e.g. Debian 12, OpenSSH 9.2, through a jump host
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The relevant lines of ~/.lemuri/logs/lemuri-0.log, if any. Check them for addresses and names first.
+      render: text

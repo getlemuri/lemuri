@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/getlemuri/lemuri/security/advisories/new
+    about: Report it privately, not in a public issue.
+  - name: Website
+    url: https://getlemuri.github.io/
+    about: What Lemuri does, with pictures.

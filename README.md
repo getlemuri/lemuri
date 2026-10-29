@@ -1,5 +1,10 @@
 # Lemuri
 
+[![Build](https://github.com/getlemuri/lemuri/actions/workflows/build.yml/badge.svg)](https://github.com/getlemuri/lemuri/actions/workflows/build.yml)
+[![CodeQL](https://github.com/getlemuri/lemuri/actions/workflows/codeql.yml/badge.svg)](https://github.com/getlemuri/lemuri/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/website-getlemuri.github.io-2f6fb3.svg)](https://getlemuri.github.io/)
+
 **A desktop SSH console for the servers and VPS you manage.** Keep every host in one tree, open terminals in tabs, upload files over SFTP, see CPU, memory and disks, store passwords in an encrypted vault, and hand servers over to your team without pasting credentials in chat.
 
 ![Lemuri](docs/screenshot.png)

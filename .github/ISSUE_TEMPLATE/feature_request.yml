@@ -1,0 +1,16 @@
+name: Idea or request
+description: Something Lemuri could do, or do better.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you need
+      description: The problem or the task, as you meet it while working on your servers.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+      description: Optional. Any idea of how it could look in the app.

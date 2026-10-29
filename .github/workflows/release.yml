@@ -1,0 +1,38 @@
+# A tag like v0.2.0 becomes a GitHub release: the full checks run again on it, and the release notes are the
+# section of CHANGELOG.md with that version. There are no ready-made packages yet: GitHub attaches the sources.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build and test
+        run: ./mvnw -B verify && ./mvnw -B spotbugs:check
+      - name: The version of the tag is the one in pom.xml
+        run: |
+          pom=$(./mvnw -B -q help:evaluate -Dexpression=project.version -DforceStdout)
+          [ "v$pom" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME, pom.xml $pom"; exit 1; }
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="$version" '/^## \[/ { on = index($0, "## [" v "]") == 1; next } /^\[[^]]*\]: / { on = 0 } on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Lemuri $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

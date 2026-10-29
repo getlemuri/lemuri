@@ -10,6 +10,8 @@ Thanks for wanting to help!
 - **Interface tests**: the classes ending in `UiTest` (in `src/test/java/lemuri/fe/v/`) drive the real main window with TestFX on Monocle's headless screen: no window opens on your desktop and CI needs no display. They extend `UiTest`, which builds a made-up world (hosts and vault in memory, fake metrics, sessions with fake transports, a fake home). Run one class with `./mvnw test -Dtest=SessionsUiTest`. A change you can see in the window deserves one.
 - **Other distributions**: `bash src/test/distros/run.sh` (Docker needed; `DOCKER="sudo docker"` if your user is not in the docker group) starts SSH servers of seven distributions in containers, on 127.0.0.1 only, runs `DistrosTest` against them (sign-in with password and key, shell, metrics, updates and reboot, SFTP, jump host, `lemuri -s`) and removes them. A weekly GitHub Action runs it too.
 - **Layers**: code in `be` must not use JavaFX or anything in `fe`; the frontend reaches the backend only through the interfaces in `be/service` (see [docs/architecture.md](docs/architecture.md)).
+- **Changelog**: a change users will notice gets a line under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
+- **Releases**: set the version in `pom.xml`, rename *Unreleased* in `CHANGELOG.md` to the version with its date, commit, then push a tag like `v0.2.0`. The Release workflow checks everything again and publishes the release with that section of the changelog as notes.
 - **Security issues**: see [SECURITY.md](SECURITY.md), not public issues.
 
 ## Running
