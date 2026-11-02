@@ -13,6 +13,8 @@
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <javafx.version>21.0.13</javafx.version>
+    <!-- The Java that runs Maven itself. Below 21 the profile older-maven-jvm applies. -->
+    <maven.jvm.version>[21,)</maven.jvm.version>
   </properties>
 
   <dependencies>
@@ -138,7 +140,7 @@
             <configuration>
               <rules>
                 <requireJavaVersion>
-                  <version>[21,)</version>
+                  <version>${maven.jvm.version}</version>
                 </requireJavaVersion>
                 <requireMavenVersion>
                   <version>[3.9,)</version>
@@ -204,4 +206,38 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- Maven started by an older Java (the default of the system, for example): JDK 21 is found among those
+         installed and used to compile, test and run, without setting JAVA_HOME. Not below 17: javafx-maven-plugin
+         reads the JavaFX jars with the Java of Maven, and an older one discards them and the app does not start. -->
+    <profile>
+      <id>older-maven-jvm</id>
+      <activation>
+        <jdk>(,21)</jdk>
+      </activation>
+      <properties>
+        <maven.jvm.version>[17,)</maven.jvm.version>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-toolchains-plugin</artifactId>
+            <version>3.2.0</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>select-jdk-toolchain</goal>
+                </goals>
+                <configuration>
+                  <version>[21,)</version>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

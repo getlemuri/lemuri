@@ -8,12 +8,13 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 import java.util.function.Consumer;
 import javafx.application.Platform;
+import lemuri.be.util.X11;
 
 /**
  * The X11 primary selection, as every Linux terminal uses it: what is selected can be pasted with the middle
  * button, here and in the other apps. JavaFX does not reach it, AWT does; where there is none (macOS,
  * a headless test) it is the normal clipboard. AWT is called off the JavaFX thread: the X server answers when
- * the app that owns the selection does.
+ * the app that owns the selection does. Reading goes first through X11, much faster: a paste must feel immediate.
  */
 final class PrimarySelection {
     private PrimarySelection() {}
@@ -43,17 +44,21 @@ final class PrimarySelection {
     /** The primary selection, or null if there is none; {@code then} runs on the JavaFX thread. */
     static void get(Consumer<String> then) {
         Thread t = new Thread(() -> {
-            String text = null;
-            Clipboard p = primary();
-            try {
-                if (p != null && p.isDataFlavorAvailable(DataFlavor.stringFlavor)) text = (String) p.getData(DataFlavor.stringFlavor);
-            } catch (IllegalStateException | UnsupportedFlavorException | IOException e) {
-                // Nothing usable in it: nothing is pasted.
-            }
-            String found = text;
+            String direct = X11.primaryText();
+            String found = direct != null ? direct : throughAwt();
             Platform.runLater(() -> then.accept(found));
         }, "primary-selection");
         t.setDaemon(true);
         t.start();
+    }
+
+    private static String throughAwt() {
+        Clipboard p = primary();
+        try {
+            if (p != null && p.isDataFlavorAvailable(DataFlavor.stringFlavor)) return (String) p.getData(DataFlavor.stringFlavor);
+        } catch (IllegalStateException | UnsupportedFlavorException | IOException e) {
+            // Nothing usable in it: nothing is pasted.
+        }
+        return null;
     }
 }

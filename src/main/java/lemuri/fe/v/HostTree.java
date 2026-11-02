@@ -14,7 +14,10 @@ import javafx.beans.Observable;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.collections.ListChangeListener;
+import javafx.collections.MapChangeListener;
+import javafx.collections.WeakMapChangeListener;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
@@ -29,6 +32,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
 import lemuri.be.dto.Host;
+import lemuri.be.dto.MetricsResult;
 import lemuri.be.util.Folders;
 import lemuri.be.util.I18n;
 import lemuri.fe.c.AppContext;
@@ -47,6 +51,8 @@ public class HostTree extends TreeView<HostTree.Item> {
     public final StringProperty filter = new SimpleStringProperty("");
     private final AppContext app;
     private static final DataFormat DRAGGED = new DataFormat("application/x-lemuri-node");
+    /** Host rows have no arrow: their icon moves into that empty space, leaving more room for the name and the disk bar. */
+    private static final double HOST_SHIFT = 8;
 
     private final Set<String> closedOnes = new HashSet<>();
     private boolean syncing;
@@ -223,7 +229,15 @@ public class HostTree extends TreeView<HostTree.Item> {
     }
 
     private final class ItemCell extends TreeCell<Item> {
+        private final DiskMeter meter = new DiskMeter();
+        /** Only the bar changes with a reading: the cell keeps the listener, the map holds it weakly. */
+        private final MapChangeListener<String, MetricsResult> onResources = c -> {
+            Item v = getItem();
+            if (v != null && v.host() != null && v.host().id.equals(c.getKey())) meter.show(c.getValueAdded());
+        };
+
         ItemCell() {
+            app.state.resources.addListener(new WeakMapChangeListener<>(onResources));
             setOnDragDetected(e -> {
                 Item v = getItem();
                 if (isEmpty() || v == null) return;
@@ -297,15 +311,32 @@ public class HostTree extends TreeView<HostTree.Item> {
             line.getStyleClass().add("tree-row");
             // Datacenter, contacts and received are the top-level items: bolder text.
             if (getTreeItem() != null && getTreeItem().getParent() == getTreeView().getRoot()) line.getStyleClass().add("tree-root");
-            // Folders show no totals; a host shows how many sessions it has open.
-            if (!v.branch() && v.tally() > 0) {
-                Label n = new Label(String.valueOf(v.tally()));
-                n.getStyleClass().add("tree-sessions");
-                line.getChildren().addAll(Ui.space(), n);
+            // Folders show no totals; a host shows how many sessions it has open and how full its disk is.
+            if (v.host() != null) {
+                line.getChildren().add(Ui.space());
+                if (v.tally() > 0) {
+                    Label n = new Label(String.valueOf(v.tally()));
+                    n.getStyleClass().add("tree-sessions");
+                    line.getChildren().add(n);
+                }
+                meter.show(app.state.resources.get(v.host().id));
+                line.getChildren().add(meter);
             }
+            // The row never asks for more than the column: a long name gets cut instead of pushing the bars out of sight.
+            line.setPrefWidth(0);
             setText(null);
             setGraphic(line);
             setTooltip(v.host() != null ? new Tooltip(I18n.t("tree.hostTip", v.host().destination())) : null);
+        }
+
+        /** The skin gives the graphic its preferred width: here the row takes all the room up to the right edge. */
+        @Override
+        protected void layoutChildren() {
+            super.layoutChildren();
+            Node line = getGraphic();
+            if (line == null) return;
+            double x = line.getLayoutX() - (getItem() != null && getItem().host() != null ? HOST_SHIFT : 0);
+            line.resizeRelocate(x, line.getLayoutY(), Math.max(0, getWidth() - x - snappedRightInset()), line.getLayoutBounds().getHeight());
         }
     }
 }

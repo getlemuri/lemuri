@@ -102,11 +102,10 @@ public class App extends Application {
             Platform.setImplicitExit(true);
         };
         Splash.show(() -> {
-            finished[0] = true;
-            openWhenReady.run();
-        });
-        Platform.runLater(() -> {
             open[0] = prepare(stage);
+            openWhenReady.run();
+        }, () -> {
+            finished[0] = true;
             openWhenReady.run();
         });
     }
@@ -157,6 +156,7 @@ public class App extends Application {
             shown = stage;
             Dialogs.main = stage;
             Tray.install(stage, console.ghost(), quit);
+            console.showLocalShell();
             if (app.hosts.loadingNotice != null) Dialogs.warning(I18n.t("hosts.loadWarning.title"), app.hosts.loadingNotice);
             app.monitor.launch();
             // A host sent by a contact over the local network is offered at once: accept, reject or decide later.

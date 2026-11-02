@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import javafx.scene.Node;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.TableRow;
@@ -15,6 +16,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.web.WebView;
 import org.junit.jupiter.api.Test;
+import org.testfx.util.WaitForAsyncUtils;
 import lemuri.be.dto.SessionStatus;
 import lemuri.fe.m.Selection;
 import lemuri.fe.m.Session;
@@ -47,6 +49,20 @@ class SessionsUiTest extends UiTest {
         settle();
         assertEquals(1, sessions().size(), "the open session is shown, not a new one");
         assertEquals("console", get(() -> app.state.position.get().item()));
+    }
+
+    @Test
+    void whileAWindowIsResizedTheTerminalKeepsItsColumnsUntilTheEnd() {
+        Session s = openDb();
+        FakeTransport t = transports.get(0);
+        until(() -> SessionViews.terminal(s).shellReady(), "the prompt on screen");
+        int before = t.columns;
+        on(() -> Terminal.holdSize(true));
+        on(() -> stage.setWidth(stage.getWidth() - 300));
+        WaitForAsyncUtils.sleep(400, TimeUnit.MILLISECONDS);
+        assertEquals(before, t.columns, "held while the mouse is down");
+        on(() -> Terminal.holdSize(false));
+        until(() -> t.columns < before, "fitted once the mouse is up");
     }
 
     @Test

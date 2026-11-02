@@ -457,6 +457,8 @@ abstract class UiTest {
         final Host host;
         final StringBuilder sent = new StringBuilder();
         volatile boolean closed;
+        /** The columns of the terminal: at launch, then at each resize. */
+        volatile int columns;
         private Consumer<String> data = d -> {};
         private BiConsumer<SessionStatus, String> state = (s, m) -> {};
 
@@ -467,11 +469,12 @@ abstract class UiTest {
         @Override public void onData(Consumer<String> cb) { data = cb; }
         @Override public void onState(BiConsumer<SessionStatus, String> cb) { state = cb; }
         @Override public void launch(int columns, int lines) {
+            this.columns = columns;
             state.accept(SessionStatus.CONNECTED, null);
             data.accept(host.user + "@" + host.name + ":~$ ");
         }
         @Override public synchronized void send(String d) { sent.append(d); }
-        @Override public void resize(int columns, int lines) {}
+        @Override public void resize(int columns, int lines) { this.columns = columns; }
         @Override public void close() {
             if (closed) return;
             closed = true;

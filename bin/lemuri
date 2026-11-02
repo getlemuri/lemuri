@@ -1,6 +1,7 @@
 #!/bin/bash
 # lemuri -s HOST [command]: SSH shell to a host saved in Lemuri, in this terminal.
-# lemuri -l: the saved hosts. Anything else starts the app.
+# lemuri -l: the saved hosts. lemuri --install-launcher [--pin]: an icon in the menu of the desktop.
+# Anything else starts the app.
 # It can be linked from anywhere in the PATH (ln -s .../bin/lemuri ~/.local/bin/lemuri): it finds the sources from its own place.
 SELF=$(readlink -f "$0")
 APP=$(dirname "$(dirname "$SELF")")
@@ -39,21 +40,146 @@ if [ -n "$LEMURI_ASKPASS" ]; then
     exit 0
 fi
 
-case "$1" in
-    -s|--shell|-l|--list|-h|--help) ;;
-    *) cd "$APP" && exec ./mvnw -q javafx:run ;;
-esac
+# The freedesktop.org launcher: GNOME, KDE, Xfce and the others read it. Only when asked, and only in the user's home.
+DATA=${XDG_DATA_HOME:-$HOME/.local/share}
+
+# Only GNOME has a setting for the icons of the dock: on the others the user pins it from the menu.
+pin_gnome() {
+    case ":${XDG_CURRENT_DESKTOP:-}:" in
+        *:GNOME:*) command -v gsettings > /dev/null ;;
+        *) false ;;
+    esac || { echo "To keep the icon in the panel, pin Lemuri from the applications menu."; return 0; }
+    local apps
+    apps=$(gsettings get org.gnome.shell favorite-apps) || return 1
+    case "$apps" in
+        *"'lemuri.desktop'"*) return 0 ;;
+        "@as []"|"[]") apps="['lemuri.desktop']" ;;
+        *) apps="${apps%]}, 'lemuri.desktop']" ;;
+    esac
+    gsettings set org.gnome.shell favorite-apps "$apps"
+}
+
+unpin_gnome() {
+    command -v gsettings > /dev/null || return 0
+    local apps before
+    apps=$(gsettings get org.gnome.shell favorite-apps 2> /dev/null) || return 0
+    before=$apps
+    apps=${apps//, \'lemuri.desktop\'/}
+    apps=${apps//\'lemuri.desktop\', /}
+    apps=${apps//\'lemuri.desktop\'/}
+    [ "$apps" = "$before" ] || gsettings set org.gnome.shell favorite-apps "$apps"
+}
+
+refresh_launchers() {
+    command -v update-desktop-database > /dev/null && update-desktop-database -q "$DATA/applications"
+    command -v gtk-update-icon-cache > /dev/null && gtk-update-icon-cache -q -t "$DATA/icons/hicolor" 2> /dev/null
+    return 0
+}
+
+install_launcher() {
+    [ "$(uname)" = Linux ] || { echo "Only for Linux: nothing was changed." >&2; return 0; }
+    local icon size
+    for icon in "$APP"/packaging/linux/icons/hicolor/*/apps/lemuri.png; do
+        size=$(basename "$(dirname "$(dirname "$icon")")")
+        install -Dm644 "$icon" "$DATA/icons/hicolor/$size/apps/lemuri.png" || return 1
+    done
+    mkdir -p "$DATA/applications" || return 1
+    cat > "$DATA/applications/lemuri.desktop" << DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Lemuri
+Comment=SSH console for your servers
+Exec="$SELF"
+Icon=lemuri
+Terminal=false
+Categories=Network;
+StartupWMClass=lemuri.App
+DESKTOP
+    refresh_launchers
+    [ "${1:-}" != --pin ] || pin_gnome || return 1
+    echo "Lemuri is in the applications menu."
+}
+
+uninstall_launcher() {
+    [ "$(uname)" = Linux ] || { echo "Only for Linux: nothing was changed." >&2; return 0; }
+    unpin_gnome
+    rm -f -- "$DATA/applications/lemuri.desktop" "$DATA"/icons/hicolor/*/apps/lemuri.png
+    refresh_launchers
+    echo "The Lemuri launcher was removed."
+}
+
+# The Java of the command line: the one in use if it is good enough, otherwise the lowest good version installed.
+java_major() {
+    [ -x "$1/bin/java" ] && sed -n 's/^JAVA_VERSION="\([0-9]*\).*/\1/p' "$1/release" 2> /dev/null
+}
+
+find_java() {
+    local home major d best='' best_major=''
+    for home in "${JAVA_HOME:-}" "$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")"; do
+        major=$(java_major "$home")
+        if [ -n "$major" ] && [ "$major" -ge 21 ]; then
+            printf '%s\n' "$home/bin/java"
+            return 0
+        fi
+    done
+    for d in /usr/lib/jvm/* /usr/java/* ~/.sdkman/candidates/java/* ~/.jdks/*; do
+        major=$(java_major "$d")
+        [ -n "$major" ] && [ "$major" -ge 21 ] || continue
+        if [ -z "$best" ] || [ "$major" -lt "$best_major" ]; then
+            best=$d
+            best_major=$major
+        fi
+    done
+    [ -n "$best" ] || { echo "Lemuri needs Java 21 or newer." >&2; return 1; }
+    printf '%s\n' "$best/bin/java"
+}
+
 # The classpath, computed by Maven once and again only when the pom changes: then java starts in a moment.
 cp=~/.cache/lemuri/classpath
-if [ ! -s "$cp" ] || [ "$APP/pom.xml" -nt "$cp" ]; then
+classpath() {
+    [ -s "$cp" ] && [ ! "$APP/pom.xml" -nt "$cp" ] && return 0
     mkdir -p ~/.cache/lemuri
-    (cd "$APP" && ./mvnw -q -o dependency:build-classpath -Dmdep.outputFile="$cp") >&2 || exit 1
-fi
+    (cd "$APP" && ./mvnw -q -o dependency:build-classpath -Dmdep.outputFile="$cp") >&2
+}
+
+# Maven takes several seconds to start: it runs only if something changed since the last build, then java goes directly.
+start_app() {
+    local built="$APP/target/.lemuri-built" java jar javafx='' others="$APP/target/classes" jars
+    if [ ! -f "$built" ] || [ -n "$(find "$APP/src/main" "$APP/pom.xml" -newer "$built" -print -quit)" ]; then
+        (cd "$APP" && ./mvnw -q process-classes) >&2 || return 1
+        touch "$built"
+    fi
+    classpath || return 1
+    java=$(find_java) || return 1
+    IFS=: read -ra jars < "$cp"
+    for jar in "${jars[@]}"; do
+        case "${jar##*/}" in
+            javafx-*) javafx+="${javafx:+:}$jar" ;;
+            *) others+=":$jar" ;;
+        esac
+    done
+    "$java" --module-path "$javafx" --add-modules javafx.controls,javafx.web -cp "$others" lemuri.App
+}
+
+case "$1" in
+    -s|--shell|-l|--list|-h|--help) ;;
+    --install-launcher) shift; install_launcher "$@"; exit ;;
+    --uninstall-launcher) uninstall_launcher; exit ;;
+    *)
+        [ -t 1 ] && { start_app; exit; }
+        # Started from an icon there is no terminal: without this a failure would look like nothing happening.
+        mkdir -p ~/.cache/lemuri
+        start_app > ~/.cache/lemuri/launcher.log 2>&1 && exit 0
+        command -v notify-send > /dev/null && notify-send Lemuri "It could not start: see ~/.cache/lemuri/launcher.log"
+        exit 1 ;;
+esac
+classpath || exit 1
 [ -f "$APP/target/classes/lemuri/Cli.class" ] || (cd "$APP" && ./mvnw -q compile) >&2 || exit 1
+JAVA=$(find_java) || exit 1
 case "$1" in
     -s|--shell)
         # Java writes the ssh command (words separated by NUL); the shell gives the terminal to ssh with exec.
-        mapfile -d '' words < <(java -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@")
+        mapfile -d '' words < <("$JAVA" -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@")
         [ "${#words[@]}" -gt 0 ] || exit 1
         command=()
         for w in "${words[@]}"; do
@@ -66,5 +192,5 @@ case "$1" in
             export LEMURI_ASKPASS=1 SSH_ASKPASS="$SELF" SSH_ASKPASS_REQUIRE=force
         fi
         exec "${command[@]}" ;;
-    *) exec java -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@" ;;
+    *) exec "$JAVA" -cp "$APP/target/classes:$(cat "$cp")" lemuri.Cli "$@" ;;
 esac

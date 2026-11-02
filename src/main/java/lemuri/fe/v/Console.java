@@ -2,7 +2,9 @@ package lemuri.fe.v;
 
 import java.util.List;
 import java.util.prefs.Preferences;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
@@ -24,6 +26,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 import lemuri.App;
 import lemuri.be.dto.Host;
 import lemuri.be.service.SharingService;
@@ -36,7 +39,6 @@ import lemuri.fe.v.sections.Contacts;
 import lemuri.fe.v.sections.HostConsole;
 import lemuri.fe.v.sections.HostList;
 import lemuri.fe.v.sections.HostSummary;
-import lemuri.fe.v.terminal.Terminal;
 
 /**
  * Main window: top bar, activity bar on the left, host tree, central area with
@@ -58,8 +60,25 @@ public final class Console extends BorderPane {
     private HBox status;
     /** The bottom panel: its local shell can be lent to the ghost window. */
     private ActivityLog log;
+    private final SplitPane vertical = new SplitPane();
     /** The ghost window this console can turn into (see {@link GhostMode}). */
     private final GhostMode ghost;
+
+    /** At startup, from the app and not from the constructor: the pictures of the site must never show a real shell. */
+    public void showLocalShell() {
+        log.showShell();
+        // The window is still taking its size, and the panel keeps its height in pixels when the window is resized:
+        // the divider goes in place again until the size has settled, or the panel would stay as small as its header.
+        InvalidationListener place = o -> vertical.setDividerPositions(0.78);
+        vertical.heightProperty().addListener(place);
+        Platform.runLater(() -> place.invalidated(null));
+        PauseTransition settled = new PauseTransition(Duration.seconds(1));
+        settled.setOnFinished(e -> {
+            vertical.heightProperty().removeListener(place);
+            place.invalidated(null);
+        });
+        settled.play();
+    }
 
     public Console(AppContext app) {
         this.app = app;
@@ -130,7 +149,6 @@ public final class Console extends BorderPane {
 
         // ── Log at the bottom ──
         log = new ActivityLog(app);
-        SplitPane vertical = new SplitPane();
         SplitPane horizontal = new SplitPane(resources, center);
         for (Region r : List.of(resources, center, log)) Ui.rounded(r, 5);
         horizontal.setDividerPositions(0.2);
@@ -296,7 +314,6 @@ public final class Console extends BorderPane {
     /** Applies the theme to the console and to the windows that will open. */
     public void theme(boolean dark) {
         Dialogs.dark = dark;
-        Terminal.theme(dark);
         cssClass("dark", dark);
     }
 

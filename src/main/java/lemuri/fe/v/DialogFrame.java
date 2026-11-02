@@ -36,6 +36,11 @@ final class DialogFrame {
     private final Dialog<?> dialog;
     private double dragX, dragY, x0, y0, l0, a0;
     private Cursor border = Cursor.DEFAULT;
+    /** The move in progress through X11, and whether it was tried for this drag (once: without X it stays null). */
+    private PointerMove move;
+    private boolean moveTried;
+    /** The resize in progress through X11; null without X, and then the drag events resize the dialog. */
+    private PointerMove resizing;
 
     private DialogFrame(Dialog<?> dialog) {
         this.dialog = dialog;
@@ -87,13 +92,16 @@ final class DialogFrame {
             if (border == Cursor.DEFAULT || e.getButton() != MouseButton.PRIMARY) return;
             parts(e);
             e.consume();
+            // Smooth: position and size follow the pointer read from X11 at each frame, in one request.
+            resizing = PointerMove.follow(window(), this::bounds, () -> resizing = null);
         });
         s.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (border == Cursor.DEFAULT) return;
-            resize(e);
+            if (resizing == null) resize(e);
             e.consume();
         });
         s.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            if (resizing != null) resizing.stop();
             if (border != Cursor.DEFAULT) e.consume();
         });
     }
@@ -132,13 +140,25 @@ final class DialogFrame {
 
     private void drag(Node bar) {
         bar.setOnMousePressed(e -> {
-            if (e.getButton() == MouseButton.PRIMARY && border == Cursor.DEFAULT) parts(e);
+            if (e.getButton() == MouseButton.PRIMARY && border == Cursor.DEFAULT) {
+                parts(e);
+                moveTried = false;
+            }
         });
         bar.setOnMouseDragged(e -> {
             if (e.getButton() != MouseButton.PRIMARY || border != Cursor.DEFAULT) return;
             Window w = window();
+            // Smooth: the dialog follows the pointer read from X11 at each frame, until the button goes up.
+            if (!moveTried) {
+                moveTried = true;
+                move = PointerMove.start(w, dragX, dragY, x0, y0, null, () -> move = null);
+            }
+            if (move != null) return;
             w.setX(x0 + e.getScreenX() - dragX);
             w.setY(y0 + e.getScreenY() - dragY);
+        });
+        bar.setOnMouseReleased(e -> {
+            if (move != null) move.stop();
         });
     }
 
@@ -158,9 +178,19 @@ final class DialogFrame {
     }
 
     private void resize(MouseEvent e) {
+        Window w = window();
+        double[] r = bounds(e.getScreenX(), e.getScreenY());
+        w.setX(r[0]);
+        w.setY(r[1]);
+        w.setWidth(r[2]);
+        w.setHeight(r[3]);
+    }
+
+    /** x, y, width and height of the dialog with the pointer at {@code px}, {@code py} while dragging an edge. */
+    private double[] bounds(double px, double py) {
         Stage w = (Stage) window();
         double minL = Math.max(w.getMinWidth(), 200), minA = Math.max(w.getMinHeight(), 150);
-        double dx = e.getScreenX() - dragX, dy = e.getScreenY() - dragY;
+        double dx = px - dragX, dy = py - dragY;
         double x = x0, y = y0, l = l0, a = a0;
         if (border == Cursor.E_RESIZE || border == Cursor.NE_RESIZE || border == Cursor.SE_RESIZE) l = l0 + dx;
         if (border == Cursor.S_RESIZE || border == Cursor.SW_RESIZE || border == Cursor.SE_RESIZE) a = a0 + dy;
@@ -172,9 +202,6 @@ final class DialogFrame {
             a = Math.max(minA, a0 - dy);
             y = y0 + a0 - a;
         }
-        w.setX(x);
-        w.setY(y);
-        w.setWidth(Math.max(minL, l));
-        w.setHeight(Math.max(minA, a));
+        return new double[] {x, y, Math.max(minL, l), Math.max(minA, a)};
     }
 }

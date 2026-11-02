@@ -147,6 +147,12 @@ public final class ActivityLog extends VBox {
         return t;
     }
 
+    /** Opens the panel on the local shell, starting it if needed. */
+    public void showShell() {
+        opened.set(true);
+        sTerminal.setSelected(true);
+    }
+
     /** Gives the local shell to the ghost window (a node has only one parent), starting it if needed. */
     public Terminal lendShell() {
         return localShell();

@@ -1,8 +1,5 @@
 package lemuri.fe.v.sections;
 
-import java.time.Instant;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
@@ -149,14 +146,7 @@ public final class HostList extends VBox {
         Disk d = e.resources().fullest();
         String text = (d.dot().equals("/") ? I18n.t("disk.free", UsageBar.measure(d.freeKb())) : I18n.t("disk.freeIn", UsageBar.measure(d.freeKb()), d.dot()));
         UsageBar b = new UsageBar(d.quota(), text, 50);
-        StringBuilder tip = new StringBuilder();
-        for (Disk x : e.resources().disks())
-            tip.append(String.format("%-18s %3d%%  %s%n", x.dot(), Math.round(x.quota() * 100), I18n.t("disk.freeOf",
-                    UsageBar.measure(x.freeKb()), UsageBar.measure(x.totalKb()))));
-        tip.append(I18n.t("metrics.readAt", LocalTime.ofInstant(Instant.ofEpochMilli(e.when()), ZoneId.systemDefault())
-                .withNano(0).toString()));
-        if (e.error() != null) tip.append("\n").append(I18n.t("metrics.tip.failed", e.error()));
-        Tooltip.install(b, new Tooltip(tip.toString()));
+        Tooltip.install(b, new Tooltip(UsageBar.disksTip(e)));
         return b;
     }
 }

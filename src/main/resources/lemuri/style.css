@@ -187,6 +187,10 @@
 /* Wider indent to read nested folders easily. */
 .tree .tree-cell { -fx-indent: 14; }
 .tree .tree-cell .tree-root .label { -fx-font-weight: bold; }
+/* Disk bar of a host: only the colour speaks. */
+.disk-meter { -fx-spacing: 5; -fx-alignment: center-right; }
+.disk-meter .usage-bar-track { -fx-pref-width: 40; -fx-min-width: 40; -fx-max-width: 40; }
+.disk-meter .icon { -fx-stroke: -text-faint; }
 
 /* ── Central area ──────────────────────────────────────────────────────── */
 
@@ -402,7 +406,8 @@
 /* A synced tab: every part edged in amber, typing goes to all of them. */
 .terminal-slot:synced { -fx-border-color: #e2a33d; -fx-border-width: 2; -fx-padding: 2; }
 
-.tooltip { -fx-background-color: -text; -fx-text-fill: -surface; -fx-font-size: 11px; -fx-background-radius: 3; }
+/* Tooltips are dark with light grey text in both themes; the colours are written out because the popup does not see the variables of the window. */
+.tooltip { -fx-background-color: #2c2c2c; -fx-text-fill: #d0d0d0; -fx-font-size: 11px; -fx-background-radius: 3; }
 
 /* Context menus and tooltips: they are separate windows, the colours are redefined here. */
 /* Hand cursor on menu items (right click and drop-down menus), normal arrow on disabled ones. */
@@ -558,10 +563,11 @@
 .activity:selected .icon { -fx-stroke: -activity-active; }
 .activity:disabled { -fx-opacity: 0.35; -fx-cursor: default; }
 .activity:disabled .icon, .activity:disabled:hover .icon { -fx-stroke: -activity-icon; }
+/* A ring of the colour of the bar sets the number apart from the icon under it. */
 .activity-number {
-    -fx-min-width: 16; -fx-padding: 0 4 0 4; -fx-translate-x: -7; -fx-translate-y: -7;
-    -fx-background-color: -status-bg; -fx-background-radius: 8;
-    -fx-text-fill: white; -fx-font-size: 9px; -fx-font-weight: bold; -fx-alignment: center;
+    -fx-min-width: 18; -fx-min-height: 18; -fx-padding: 0 5 0 5; -fx-translate-x: -6; -fx-translate-y: -6;
+    -fx-background-color: -activity-bg, -badge-strong; -fx-background-insets: 0, 2; -fx-background-radius: 9, 7;
+    -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold; -fx-alignment: center;
 }
 
 /* Same grey as the activity bar and no line above: the two bars form a single L. */
@@ -638,8 +644,8 @@
 
 /* Host tree: 28 px rows with rounded corners, a little away from the edges of the column; the selected
    row is a tinted pill. Thin chevrons instead of triangles, neutral folder icons. */
-.root.layout { -tree-on: #eceef2; -tree-choice: #e2e8f6; -tree-focus: #2f6fdf; -tree-focus-choice: #d6e1f7; }
-.root.layout.dark { -tree-on: #2a2d31; -tree-choice: #2b3445; -tree-focus: #4c8dff; -tree-focus-choice: #2f3d57; }
+.root.layout { -tree-on: #eceef2; -tree-choice: #e2e8f6; -tree-focus: #2f6fdf; -tree-focus-choice: #d6e1f7; -badge-soft: rgba(47, 111, 223, 0.14); -badge-soft-text: #2359b8; -badge-strong: #2f6fdf; }
+.root.layout.dark { -tree-on: #2a2d31; -tree-choice: #2b3445; -tree-focus: #4c8dff; -tree-focus-choice: #2f3d57; -badge-soft: rgba(124, 172, 255, 0.18); -badge-soft-text: #a9c7ff; -badge-strong: #2f6fdf; }
 .layout .tree { -fx-padding: 2 6 6 6; }
 .layout .tree .tree-cell {
     -fx-pref-height: 28; -fx-min-height: 28; -fx-indent: 14; -fx-padding: 0 10 0 4;
@@ -662,13 +668,13 @@
     -fx-background-color: #8a8a8a;
 }
 .layout .tree .icon.folder-icon { -fx-stroke: -text-faint; }
-/* As specific as the rule for the tree labels (14 px), or that one would win: a small pill with a small number. */
+/* As specific as the rule for the tree labels (14 px), or that one would win: a soft tinted pill with a small number. */
 .layout .tree .tree-cell .tree-sessions {
-    -fx-background-color: -status-bg; -fx-background-radius: 7; -fx-padding: 0 4 0 4; -fx-min-width: 14; -fx-min-height: 14;
-    -fx-font-size: 9px; -fx-font-weight: bold; -fx-alignment: center;
+    -fx-background-color: -badge-soft; -fx-background-radius: 8; -fx-padding: 0 5 0 5; -fx-min-width: 18; -fx-min-height: 16;
+    -fx-font-size: 10px; -fx-font-weight: bold; -fx-alignment: center;
 }
-/* White on its blue pill, also on the selected row (whose labels take the text colour). */
-.layout .tree .tree-cell .tree-sessions, .layout .tree .tree-cell:selected .tree-sessions { -fx-text-fill: white; }
+/* Also on the selected row, whose labels take the text colour. */
+.layout .tree .tree-cell .tree-sessions, .layout .tree .tree-cell:selected .tree-sessions { -fx-text-fill: -badge-soft-text; -fx-font-weight: bold; }
 
 /* Over a terminal while its session connects: on the black of the terminal, in every theme. */
 .connecting { -fx-background-color: #000000; }
@@ -820,9 +826,11 @@
 .ghost .ghost-tree .virtual-flow, .ghost .ghost-tree .clipped-container, .ghost .ghost-tree .sheet { -fx-background-color: transparent; }
 .ghost .ghost-tree .tree-cell { -fx-background-color: transparent; -fx-text-fill: #d6dde6; -fx-background-radius: 5; }
 .ghost .ghost-tree .tree-cell .label { -fx-text-fill: #d6dde6; }
+.ghost .ghost-tree .disk-meter .usage-bar-track { -fx-background-color: rgba(255, 255, 255, 0.18); }
+.ghost .ghost-tree .disk-meter .icon { -fx-stroke: #9aa3ad; }
 .ghost .ghost-tree .tree-cell:hover { -fx-background-color: rgba(255, 255, 255, 0.08); }
 .ghost .ghost-tree .tree-cell:selected { -fx-background-color: rgba(255, 255, 255, 0.16); }
-.ghost .ghost-tree .tree-cell .tree-sessions { -fx-text-fill: #9aa3ad; -fx-background-color: transparent; }
+.ghost .ghost-tree .tree-cell .tree-sessions { -fx-text-fill: #d6dde6; -fx-background-color: rgba(255, 255, 255, 0.14); }
 .ghost .ghost-tree .icon.folder-icon { -fx-stroke: #c2c8cf; }
 /* Thin chevrons instead of triangles, as in the main tree. */
 .ghost .ghost-tree .tree-disclosure-node { -fx-padding: 7 6 7 6; -fx-alignment: center; }

@@ -26,14 +26,23 @@ final class WindowPlacement {
      * also cover the system panels.
      */
     void place(Rectangle2D r) {
-        window.setWidth(r.getWidth());
-        window.setHeight(r.getHeight());
-        // The window manager moves it only after the resize has gone through.
-        Platform.runLater(() -> {
-            window.setX(r.getMinX());
-            window.setY(r.getMinY());
-        });
+        if (!moveResize(r)) {
+            window.setWidth(r.getWidth());
+            window.setHeight(r.getHeight());
+            // The window manager moves it only after the resize has gone through.
+            Platform.runLater(() -> {
+                window.setX(r.getMinX());
+                window.setY(r.getMinY());
+            });
+        }
         check(r, ++placing);
+    }
+
+    /** All at once through X11, so the edges that do not change stay still; false if the window is not reachable there. */
+    private boolean moveResize(Rectangle2D r) {
+        double k = window.getOutputScaleX();
+        return X11.moveResize(window.getTitle(), (int) Math.round(r.getMinX() * k), (int) Math.round(r.getMinY() * k),
+                (int) Math.round(r.getWidth() * k), (int) Math.round(r.getHeight() * k));
     }
 
     /**
@@ -44,6 +53,7 @@ final class WindowPlacement {
      */
     private void check(Rectangle2D r, int which) {
         String title = window.getTitle();
+        double k = window.getOutputScaleX();
         Thread t = new Thread(() -> {
             for (int i = 0; i < 6; i++) {
                 try {
@@ -53,10 +63,10 @@ final class WindowPlacement {
                 }
                 int[] real = X11.bounds(title);
                 if (real == null) return;
-                if (Math.abs(real[0] - r.getMinX()) <= 2 && Math.abs(real[1] - r.getMinY()) <= 2
-                        && Math.abs(real[2] - r.getWidth()) <= 2 && Math.abs(real[3] - r.getHeight()) <= 2) continue;
+                if (Math.abs(real[0] / k - r.getMinX()) <= 2 && Math.abs(real[1] / k - r.getMinY()) <= 2
+                        && Math.abs(real[2] / k - r.getWidth()) <= 2 && Math.abs(real[3] / k - r.getHeight()) <= 2) continue;
                 Platform.runLater(() -> {
-                    if (which != placing || !window.isShowing()) return;
+                    if (which != placing || !window.isShowing() || moveResize(r)) return;
                     // Off by one and back: setting the value JavaFX already has would not move anything.
                     window.setWidth(r.getWidth() + 1);
                     window.setWidth(r.getWidth());

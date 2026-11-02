@@ -36,7 +36,7 @@ public final class AppContext {
         this.vault = vault;
         this.hosts = new HostController(state, repository, vault);
         this.sessions = sessions.apply(state, hosts);
-        this.monitor = new MonitorController(state, hosts, metrics, probe);
+        this.monitor = new MonitorController(state, hosts, metrics, probe, vault);
         this.sharing = new SharingController(state, sharing);
     }
 

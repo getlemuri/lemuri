@@ -54,6 +54,11 @@ public final class WindowFrame {
     // Drag and resize in progress.
     private double dragX, dragY, stageX, stageY, stageL, stageA;
     private Cursor border = Cursor.DEFAULT;
+    /** The move in progress through X11, and whether it was tried for this drag (once: without X it stays null). */
+    private PointerMove move;
+    private boolean moveTried;
+    /** The resize in progress through X11; null without X, and then the drag events resize the window. */
+    private PointerMove resizing;
 
     /**
      * Whether the custom frame is on: changed from the settings, it takes effect at the next start.
@@ -112,13 +117,16 @@ public final class WindowFrame {
             if (border == Cursor.DEFAULT || e.getButton() != MouseButton.PRIMARY) return;
             rememberStart(e);
             e.consume();
+            // Smooth: position and size follow the pointer read from X11 at each frame, in one request.
+            resizing = PointerMove.follow(stage, this::bounds, () -> resizing = null);
         });
         s.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (border == Cursor.DEFAULT) return;
-            resize(e);
+            if (resizing == null) resize(e);
             e.consume();
         });
         s.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+            if (resizing != null) resizing.stop();
             if (border != Cursor.DEFAULT) e.consume();
         });
         return s;
@@ -147,6 +155,7 @@ public final class WindowFrame {
         bar.setOnMousePressed(e -> {
             if (e.getButton() != MouseButton.PRIMARY || onCheck((Node) e.getTarget(), bar)) return;
             rememberStart(e);
+            moveTried = false;
         });
         bar.setOnMouseDragged(e -> {
             if (e.getButton() != MouseButton.PRIMARY || border != Cursor.DEFAULT || onCheck((Node) e.getTarget(), bar)) return;
@@ -159,8 +168,18 @@ public final class WindowFrame {
                 dragX = e.getScreenX();
                 dragY = e.getScreenY();
             }
+            // Smooth: the window follows the pointer read from X11 at each frame, until the button goes up.
+            if (!moveTried) {
+                moveTried = true;
+                double top = visible().getMinY() - SHADOW;
+                move = PointerMove.start(stage, dragX, dragY, stageX, stageY, y -> Math.max(top, y), () -> move = null);
+            }
+            if (move != null) return;
             stage.setX(stageX + e.getScreenX() - dragX);
             stage.setY(Math.max(visible().getMinY() - SHADOW, stageY + e.getScreenY() - dragY));
+        });
+        bar.setOnMouseReleased(e -> {
+            if (move != null) move.stop();
         });
         bar.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY && e.getClickCount() == 2 && !onCheck((Node) e.getTarget(), bar)) toggleMaximized();
@@ -194,7 +213,16 @@ public final class WindowFrame {
     }
 
     private void resize(MouseEvent e) {
-        double dx = e.getScreenX() - dragX, dy = e.getScreenY() - dragY;
+        double[] r = bounds(e.getScreenX(), e.getScreenY());
+        stage.setX(r[0]);
+        stage.setY(r[1]);
+        stage.setWidth(r[2]);
+        stage.setHeight(r[3]);
+    }
+
+    /** x, y, width and height of the window with the pointer at {@code px}, {@code py} while dragging an edge. */
+    private double[] bounds(double px, double py) {
+        double dx = px - dragX, dy = py - dragY;
         double x = stageX, y = stageY, l = stageL, a = stageA;
         if (border == Cursor.E_RESIZE || border == Cursor.NE_RESIZE || border == Cursor.SE_RESIZE) l = stageL + dx;
         if (border == Cursor.S_RESIZE || border == Cursor.SW_RESIZE || border == Cursor.SE_RESIZE) a = stageA + dy;
@@ -206,10 +234,7 @@ public final class WindowFrame {
             a = Math.max(MIN_A, stageA - dy);
             y = stageY + stageA - a;
         }
-        stage.setX(x);
-        stage.setY(y);
-        stage.setWidth(Math.max(MIN_L, l));
-        stage.setHeight(Math.max(MIN_A, a));
+        return new double[] {x, y, Math.max(MIN_L, l), Math.max(MIN_A, a)};
     }
 
     // ── Maximizing ───────────────────────────────────────────────────────────

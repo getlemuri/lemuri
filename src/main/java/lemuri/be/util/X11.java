@@ -26,12 +26,19 @@ import java.util.logging.Logger;
 public final class X11 implements AutoCloseable {
     private static final Logger LOG = Log.of(X11.class);
 
+    /** How long the app that owns the primary selection has to answer. */
+    private static final long SELECTION_TIMEOUT_MS = 1000;
+    /** A selection that fits in one property: longer ones come in pieces (the INCR protocol) and are left to AWT. */
+    private static final int SELECTION_MAX_LONGS = 1 << 20;
+
     private final SocketChannel channel;
     private final int root;
+    private final int idBase;
 
-    private X11(SocketChannel channel, int root) {
+    private X11(SocketChannel channel, int root, int idBase) {
         this.channel = channel;
         this.root = root;
+        this.idBase = idBase;
     }
 
     /**
@@ -77,6 +84,61 @@ public final class X11 implements AutoCloseable {
             return new int[] {r.getShort(16), r.getShort(18), (Short.toUnsignedInt(r.getShort(24)) & 0x100) != 0 ? 1 : 0};
         } catch (IOException | RuntimeException e) {
             return null;
+        }
+    }
+
+    /** The window of this process with that title, for {@link #moveResize(int, int, int, int, int)}; 0 if none. */
+    public int window(String title) {
+        try {
+            return find(title, ProcessHandle.current().pid());
+        } catch (IOException | RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Position and size in a single request, so the window manager changes them together: set one after the other,
+     * the edge that should stay still moves first and comes back after. Without waiting for the answer. False if X fails.
+     */
+    public boolean moveResize(int window, int left, int top, int width, int height) {
+        try {
+            ByteBuffer b = buffer(28);
+            // ConfigureWindow, with the value mask for x, y, width and height.
+            b.put((byte) 12).put((byte) 0).putShort((short) 7).putInt(window).putShort((short) 0xF).putShort((short) 0)
+                    .putInt(left).putInt(top).putInt(width).putInt(height);
+            write(channel, b);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** The position only, x and y in a single request, without waiting for the answer. False if X fails. */
+    public boolean move(int window, int left, int top) {
+        try {
+            ByteBuffer b = buffer(20);
+            // ConfigureWindow, with the value mask for x and y.
+            b.put((byte) 12).put((byte) 0).putShort((short) 5).putInt(window).putShort((short) 0x3).putShort((short) 0)
+                    .putInt(left).putInt(top);
+            write(channel, b);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** {@link #moveResize(int, int, int, int, int)} on the window with that title; false if it is not there or no X display. */
+    public static boolean moveResize(String title, int left, int top, int width, int height) {
+        String display = System.getenv("DISPLAY");
+        if (display == null || Os.MAC) return false;
+        try (X11 x = connect(display)) {
+            int window = x.find(title, ProcessHandle.current().pid());
+            if (window == 0 || !x.moveResize(window, left, top, width, height)) return false;
+            // A round trip, so the request has surely left before the connection closes.
+            x.atom("_NET_ACTIVE_WINDOW");
+            return true;
+        } catch (IOException | RuntimeException e) {
+            return false;
         }
     }
 
@@ -135,6 +197,37 @@ public final class X11 implements AutoCloseable {
         }
     }
 
+    /**
+     * The text of the primary selection, the one the middle button pastes. Null if it cannot be told here: no X
+     * display, no owner, an owner that does not answer in time, a text too long for one property. AWT reads it
+     * too, but takes about a quarter of a second at each paste, and longer the first time.
+     */
+    public static String primaryText() {
+        String display = System.getenv("DISPLAY");
+        if (display == null || Os.MAC) return null;
+        try (X11 x = connect(display)) {
+            Thread limit = new Thread(() -> {
+                try {
+                    Thread.sleep(SELECTION_TIMEOUT_MS);
+                    // Closing the connection wakes up the read that is waiting for the owner.
+                    x.close();
+                } catch (InterruptedException | IOException e) {
+                    // The answer came in time, or the connection is already closed.
+                }
+            }, "primary-selection-limit");
+            limit.setDaemon(true);
+            limit.start();
+            try {
+                return x.convertPrimary();
+            } finally {
+                limit.interrupt();
+            }
+        } catch (IOException | RuntimeException e) {
+            LOG.fine("Cannot read the primary selection through X11: " + e);
+            return null;
+        }
+    }
+
     // ── Connection ───────────────────────────────────────────────────────────
 
     /** Only local displays (":0", ":1.0"): the socket in /tmp/.X11-unix, with the cookie of $XAUTHORITY. */
@@ -159,7 +252,7 @@ public final class X11 implements AutoCloseable {
             int formats = Byte.toUnsignedInt(setup.get(21));
             // After the fixed part: the vendor name, the pixmap formats, then the screens; the first field of a screen is its root.
             int root = setup.getInt(32 + pad(vendor) + 8 * formats);
-            return new X11(c, root);
+            return new X11(c, root, setup.getInt(4));
         } catch (IOException | RuntimeException e) {
             c.close();
             throw e;
@@ -239,16 +332,50 @@ public final class X11 implements AutoCloseable {
 
     /** The value of a property (any type, up to 64 KB), or nothing if it is not set. */
     private byte[] property(int window, int property) throws IOException {
+        return value(propertyReply(window, property, 16_384));
+    }
+
+    private ByteBuffer propertyReply(int window, int property, int maxLongs) throws IOException {
         ByteBuffer b = buffer(24);
-        b.put((byte) 20).put((byte) 0).putShort((short) 6).putInt(window).putInt(property).putInt(0).putInt(0).putInt(16_384);
+        b.put((byte) 20).put((byte) 0).putShort((short) 6).putInt(window).putInt(property).putInt(0).putInt(0).putInt(maxLongs);
         write(channel, b);
-        ByteBuffer r = reply();
+        return reply();
+    }
+
+    private static byte[] value(ByteBuffer r) {
         int format = Byte.toUnsignedInt(r.get(1));
         int length = r.getInt(16) * Math.max(1, format / 8);
         byte[] v = new byte[Math.max(0, Math.min(length, r.capacity() - 32))];
         r.position(32);
         r.get(v);
         return v;
+    }
+
+    /** Asks the owner of the selection to write it as UTF-8 in a property of a window made for that, and reads it. */
+    private String convertPrimary() throws IOException {
+        int primary = atom("PRIMARY"), utf8 = atom("UTF8_STRING"), target = atom("LEMURI_PRIMARY"), incr = atom("INCR");
+        int window = idBase;
+        ByteBuffer b = buffer(32);
+        // CreateWindow: child of the root, 1x1, InputOnly, nothing to configure. It goes away with the connection.
+        b.put((byte) 1).put((byte) 0).putShort((short) 8).putInt(window).putInt(root)
+                .putShort((short) 0).putShort((short) 0).putShort((short) 1).putShort((short) 1)
+                .putShort((short) 0).putShort((short) 2).putInt(0).putInt(0);
+        write(channel, b);
+        b = buffer(24);
+        // ConvertSelection, at the current time.
+        b.put((byte) 24).put((byte) 0).putShort((short) 6).putInt(window).putInt(primary).putInt(utf8).putInt(target).putInt(0);
+        write(channel, b);
+        while (true) {
+            ByteBuffer event = read(channel, 32);
+            int kind = event.get(0) & 0x7f;
+            if (kind == 0) throw new IOException("X11 error " + Byte.toUnsignedInt(event.get(1)));
+            if (kind != 31) continue;
+            // SelectionNotify: the property at 20, none if the owner cannot give that format (or there is no owner).
+            if (event.getInt(20) == 0) return null;
+            ByteBuffer r = propertyReply(window, target, SELECTION_MAX_LONGS);
+            if (r.getInt(8) == incr || r.getInt(12) != 0) return null;
+            return new String(value(r), StandardCharsets.UTF_8);
+        }
     }
 
     private static int[] ints(byte[] v) {

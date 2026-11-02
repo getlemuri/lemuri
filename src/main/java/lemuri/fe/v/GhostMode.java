@@ -340,6 +340,8 @@ public final class GhostMode {
         PauseTransition hold = new PauseTransition(HOLD);
         double[] start = new double[2], offset = new double[2];
         boolean[] moving = {false};
+        // Through X11 the window follows the pointer at each frame; without X it follows the drag events.
+        PointerMove[] smooth = {null};
         scene.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             // Docked or maximized, the window stays where it is put.
             if (e.getButton() != MouseButton.PRIMARY || onControl(e) || maximized || !dock.isEmpty()) return;
@@ -351,13 +353,16 @@ public final class GhostMode {
             hold.setOnFinished(x -> {
                 moving[0] = true;
                 scene.setCursor(Cursor.MOVE);
+                smooth[0] = PointerMove.start(g, start[0], start[1], start[0] + offset[0], start[1] + offset[1], null, () -> smooth[0] = null);
             });
             hold.playFromStart();
         });
         scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (moving[0]) {
-                g.setX(e.getScreenX() + offset[0]);
-                g.setY(e.getScreenY() + offset[1]);
+                if (smooth[0] == null) {
+                    g.setX(e.getScreenX() + offset[0]);
+                    g.setY(e.getScreenY() + offset[1]);
+                }
                 e.consume();
             } else if (Math.hypot(e.getScreenX() - start[0], e.getScreenY() - start[1]) > 5) {
                 // It moved before the hold ended: an ordinary drag.
@@ -369,6 +374,7 @@ public final class GhostMode {
         });
         scene.addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
             hold.stop();
+            if (smooth[0] != null) smooth[0].stop();
             if (moving[0]) {
                 moving[0] = false;
                 scene.setCursor(null);
@@ -479,14 +485,19 @@ public final class GhostMode {
         else {
             double w = dockWidth > 0 ? thickness(dockWidth, v.getWidth(), 320) : Math.max(320, Math.min(floating.getWidth(), v.getWidth() / 2));
             double h = dockHeight > 0 ? thickness(dockHeight, v.getHeight(), 240) : Math.max(240, Math.min(floating.getHeight(), v.getHeight() / 2));
-            r = switch (dock) {
-                case "left" -> new Rectangle2D(v.getMinX(), v.getMinY(), w, v.getHeight());
-                case "right" -> new Rectangle2D(v.getMaxX() - w, v.getMinY(), w, v.getHeight());
-                case "top" -> new Rectangle2D(v.getMinX(), v.getMinY(), v.getWidth(), h);
-                default -> new Rectangle2D(v.getMinX(), v.getMaxY() - h, v.getWidth(), h);
-            };
+            r = band(v, w, h);
         }
         placement.place(r);
+    }
+
+    /** The docked window on that usable area, {@code w} wide if on the left or right, {@code h} high if above or below. */
+    private Rectangle2D band(Rectangle2D v, double w, double h) {
+        return switch (dock) {
+            case "left" -> new Rectangle2D(v.getMinX(), v.getMinY(), w, v.getHeight());
+            case "right" -> new Rectangle2D(v.getMaxX() - w, v.getMinY(), w, v.getHeight());
+            case "top" -> new Rectangle2D(v.getMinX(), v.getMinY(), v.getWidth(), h);
+            default -> new Rectangle2D(v.getMinX(), v.getMaxY() - h, v.getWidth(), h);
+        };
     }
 
     /** A dragged thickness within reason: at least {@code min}, at most nine tenths of the screen. */
@@ -497,10 +508,10 @@ public final class GhostMode {
     /**
      * Docked, the edge that faces the screen can be dragged: docked below, the top edge raises and lowers the
      * window; on the left, the right edge makes it wider or narrower. The thickness stays for the next docks.
-     * Resizing this see-through window with its terminals at every frame is slow on GNOME, while moving a small
-     * window is not: during the drag a thin line shows where the edge will be, and the window takes that size
-     * when the button is released. GNOME also stops sending drag events once something moves under the mouse,
-     * so while the button is held the pointer is read from X11 at every frame; without X11 the events are used.
+     * The window follows the mouse through X11, with position and size in one request so the far edge stays still.
+     * GNOME also stops sending drag events once something moves under the mouse, so while the button is held the
+     * pointer is read from X11 at every frame. Without X11 the events are used, a thin line shows where the edge
+     * will be, and the window takes that size when the button is released.
      */
     private void resizeDocked(Stage g, Scene scene) {
         boolean[] dragging = {false};
@@ -514,7 +525,9 @@ public final class GhostMode {
                     endResize(g, scene, dragging);
                     return;
                 }
-                guideTo(g, p[0], p[1]);
+                double k = g.getOutputScaleX();
+                if (live != 0) follow(g, x11[0], p[0] / k, p[1] / k, now);
+                else guideTo(g, p[0] / k, p[1] / k);
             }
 
             @Override
@@ -532,20 +545,24 @@ public final class GhostMode {
             if (e.getButton() != MouseButton.PRIMARY || !onInnerEdge(e, scene)) return;
             dragging[0] = true;
             e.consume();
-            guideTo(g, e.getScreenX(), e.getScreenY());
             // One X connection for the whole drag: opening one at every frame would add to the lag.
             x11[0] = X11.pointerTracker();
             int[] p = x11[0] != null ? x11[0].pointer() : null;
-            if (p != null && p[2] == 1) follow.start();
-            else {
+            if (p != null && p[2] == 1) {
+                live = x11[0].window(g.getTitle());
+                // The terminal keeps its columns and rows until the button goes up: fitting it at every frame stutters.
+                if (live != 0) Terminal.holdSize(true);
+                follow.start();
+            } else {
                 closeQuietly(x11[0]);
                 x11[0] = null;
             }
+            if (live == 0) guideTo(g, e.getScreenX(), e.getScreenY());
         });
         scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (!dragging[0]) return;
             e.consume();
-            guideTo(g, e.getScreenX(), e.getScreenY());
+            if (live == 0) guideTo(g, e.getScreenX(), e.getScreenY());
         });
         scene.addEventFilter(MouseEvent.DRAG_DETECTED, e -> {
             if (dragging[0]) e.consume();
@@ -567,12 +584,19 @@ public final class GhostMode {
         }
     }
 
-    /** The thin line that shows, during a drag, where the inner edge of the docked window will be. */
+    /** The thin line that shows, during a drag without X11, where the inner edge of the docked window will be. */
     private Stage guide;
     /** The thickness the drag has reached: the window takes it on release. */
     private double guided;
+    /** The X window following the mouse during a drag; 0 if there is none and the line is used. */
+    private int live;
+    /** The last size asked of the window during the drag, and when. */
+    private Rectangle2D asked;
+    private long askedAt;
 
     private static final double GUIDE = 3;
+    /** How long a size asked during a drag may stay unanswered before the next one is sent anyway. */
+    private static final long ASK_AGAIN_NANOS = 100_000_000;
 
     private void endResize(Stage g, Scene scene, boolean[] dragging) {
         if (!dragging[0]) return;
@@ -584,12 +608,14 @@ public final class GhostMode {
             else dockHeight = guided;
         }
         guided = 0;
+        live = 0;
+        asked = null;
         place();
+        Terminal.holdSize(false);
     }
 
-    /** Puts the line where the inner edge would be with the mouse at {@code x}, {@code y} (on the screen). */
-    private void guideTo(Stage g, double x, double y) {
-        Rectangle2D v = WindowPlacement.screen(WindowPlacement.bounds(g));
+    /** Sets {@link #guided} to the thickness with the mouse at {@code x}, {@code y} (on the screen); false if it is off the side. */
+    private boolean dragTo(Rectangle2D v, double x, double y) {
         boolean across = dock.equals("left") || dock.equals("right");
         double t = switch (dock) {
             case "bottom" -> v.getMaxY() - y;
@@ -598,8 +624,33 @@ public final class GhostMode {
             case "right" -> v.getMaxX() - x;
             default -> -1;
         };
-        if (t < 0) return;
+        if (t < 0) return false;
         guided = Math.round(across ? thickness(t, v.getWidth(), 320) : thickness(t, v.getHeight(), 240));
+        return true;
+    }
+
+    /**
+     * Resizes the window to the mouse, one size at a time: the next is sent once the window has taken the last one,
+     * so the requests do not pile up and the edge does not trail behind the mouse.
+     */
+    private void follow(Stage g, X11 x11, double x, double y, long now) {
+        Rectangle2D v = WindowPlacement.screen(floating);
+        if (!dragTo(v, x, y)) return;
+        Rectangle2D r = band(v, guided, guided);
+        if (r.equals(asked)) return;
+        if (asked != null && now - askedAt < ASK_AGAIN_NANOS
+                && (Math.abs(g.getWidth() - asked.getWidth()) > 1 || Math.abs(g.getHeight() - asked.getHeight()) > 1)) return;
+        double k = g.getOutputScaleX();
+        x11.moveResize(live, (int) Math.round(r.getMinX() * k), (int) Math.round(r.getMinY() * k),
+                (int) Math.round(r.getWidth() * k), (int) Math.round(r.getHeight() * k));
+        asked = r;
+        askedAt = now;
+    }
+
+    /** Puts the line where the inner edge would be with the mouse at {@code x}, {@code y} (on the screen). */
+    private void guideTo(Stage g, double x, double y) {
+        Rectangle2D v = WindowPlacement.screen(WindowPlacement.bounds(g));
+        if (!dragTo(v, x, y)) return;
         if (guide == null) {
             guide = new Stage(StageStyle.TRANSPARENT);
             guide.initOwner(g);
@@ -647,14 +698,24 @@ public final class GhostMode {
      */
     public void toggle(Stage mainWindow) {
         if (window == null) {
-            if (mainWindow.isShowing() && !mainWindow.isIconified() && Tray.present()) Tray.hide(mainWindow);
-            else Tray.bringToFront(mainWindow);
+            boolean inView = mainWindow.isShowing() && !mainWindow.isIconified();
+            if (inView && WindowFade.leaving(mainWindow)) WindowFade.in(mainWindow);
+            else if (inView && Tray.present()) WindowFade.out(mainWindow, () -> Tray.hide(mainWindow));
+            else {
+                if (!mainWindow.isShowing()) WindowFade.hidden(mainWindow);
+                Tray.bringToFront(mainWindow);
+                WindowFade.in(mainWindow);
+            }
             return;
         }
-        if (window.isShowing() && !window.isIconified()) {
+        if (window.isShowing() && !window.isIconified() && WindowFade.leaving(window)) {
+            // F11 again while it fades out: it comes back from where the fade got to.
+            WindowFade.in(window);
+        } else if (window.isShowing() && !window.isIconified()) {
             // Free, it may have been moved since: it comes back where it is now.
             if (dock.isEmpty() && !maximized) floating = WindowPlacement.bounds(window);
-            window.hide();
+            Stage g = window;
+            WindowFade.out(g, g::hide);
         } else restore();
     }
 
@@ -662,8 +723,11 @@ public final class GhostMode {
     boolean restore() {
         if (window == null || window.isShowing() && !window.isIconified()) return false;
         if (!window.isShowing()) {
+            // Invisible until it is in its place, then it fades in.
+            WindowFade.hidden(window);
             window.show();
             place();
+            WindowFade.in(window);
         }
         window.setIconified(false);
         window.toFront();

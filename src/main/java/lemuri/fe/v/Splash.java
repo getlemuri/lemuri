@@ -2,6 +2,7 @@ package lemuri.fe.v;
 
 import java.util.Random;
 import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
 import javafx.geometry.VPos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
@@ -25,23 +26,32 @@ import lemuri.be.util.I18n;
  * Splash screen: a water vortex that sucks everything towards the centre, out
  * of which the logo (the lemur behind the #) unrolls, then the Lemuri caption.
  * It lasts about three seconds; a click skips it. Drawn on a Canvas.
+ * <p>
+ * Building the main window holds the JavaFX thread for seconds. Done at the start, the window of the splash would be
+ * a black square all that time, because nothing can be drawn in it: so it is done on the finished logo, just before
+ * the fade, where a pause does not show.
  */
 public final class Splash {
     private static final double SIDE = 440;
     private static final double DURATION = 3.0;
+    /** Everything fades in the last half second. */
+    private static final double FADE = 0.5;
     private static final int DROPS = 140;
     /** The side of the logo once it has come out. */
     private static final double LOGO = 230;
+    /** A longer gap between two frames means the JavaFX thread was busy: the animation does not jump ahead. */
+    private static final long STALL_NANOS = 100_000_000;
 
     private final Stage stage = new Stage(StageStyle.TRANSPARENT);
     private final Canvas canvas = new Canvas(SIDE, SIDE);
-    private final Runnable after;
+    private final Runnable hold, after;
     private final double[] corner = new double[DROPS], radius = new double[DROPS], speed = new double[DROPS];
     private AnimationTimer round;
-    private long start;
-    private boolean finished;
+    private long start, last;
+    private boolean held, finished;
 
-    private Splash(Runnable after) {
+    private Splash(Runnable hold, Runnable after) {
+        this.hold = hold;
         this.after = after;
         Random random = new Random(7);
         for (int i = 0; i < DROPS; i++) {
@@ -51,9 +61,9 @@ public final class Splash {
         }
     }
 
-    /** Shows the screen and, when finished (or skipped with a click), calls {@code after}. */
-    public static void show(Runnable after) {
-        new Splash(after).launch();
+    /** Shows the screen, calls {@code hold} when the logo is complete and, when finished (or skipped with a click), {@code after}. */
+    public static void show(Runnable hold, Runnable after) {
+        new Splash(hold, after).launch();
     }
 
     private void launch() {
@@ -72,8 +82,15 @@ public final class Splash {
             @Override
             public void handle(long now) {
                 if (start == 0) start = now;
+                if (last != 0 && now - last > STALL_NANOS) start += now - last;
+                last = now;
                 double t = (now - start) / 1e9;
                 draw(t);
+                if (t >= DURATION - FADE && !held) {
+                    held = true;
+                    // After this frame: it is the one that stays on the screen during the pause.
+                    Platform.runLater(hold);
+                }
                 if (t >= DURATION) close();
             }
         };
@@ -85,6 +102,10 @@ public final class Splash {
         if (finished) return;
         finished = true;
         round.stop();
+        if (!held) {
+            held = true;
+            hold.run();
+        }
         // First the main window, then this one goes: with no windows open JavaFX would close the app.
         after.run();
         stage.close();
@@ -96,8 +117,7 @@ public final class Splash {
         GraphicsContext g = canvas.getGraphicsContext2D();
         double c = SIDE / 2;
         g.clearRect(0, 0, SIDE, SIDE);
-        // Everything fades in the last half second.
-        double fadeOut = 1 - closed((t - (DURATION - 0.5)) / 0.5);
+        double fadeOut = 1 - closed((t - (DURATION - FADE)) / FADE);
         g.setGlobalAlpha(fadeOut);
 
         // The black disc: solid only in the middle, then fading slowly into transparency, with no visible edge.

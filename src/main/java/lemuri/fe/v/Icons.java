@@ -64,7 +64,8 @@ public final class Icons {
             Map.entry("minimize", "M6 12h12"),
             Map.entry("maximize", "M6 6h12v12H6z"),
             Map.entry("restore", "M9 9h10v10H9zM6 15V6a1 1 0 0 1 1-1h9"),
-            Map.entry("disk", "M4 5h16v14H4zM4 13h16M8 16h.01"),
+            // A stack of disk platters.
+            Map.entry("disk", "M12 3c4.4 0 8 1.3 8 3s-3.6 3-8 3-8-1.3-8-3 3.6-3 8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"),
             // The mouse arrow, for interactive mode; crossed out when it is off.
             Map.entry("sync", "M3 12h5M8 12l5-6h6M8 12l5 6h6M17 3l3 3-3 3M17 15l3 3-3 3"),
             Map.entry("refresh", "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"),

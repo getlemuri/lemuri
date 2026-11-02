@@ -329,20 +329,24 @@ public final class Terminal extends StackPane {
         for (Terminal t : List.copyOf(ALL)) if (t.ready) t.window.call("setFontSize", s);
     }
 
+    /** True while a window is being resized with the mouse: see {@link #holdSize}. */
+    private static boolean sizeHeld;
+
+    /**
+     * While a window is resized with the mouse, the terminals keep their columns and rows ({@code true}), and
+     * work them out again when it ends ({@code false}): fitting xterm at every frame is what made it stutter.
+     */
+    public static void holdSize(boolean on) {
+        if (on == sizeHeld) return;
+        sizeHeld = on;
+        for (Terminal t : List.copyOf(ALL)) if (t.ready) t.window.call("holdFit", on);
+    }
+
     /** Like {@link #focus} for a terminal that has moved but does not get the keyboard: one part of a split tab. */
     public void redraw() {
         Platform.runLater(() -> {
             if (ready) window.call("redraw");
         });
-    }
-
-    /** The theme of the window, for the scroll bar: light or dark like the one of the host tree. */
-    private static boolean darkTheme;
-
-    /** The theme changed (or was read at startup): every terminal draws its scroll bar in it. */
-    public static void theme(boolean dark) {
-        darkTheme = dark;
-        for (Terminal t : List.copyOf(ALL)) if (t.ready) t.window.call("setLight", !dark);
     }
 
     /** Ghost mode: transparent page and terminal background, so the see-through window behind shows. */
@@ -451,9 +455,9 @@ public final class Terminal extends StackPane {
     public class Bridge {
         public void ready(int columns, int lines) {
             ready = true;
+            if (sizeHeld) window.call("holdFit", true);
             // Ghost mode was asked for before the page was ready.
             if (ghost.get()) window.call("setGhost", true);
-            window.call("setLight", !darkTheme);
             // Ready while it is already the one in view: the focus requested earlier had not reached xterm.
             if (web.isFocused()) window.call("focus");
             if (!pending.isEmpty()) {

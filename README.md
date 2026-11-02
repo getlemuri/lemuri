@@ -25,13 +25,15 @@ Every feature in detail: [docs/features.md](docs/features.md).
 
 ## Build from source
 
-There are no ready-made packages yet. It runs on Linux and macOS and needs only **JDK 21** and `unzip`: the Maven wrapper (`./mvnw`) downloads Maven on the first run.
+There are no ready-made packages yet. It runs on Linux and macOS and needs only **JDK 21** and `unzip`: the Maven wrapper (`./mvnw`) downloads Maven on the first run. JDK 21 does not have to be the default: if your default Java is 17 or newer, Maven finds JDK 21 among those installed by itself, so there is no `JAVA_HOME` to set.
 
 ```sh
 git clone https://github.com/getlemuri/lemuri
 cd lemuri
 ./mvnw javafx:run
 ```
+
+On Linux, `bin/lemuri --install-launcher` adds Lemuri to the applications menu, for your user only; with `--pin` it also keeps the icon in the GNOME dock (on other desktops, pin it from the menu). `--uninstall-launcher` removes it.
 
 ## From any terminal
 
