@@ -48,6 +48,7 @@ public final class Icons {
             Map.entry("close", "M6 6l12 12M18 6 6 18"),
             Map.entry("search", "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4"),
             Map.entry("lock", "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4"),
+            Map.entry("key", "M15.5 7.5l3 3L22 7l-3-3M21 2l-9.6 9.6M11.4 11.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8z"),
             Map.entry("lock-open", "M6 11h12v10H6zM8 11V7a4 4 0 0 1 7.6-1.7"),
             // Three connected dots: the share icon of phones (WhatsApp, Android).
             Map.entry("share", "M18 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 16a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"),

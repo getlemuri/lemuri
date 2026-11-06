@@ -257,6 +257,51 @@
 .gauge-bg { -fx-fill: transparent; -fx-stroke: -border-light; -fx-stroke-width: 9; }
 .gauge-value { -fx-fill: transparent; -fx-stroke-width: 9; }
 .gauge-normal { -fx-stroke: -blue; }
+.gauge-good { -fx-stroke: -ok; }
+
+/* SSH security checks: three cards (connection, key, server), each with its badge, small ring and switches
+   that only show: green on, amber on, red off. The card's top edge takes the colour of its score. */
+.security-card {
+    -fx-background-color: -surface; -fx-border-color: -border; -fx-border-width: 3 1 1 1;
+    -fx-background-radius: 6; -fx-border-radius: 6; -fx-padding: 10 12 12 12;
+}
+.security-card-ok { -fx-border-color: -ok -border -border -border; }
+.security-card-warn { -fx-border-color: -warn -border -border -border; }
+.security-card-bad { -fx-border-color: -critical -border -border -border; }
+.security-badge { -fx-background-radius: 17; -fx-background-color: -on; }
+.security-badge-ok { -fx-background-color: derive(-ok, 75%); }
+.security-badge-warn { -fx-background-color: derive(-warn, 70%); }
+.security-badge-bad { -fx-background-color: derive(-critical, 80%); }
+.security-badge-ok .icon { -fx-stroke: derive(-ok, -45%); }
+.security-badge-warn .icon { -fx-stroke: derive(-warn, -55%); }
+.security-badge-bad .icon { -fx-stroke: -critical; }
+.security-card-title { -fx-font-size: 14px; -fx-font-weight: bold; }
+.security-ring-bg { -fx-fill: transparent; -fx-stroke: -border-light; -fx-stroke-width: 4; }
+.security-ring { -fx-fill: transparent; -fx-stroke-width: 4; -fx-stroke-line-cap: round; }
+.security-ring-ok { -fx-stroke: -ok; }
+.security-ring-warn { -fx-stroke: -warn; }
+.security-ring-bad { -fx-stroke: -critical; }
+.security-ring-text { -fx-font-size: 10px; -fx-font-weight: bold; }
+.security-fix-row { -fx-padding: 0 0 0 34; }
+.security-fix { -fx-background-radius: 3; -fx-padding: 1 6 1 6; }
+.security-fix-bad { -fx-background-color: derive(-critical, 85%); -fx-text-fill: derive(-critical, -30%); }
+.security-fix-warn { -fx-background-color: derive(-warn, 80%); -fx-text-fill: derive(-warn, -60%); }
+.security-note { -fx-font-size: 11px; }
+.dark .security-badge-ok { -fx-background-color: derive(-ok, -65%); }
+.dark .security-badge-warn { -fx-background-color: derive(-warn, -65%); }
+.dark .security-badge-bad { -fx-background-color: derive(-critical, -65%); }
+.dark .security-badge-ok .icon { -fx-stroke: derive(-ok, 40%); }
+.dark .security-badge-warn .icon { -fx-stroke: derive(-warn, 30%); }
+.dark .security-badge-bad .icon { -fx-stroke: derive(-critical, 35%); }
+.dark .security-fix-bad { -fx-background-color: derive(-critical, -65%); -fx-text-fill: derive(-critical, 35%); }
+.dark .security-fix-warn { -fx-background-color: derive(-warn, -65%); -fx-text-fill: derive(-warn, 30%); }
+.switch-track { -fx-background-radius: 7; -fx-background-color: -border-light; }
+.switch-knob { -fx-fill: white; }
+.switch-ok .switch-track { -fx-background-color: -ok; }
+.switch-warn .switch-track { -fx-background-color: -warn; }
+.switch-bad .switch-track { -fx-background-color: -critical; }
+.switch-ok .switch-knob, .switch-warn .switch-knob { -fx-translate-x: -2; }
+.switch-bad .switch-knob { -fx-translate-x: 2; }
 .gauge-warn { -fx-stroke: -warn; }
 .gauge-critical { -fx-stroke: -critical; }
 .gauge-text { -fx-font-size: 17px; -fx-font-weight: bold; }
@@ -604,7 +649,9 @@
 }
 .layout .column-resources { -fx-background-color: -side; }
 /* The icon commands, then a thin line above the tree. */
-.layout .host-column-head { -fx-padding: 8 6 6 16; -fx-border-color: transparent transparent -border transparent; }
+.layout .host-column-head { -fx-padding: 6 6 6 10; -fx-border-color: transparent transparent -border transparent; }
+.layout .host-search { -fx-pref-width: 0; }
+.layout .host-search .text-field, .layout .host-search .text-field:focused { -fx-pref-width: 0; -fx-prompt-text-fill: -text-faint; }
 .layout .tree { -fx-background-color: transparent; -fx-background-radius: 0; }
 .layout .top-bar { -fx-padding: 0 10 0 0; -fx-min-height: 38; }
 /* The app icon: a square as wide as the activity bar, which sits below it,

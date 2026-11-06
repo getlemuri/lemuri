@@ -50,7 +50,9 @@ public final class AppState {
 
     // ── Readings ─────────────────────────────────────────────────────────────
 
+    /** A saved host, or {@link LocalHost} for the local shell tabs. */
     public Host host(String id) {
+        if (LocalHost.ID.equals(id)) return LocalHost.INSTANCE;
         return hosts.stream().filter(h -> h.id.equals(id)).findFirst().orElse(null);
     }
 

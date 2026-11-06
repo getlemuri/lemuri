@@ -22,6 +22,7 @@ import lemuri.be.dto.Host;
 import lemuri.be.util.Folders;
 import lemuri.be.util.I18n;
 import lemuri.fe.c.AppContext;
+import lemuri.fe.m.LocalHost;
 import lemuri.fe.m.Selection;
 import lemuri.fe.m.Session;
 import lemuri.fe.v.terminal.Terminal;
@@ -151,17 +152,20 @@ public final class Actions {
      * host on its right or below it, and upload into the shell's folder; a part of a split tab can be closed.
      */
     public static ContextMenu menuConsole(AppContext app, Session s) {
-        MenuItem upload = item(I18n.t("terminal.upload"), "upload", () -> Transfers.uploadFromTerminal(s, null));
-        upload.setDisable(!s.state.get().alive());
         ContextMenu m = new ContextMenu(
                 copyItem(SessionViews.terminal(s)), pasteItem(SessionViews.terminal(s)),
                 new SeparatorMenuItem(),
                 splitMenu(app, s, true),
-                splitMenu(app, s, false),
-                new SeparatorMenuItem(),
-                upload);
+                splitMenu(app, s, false));
+        // Uploads and downloads go over SFTP: not in a local shell, where the files are already here.
+        boolean local = LocalHost.is(s.host);
+        if (!local) {
+            MenuItem upload = item(I18n.t("terminal.upload"), "upload", () -> Transfers.uploadFromTerminal(s, null));
+            upload.setDisable(!s.state.get().alive());
+            m.getItems().addAll(new SeparatorMenuItem(), upload);
+        }
         // On a name listed by ls: download it (a file, or a folder with what is inside).
-        String[] name = SessionViews.terminal(s).nameForMenu();
+        String[] name = local ? null : SessionViews.terminal(s).nameForMenu();
         if (name != null) {
             MenuItem download = item(I18n.t("terminal.download", name[0]), "download", () -> Transfers.downloadFromTerminal(s, name[0], name[1]));
             download.setDisable(!s.state.get().alive());
@@ -191,14 +195,17 @@ public final class Actions {
     }
 
     /**
-     * Split right or down: first the same host (a second shell on it), then every other host, in the folders of
-     * the tree, to put a connection to another server next to this one.
+     * Split right or down: first a local shell and the same host (a second shell on it), then every other host,
+     * in the folders of the tree, to put a connection to another server next to this one.
      */
     private static Menu splitMenu(AppContext app, Session s, boolean sideBySide) {
         Menu m = new Menu(I18n.t(sideBySide ? "terminal.splitRight" : "terminal.splitDown"),
                 Icons.icon(sideBySide ? "split-right" : "split-down", 13));
-        m.getItems().addAll(item(I18n.t("terminal.splitSameHost", s.host.name), "terminal", () -> app.sessions.split(s, sideBySide)),
-                new SeparatorMenuItem());
+        // The local shell first; on a local shell it is the same host, so it appears once.
+        if (!LocalHost.is(s.host))
+            m.getItems().add(item(I18n.t("terminal.splitLocal", LocalHost.INSTANCE.name), "terminal", () -> app.sessions.splitLocal(s, sideBySide)));
+        m.getItems().add(item(I18n.t("terminal.splitSameHost", s.host.name), "terminal", () -> app.sessions.split(s, sideBySide)));
+        m.getItems().add(new SeparatorMenuItem());
         Map<String, Menu> folders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         List<MenuItem> loose = new ArrayList<>();
         app.state.hosts.stream().filter(h -> !h.id.equals(s.host.id))
@@ -231,14 +238,16 @@ public final class Actions {
     public static List<Node> terminalButtons(AppContext app, Session s) {
         Host h = s.host;
         List<Node> out = new ArrayList<>();
-        out.add(Ui.action("summary", I18n.t("console.summaryOf", h.name), () -> app.state.select(new Selection.HostItem(h.id), "summary")));
+        // A local shell has no host page, nothing to send or remove: only the sync of a split tab.
+        boolean local = LocalHost.is(h);
+        if (!local) out.add(Ui.action("summary", I18n.t("console.summaryOf", h.name), () -> app.state.select(new Selection.HostItem(h.id), "summary")));
         Session tab = s.tab();
         if (tab.panes().size() > 1) {
             Button sync = Ui.action("sync", I18n.t(tab.synced.get() ? "console.sync.off" : "console.sync.on"), () -> tab.synced.set(!tab.synced.get()));
             if (tab.synced.get()) sync.getStyleClass().add("on");
             out.add(sync);
         }
-        for (Button b : List.of(shareButton(app, h), disconnectButton(app, h), removeButton(app, h))) {
+        if (!local) for (Button b : List.of(shareButton(app, h), disconnectButton(app, h), removeButton(app, h))) {
             if (b.getTooltip() == null) b.setTooltip(new Tooltip(b.getText() + " " + h.name));
             b.setText(null);
             b.getStyleClass().add("action");

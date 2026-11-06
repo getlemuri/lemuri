@@ -20,6 +20,7 @@ import lemuri.be.dto.Host;
 import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.MetricsResult;
 import lemuri.be.dto.Resources;
+import lemuri.be.dto.Security;
 import lemuri.be.dto.Updates;
 import lemuri.be.service.MetricsService;
 import lemuri.be.util.Folders;
@@ -41,6 +42,11 @@ public final class HostSummary extends VBox {
     private final Gauge gCpu = new Gauge("CPU");
     private final Gauge gRam = new Gauge(I18n.t("summary.memory"));
     private final Gauge gDisk = new Gauge(I18n.t("summary.diskRoot"));
+    private final Gauge gSecurity = new Gauge(I18n.t("security.gauge"), true);
+    private final SecurityPanel securityPanel = new SecurityPanel();
+    /** The last answers, put together: the updates give the security updates check. */
+    private Security security;
+    private Updates updates;
     private final Label note = Ui.faint("");
     private final Label enabled = new Label();
     private final VBox disks = new VBox();
@@ -75,7 +81,7 @@ public final class HostSummary extends VBox {
                 new Ui.Detail(I18n.t("host.folder"), new Label(Folders.label(h.group))),
                 new Ui.Detail(I18n.t("summary.connected"), new Label(String.valueOf(app.state.connected(h.id))))));
 
-        HBox rings = new HBox(gCpu, gRam, gDisk);
+        HBox rings = new HBox(gCpu, gRam, gDisk, gSecurity);
         rings.getStyleClass().add("resources");
         for (Node n : rings.getChildren()) {
             HBox.setHgrow(n, Priority.ALWAYS);
@@ -93,7 +99,12 @@ public final class HostSummary extends VBox {
         columns.setPrefHeight(120);
         columns.setMinHeight(120);
         columns.widthProperty().addListener(o -> draw());
-        getChildren().addAll(line, Ui.panel(I18n.t("summary.disks"), disks),
+        VBox securityBox = Ui.withActions(Ui.panel(I18n.t("security.title"), "shield", securityPanel),
+                Ui.action("refresh", I18n.t("security.refresh"), () -> {
+                    securityPanel.show(null, I18n.t("summary.updates.checking"));
+                    app.monitor.security(h, true, this::showSecurity);
+                }));
+        getChildren().addAll(line, securityBox, Ui.panel(I18n.t("summary.disks"), disks),
                 Ui.panel(I18n.t("summary.cpuHistory", MetricsService.SAMPLES * EVERY_S / 60), columns),
                 Ui.panel(I18n.t("summary.notes"), new HostNotes(app, h)));
 
@@ -105,14 +116,19 @@ public final class HostSummary extends VBox {
         round = new Timeline(new KeyFrame(Duration.seconds(EVERY_S), e -> {
             app.monitor.refreshMetrics(h, false);
             // The service keeps the updates for minutes: asking once a minute costs nothing in between.
-            if (++ticks[0] % 15 == 0) app.monitor.updates(h, false, this::showUpdates);
+            if (++ticks[0] % 15 == 0) {
+                app.monitor.updates(h, false, this::showUpdates);
+                app.monitor.security(h, false, this::showSecurity);
+            }
         }));
         round.setCycleCount(Timeline.INDEFINITE);
         showUpdates(null);
+        drawSecurity();
         if (h.state != HostStatus.OFFLINE) {
             // Without forcing: the view is rebuilt often and a host that refuses access must be left alone.
             app.monitor.refreshMetrics(h, false);
             app.monitor.updates(h, false, this::showUpdates);
+            app.monitor.security(h, false, this::showSecurity);
             round.play();
         }
         // Stops the timer when the view leaves the scene.
@@ -124,6 +140,8 @@ public final class HostSummary extends VBox {
 
     /** Pending updates and reboot; null while the server has not answered yet. */
     private void showUpdates(Updates u) {
+        updates = u;
+        if (security != null) drawSecurity();
         if (u == null) {
             String text = h.state == HostStatus.OFFLINE ? I18n.t("summary.unreachable") : I18n.t("summary.updates.checking");
             updatesBox.getChildren().setAll(Ui.state("neutral", text));
@@ -153,6 +171,20 @@ public final class HostSummary extends VBox {
                 rebootBox.getChildren().add(why);
             }
         }
+    }
+
+    private void showSecurity(Security s) {
+        security = s;
+        drawSecurity();
+    }
+
+    private void drawSecurity() {
+        Security s = security != null ? security.withUpdates(updates) : null;
+        Double score = s != null ? s.score() : null;
+        String why = h.state == HostStatus.OFFLINE ? I18n.t("summary.unreachable") : I18n.t("summary.updates.checking");
+        securityPanel.show(s, why);
+        long bad = s == null ? 0 : s.checks().stream().filter(c -> c.level() != Security.Level.OK).count();
+        gSecurity.set(score, score == null ? "" : bad == 0 ? I18n.t("security.allGood") : I18n.t("security.toLook", bad));
     }
 
     private void show() {

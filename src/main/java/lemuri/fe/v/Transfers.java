@@ -209,7 +209,7 @@ public final class Transfers {
         if (PortalFiles.openFiles(title, true, files -> load(s, files.isEmpty() ? null : files, folder, after))) return;
         FileChooser fc = new FileChooser();
         fc.setTitle(title);
-        load(s, fc.showOpenMultipleDialog(Dialogs.main), folder, after);
+        load(s, fc.showOpenMultipleDialog(Dialogs.owner()), folder, after);
     }
 
     /**
@@ -275,7 +275,7 @@ public final class Transfers {
             if (PortalFiles.openFolder(title, into)) return;
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle(title);
-            into.accept(dc.showDialog(Dialogs.main));
+            into.accept(dc.showDialog(Dialogs.owner()));
         });
     }
 

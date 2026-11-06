@@ -18,6 +18,7 @@ import javafx.scene.web.WebView;
 import org.junit.jupiter.api.Test;
 import org.testfx.util.WaitForAsyncUtils;
 import lemuri.be.dto.SessionStatus;
+import lemuri.fe.m.LocalHost;
 import lemuri.fe.m.Selection;
 import lemuri.fe.m.Session;
 import lemuri.fe.m.Task;
@@ -122,16 +123,35 @@ class SessionsUiTest extends UiTest {
     }
 
     @Test
-    void whenTheShellOfAPartEndsThePartGoes() {
+    void whenAnSshShellEndsALocalShellTakesItsPlace() {
         Session s = openDb();
         on(() -> app.sessions.split(s, false));
         until(() -> sessions().size() == 2, "split");
-        transport(sessions().get(1)).end();
-        until(() -> sessions().size() == 1, "the ended part closed");
-        // A tab alone stays, to show why it ended.
+        Session part = sessions().get(1);
+        until(() -> part.state.get() == SessionStatus.CONNECTED, "part connected");
+        transport(part).end();
+        until(() -> sessions().size() == 2 && !sessions().contains(part) && LocalHost.is(sessions().get(1).host), "a local shell in the part");
         transport(s).end();
-        until(() -> s.state.get() == SessionStatus.CLOSED, "closed");
-        assertEquals(1, sessions().size());
+        until(() -> !sessions().contains(s) && sessions().stream().allMatch(x -> LocalHost.is(x.host)), "a local shell in the tab too");
+        assertEquals(new Selection.HostItem(LocalHost.ID), get(() -> app.state.node()), "still in view");
+        // A local shell that ends goes away, part and then tab.
+        for (Session local : sessions()) transport(local).end();
+        until(() -> sessions().isEmpty(), "local shells closed");
+    }
+
+    @Test
+    void aHostClickedFromTheConsoleOpensItsSession() {
+        openDb();
+        robot.clickOn(text("web-01"));
+        until(() -> sessions().size() == 2 && sessions().get(1).host.name.equals("web-01"), "a session on the clicked host");
+        assertEquals("console", get(() -> app.state.position.get().item()));
+    }
+
+    @Test
+    void splitOffersALocalShell() {
+        Session s = openDb();
+        on(() -> app.sessions.splitLocal(s, true));
+        until(() -> s.panes().size() == 2 && LocalHost.is(s.panes().get(1).host), "a local shell next to the SSH one");
     }
 
     @Test
@@ -228,7 +248,8 @@ class SessionsUiTest extends UiTest {
         Session s = openDb();
         contextMenu(() -> terminalOf(s));
         assertFalse(menuItemDisabled("Upload files to the current folder…"));
-        transport(s).end();
+        // Disconnected from the app: the tab stays, closed (an "exit" would put a local shell in its place).
+        on(() -> app.sessions.disconnectHost(s.host.id));
         until(() -> s.state.get() == SessionStatus.CLOSED, "closed");
         contextMenu(() -> terminalOf(s));
         assertTrue(menuItemDisabled("Upload files to the current folder…"));

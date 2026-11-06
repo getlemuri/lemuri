@@ -2,15 +2,14 @@ package lemuri.fe.v;
 
 import java.util.List;
 import java.util.prefs.Preferences;
-import javafx.animation.PauseTransition;
 import javafx.application.Platform;
-import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.collections.ListChangeListener;
 import javafx.event.ActionEvent;
+import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -18,15 +17,16 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.util.Duration;
 import lemuri.App;
 import lemuri.be.dto.Host;
 import lemuri.be.service.SharingService;
@@ -63,22 +63,6 @@ public final class Console extends BorderPane {
     private final SplitPane vertical = new SplitPane();
     /** The ghost window this console can turn into (see {@link GhostMode}). */
     private final GhostMode ghost;
-
-    /** At startup, from the app and not from the constructor: the pictures of the site must never show a real shell. */
-    public void showLocalShell() {
-        log.showShell();
-        // The window is still taking its size, and the panel keeps its height in pixels when the window is resized:
-        // the divider goes in place again until the size has settled, or the panel would stay as small as its header.
-        InvalidationListener place = o -> vertical.setDividerPositions(0.78);
-        vertical.heightProperty().addListener(place);
-        Platform.runLater(() -> place.invalidated(null));
-        PauseTransition settled = new PauseTransition(Duration.seconds(1));
-        settled.setOnFinished(e -> {
-            vertical.heightProperty().removeListener(place);
-            place.invalidated(null);
-        });
-        settled.play();
-    }
 
     public Console(AppContext app) {
         this.app = app;
@@ -119,7 +103,24 @@ public final class Console extends BorderPane {
         HostTree tree = new HostTree(app);
         // Header: only the icon commands, on the right; the first item of the tree says "Hosts".
         // The column opens and closes from the activity bar.
-        HBox hostHead = new HBox(2, Ui.space(),
+        // The search box takes the free room on the left of the icons and filters the tree as you type; Esc clears it.
+        TextField hostSearch = Ui.limit(new TextField(), Ui.MAX_SEARCH);
+        hostSearch.setPromptText(I18n.t("tree.search"));
+        hostSearch.setMinWidth(0);
+        hostSearch.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE && !hostSearch.getText().isEmpty()) {
+                hostSearch.clear();
+                e.consume();
+            }
+        });
+        tree.filter.bind(hostSearch.textProperty());
+        HBox.setHgrow(hostSearch, Priority.ALWAYS);
+        HBox searchBox = new HBox(6, Icons.icon("search", 14), hostSearch);
+        searchBox.getStyleClass().addAll("search", "host-search");
+        searchBox.setMinWidth(0);
+        HBox.setHgrow(searchBox, Priority.ALWAYS);
+        HBox.setMargin(searchBox, new Insets(0, 6, 0, 0));
+        HBox hostHead = new HBox(2, searchBox,
                 Ui.action("plus", I18n.t("hosts.add"), () -> HostDialog.forNew(app, currentFolder())),
                 Ui.action("folder", I18n.t("folders.new"), () -> Actions.newFolder(app, currentFolder())),
                 Ui.action("expand", I18n.t("tree.expandAll"), () -> tree.expandAll(true)),
@@ -226,9 +227,12 @@ public final class Console extends BorderPane {
         StackPane.setAlignment(arrivals, Pos.BOTTOM_RIGHT);
 
         host.setOnAction(e -> openResources.set(!openResources.get()));
-        // Without open sessions there is no console to show: the button is off, with no hover and no hand cursor.
-        console.disableProperty().bind(Bindings.isEmpty(app.state.sessions));
+        // Without open sessions the button opens a local shell.
         console.setOnAction(e -> {
+            if (app.state.sessions.isEmpty()) {
+                app.sessions.openLocal();
+                return;
+            }
             Session s = app.state.sessions.stream().reduce((a, b) -> b).orElse(null);
             if (app.state.node() instanceof Selection.HostItem d && app.state.activeSession.get(d.hostId()) != null) s = app.state.activeSession.get(d.hostId());
             if (s != null) app.sessions.showSession(s);

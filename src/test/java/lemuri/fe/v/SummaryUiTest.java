@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import lemuri.be.dto.Host;
 import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.Updates;
+import lemuri.be.monitoring.SecurityAudit;
 
 /** The host summary: resources, disks and every case of pending updates and reboot. */
 class SummaryUiTest extends UiTest {
@@ -46,7 +47,21 @@ class SummaryUiTest extends UiTest {
         open("web-01", new Updates(0, 0, false, null, null, 0));
         until(() -> shows("up to date"), "up to date");
         assertTrue(shows("not needed"));
-        assertFalse(shows("security"));
+        assertFalse(shows("0 security"));
+    }
+
+    @Test
+    void theSecurityChecksAreShownWithTheirScore() {
+        metrics.security = SecurityAudit.audit(Host.AuthMethod.PASSWORD, null, null,
+                new SecurityAudit.Server(0, java.util.Map.of("permitrootlogin", "yes"), List.of("fail2ban")), null, 0);
+        open("web-01", new Updates(0, 2, false, null, null, 0));
+        until(() -> shows("Password login"), "the checks");
+        assertTrue(shows("Root login"));
+        assertTrue(shows("PermitRootLogin no"), "the line to change");
+        assertTrue(shows("Security updates"), "from the updates of the summary");
+        assertTrue(shows("Brute force protection"), "a check that is right, as a chip");
+        assertTrue(!all(".switch-bad").isEmpty() && !all(".switch-ok").isEmpty());
+        assertTrue(shows("to look at"));
     }
 
     @Test

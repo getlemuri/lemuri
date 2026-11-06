@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import lemuri.be.dto.MetricsResult;
 import lemuri.be.dto.Host;
+import lemuri.be.dto.Security;
 import lemuri.be.dto.Updates;
 
 /** CPU, memory and disks of the VPSs, read over SSH. */
@@ -23,6 +24,13 @@ public interface MetricsService {
      * answer is kept for a while and given again, unless with {@code force}.
      */
     default void updates(Host h, boolean force, Consumer<Updates> outcome) {
+    }
+
+    /**
+     * How safe the SSH access is (see {@link lemuri.be.monitoring.SecurityAudit}), in the background: only read,
+     * kept for a while and given again, unless with {@code force}.
+     */
+    default void security(Host h, boolean force, Consumer<Security> outcome) {
     }
 
     boolean running(String hostId);

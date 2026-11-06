@@ -1,12 +1,18 @@
 package lemuri.be.monitoring;
 
 import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.HostKey;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.KeyPair;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.jcraft.jsch.UIKeyboardInteractive;
 import com.jcraft.jsch.UserInfo;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -28,6 +34,7 @@ import lemuri.be.dto.Host;
 import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.MetricsResult;
 import lemuri.be.dto.Resources;
+import lemuri.be.dto.Security;
 import lemuri.be.dto.Updates;
 import lemuri.be.service.MetricsService;
 import lemuri.be.service.Vault;
@@ -119,6 +126,8 @@ public final class Metrics implements MetricsService {
     private final ExecutorService jobs = Executors.newVirtualThreadPerTaskExecutor();
     private final Map<String, Updates> updates = new ConcurrentHashMap<>();
     private final Set<String> updating = ConcurrentHashMap.newKeySet();
+    private final Map<String, Security> securities = new ConcurrentHashMap<>();
+    private final Set<String> auditing = ConcurrentHashMap.newKeySet();
     /** hostId -> CPU usage of the latest samples. */
     private final Map<String, Deque<Double>> history = new ConcurrentHashMap<>();
 
@@ -212,6 +221,75 @@ public final class Metrics implements MetricsService {
     }
 
     @Override
+    public void security(Host h, boolean force, Consumer<Security> outcome) {
+        Security known = securities.get(h.id);
+        if (!force && known != null && System.currentTimeMillis() - known.when() < UPDATES_FOR_MS) {
+            outcome.accept(known);
+            return;
+        }
+        if (jobs.isShutdown() || h.state == HostStatus.OFFLINE || !auditing.add(h.id)) return;
+        Host copy = h.copy();
+        jobs.execute(() -> {
+            SecurityAudit.ClientKey key = clientKey(copy);
+            SecurityAudit.Server server = null;
+            String error = null;
+            try {
+                set.acquire();
+                try {
+                    server = SecurityAudit.parse(run(copy, SecurityAudit.COMMAND));
+                } finally {
+                    set.release();
+                }
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                error = reason(ex);
+            } catch (JSchException | IOException | RuntimeException ex) {
+                // RuntimeException: the output comes from the server, parsing must survive anything.
+                error = reason(ex);
+            }
+            Session s = sessions.get(copy.id);
+            SecurityAudit.Connection c = s != null && s.isConnected() ? connection(s) : null;
+            Security sec = SecurityAudit.audit(copy.authMethod, key, c, server, error, System.currentTimeMillis());
+            // Without even the connection there is nothing worth keeping: asked again next time.
+            if (c != null) securities.put(copy.id, sec);
+            auditing.remove(copy.id);
+            outcome.accept(c != null ? sec : new Security(List.of(), error, sec.when()));
+        });
+    }
+
+    /** The negotiated algorithms and the server's key of an open connection. */
+    private static SecurityAudit.Connection connection(Session s) {
+        HostKey k = s.getHostKey();
+        int bits = 0;
+        if (k != null) {
+            try {
+                bits = SecurityAudit.rsaBits(Base64.getDecoder().decode(k.getKey()));
+            } catch (IllegalArgumentException e) {
+                // Not base64: size unknown.
+            }
+        }
+        return new SecurityAudit.Connection(s.getServerVersion(), s.getKexAlgorithm(), s.getCipherAlgorithmC2S(),
+                s.getMacAlgorithmC2S(), s.isStrictKex(), s.getServerHostKeyAlgorithm(), bits);
+    }
+
+    /** The private key file of the host, if it has its own: type, size and passphrase. Null with agent or ~/.ssh. */
+    private static SecurityAudit.ClientKey clientKey(Host h) {
+        if (h.authMethod != Host.AuthMethod.KEY || h.key == null || h.key.isBlank()) return null;
+        Path p = SshTransport.keyFile(h.key);
+        if (!Files.isReadable(p)) return null;
+        try {
+            KeyPair kp = KeyPair.load(new JSch(), p.toString());
+            try {
+                return new SecurityAudit.ClientKey(kp.getKeyTypeString(), kp.getKeySize(), kp.isEncrypted());
+            } finally {
+                kp.dispose();
+            }
+        } catch (JSchException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    @Override
     public boolean running(String hostId) {
         return running.contains(hostId);
     }
@@ -225,6 +303,7 @@ public final class Metrics implements MetricsService {
         history.remove(hostId);
         failed.remove(hostId);
         updates.remove(hostId);
+        securities.remove(hostId);
     }
 
     @Override

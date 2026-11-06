@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.SessionStatus;
 import lemuri.fe.m.AppState;
+import lemuri.fe.m.LocalHost;
 import lemuri.fe.m.Selection;
 import lemuri.fe.m.Session;
 import lemuri.fe.m.Task;
@@ -203,5 +204,73 @@ class SessionControllerTest {
         // The tab itself stays, to show why.
         transport(tab).report(SessionStatus.CLOSED);
         assertEquals(List.of(tab), state.sessions);
+    }
+
+    @Test
+    void exitInAConnectedSshTabOpensALocalShellInItsPlace() {
+        Session first = c.openSession(state.host("web"));
+        Session ssh = c.openSession(state.host("db"));
+        Session last = c.openSession(state.host("web"));
+        transport(ssh).report(SessionStatus.CONNECTED);
+        c.showSession(ssh);
+
+        transport(ssh).report(SessionStatus.CLOSED);
+
+        assertEquals(3, state.sessions.size());
+        Session local = state.sessions.get(1);
+        assertTrue(LocalHost.is(local.host));
+        assertSame(first, state.sessions.get(0));
+        assertSame(last, state.sessions.get(2));
+        assertNull(state.activeSession.get("db"));
+        assertEquals(new Selection.HostItem(LocalHost.ID), state.node(), "the local shell takes the view");
+    }
+
+    @Test
+    void exitInAConnectedSplitPartPutsALocalShellThere() {
+        Session tab = c.openSession(state.host("web"));
+        Session right = c.split(tab, true, state.host("db"));
+        transport(right).report(SessionStatus.CONNECTED);
+
+        transport(right).report(SessionStatus.CLOSED);
+
+        assertEquals(2, tab.panes().size());
+        assertSame(tab, tab.panes().get(0));
+        assertTrue(LocalHost.is(tab.panes().get(1).host));
+        assertFalse(state.sessions.contains(right));
+    }
+
+    @Test
+    void closingOrDisconnectingDoesNotOpenALocalShell() {
+        Session a = c.openSession(state.host("web"));
+        Session b = c.openSession(state.host("db"));
+        transport(a).report(SessionStatus.CONNECTED);
+        transport(b).report(SessionStatus.CONNECTED);
+
+        c.closeSession(a);
+        c.disconnectHost("db");
+
+        assertEquals(List.of(b), state.sessions, "the disconnected tab stays, closed");
+    }
+
+    @Test
+    void exitInALocalTabClosesIt() {
+        Session web = c.openSession(state.host("web"));
+        Session local = c.openLocal();
+        transport(local).report(SessionStatus.CONNECTED);
+        assertEquals(new Selection.HostItem(LocalHost.ID), state.node());
+
+        transport(local).report(SessionStatus.CLOSED);
+
+        assertEquals(List.of(web), state.sessions);
+        assertNull(state.activeSession.get(LocalHost.ID));
+    }
+
+    @Test
+    void theLocalShellCanGoNextToAnSshOne() {
+        Session tab = c.openSession(state.host("web"));
+        Session local = c.splitLocal(tab, false);
+        assertSame(tab, local.owner());
+        assertTrue(LocalHost.is(local.host));
+        assertEquals(0, state.tasks.stream().filter(t -> t.destination.equals(LocalHost.INSTANCE.name)).count(), "no log line for a local shell");
     }
 }

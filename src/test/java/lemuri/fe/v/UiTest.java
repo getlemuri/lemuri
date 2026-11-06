@@ -46,6 +46,7 @@ import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.MetricsResult;
 import lemuri.be.dto.Resources;
 import lemuri.be.dto.SessionStatus;
+import lemuri.be.dto.Security;
 import lemuri.be.dto.Updates;
 import lemuri.be.service.HostRepository;
 import lemuri.be.service.MetricsService;
@@ -426,6 +427,7 @@ abstract class UiTest {
     static final class FakeMetrics implements MetricsService {
         Updates updates = new Updates(14, 3, true, "linux-image-6.8.0-51-generic", null, 0);
         final List<String> refreshed = new ArrayList<>();
+        Security security;
 
         static Resources resources() {
             long gib = 1024L * 1024;
@@ -437,6 +439,7 @@ abstract class UiTest {
             outcome.accept(new MetricsResult(resources(), null, System.currentTimeMillis()));
         }
         @Override public void updates(Host h, boolean force, Consumer<Updates> outcome) { outcome.accept(updates); }
+        @Override public void security(Host h, boolean force, Consumer<Security> outcome) { if (security != null) outcome.accept(security); }
         @Override public boolean running(String hostId) { return false; }
         @Override public MetricsResult last(String hostId) { return null; }
         @Override public List<Double> cpuHistory(String hostId) { return List.of(0.1, 0.3, 0.2, 0.5); }

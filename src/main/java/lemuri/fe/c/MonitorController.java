@@ -10,6 +10,7 @@ import javafx.beans.Observable;
 import javafx.util.Duration;
 import lemuri.be.dto.Host;
 import lemuri.be.dto.MetricsResult;
+import lemuri.be.dto.Security;
 import lemuri.be.dto.Updates;
 import lemuri.be.service.MetricsService;
 import lemuri.be.service.ProbeService;
@@ -109,6 +110,11 @@ public final class MonitorController {
     /** Pending updates and reboot of a host; the answer arrives on the JavaFX thread. */
     public void updates(Host h, boolean force, Consumer<Updates> outcome) {
         metrics.updates(Jumps.resolve(h, state.hosts), force, u -> Platform.runLater(() -> outcome.accept(u)));
+    }
+
+    /** How safe the SSH access to a host is; the answer arrives on the JavaFX thread. */
+    public void security(Host h, boolean force, Consumer<Security> outcome) {
+        metrics.security(Jumps.resolve(h, state.hosts), force, s -> Platform.runLater(() -> outcome.accept(s)));
     }
 
     public boolean metricsRunning(String hostId) {

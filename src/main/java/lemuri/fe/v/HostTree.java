@@ -193,11 +193,16 @@ public class HostTree extends TreeView<HostTree.Item> {
     }
 
     private void choose(Item v) {
-        // A host with an open session brings you back to its shell, from any page; the summary opens from the console.
+        // A host with an open session brings you back to its shell, from any page. From the console, a host
+        // without one gets a new SSH session; from the other pages its summary opens.
         if (v.host() != null) {
             Session s = app.state.activeSession.get(v.host().id);
             if (s != null) {
                 app.sessions.showSession(s);
+                return;
+            }
+            if ("console".equals(app.state.position.get().item())) {
+                app.sessions.showOrOpen(v.host());
                 return;
             }
         }

@@ -156,7 +156,8 @@ public class App extends Application {
             shown = stage;
             Dialogs.main = stage;
             Tray.install(stage, console.ghost(), quit);
-            console.showLocalShell();
+            // A local shell tab is ready at startup; the bottom panel stays closed, the space goes to the terminal.
+            app.sessions.openLocal();
             if (app.hosts.loadingNotice != null) Dialogs.warning(I18n.t("hosts.loadWarning.title"), app.hosts.loadingNotice);
             app.monitor.launch();
             // A host sent by a contact over the local network is offered at once: accept, reject or decide later.

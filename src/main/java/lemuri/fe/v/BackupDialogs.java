@@ -45,7 +45,7 @@ public final class BackupDialogs {
     // ── Export ───────────────────────────────────────────────────────────────
 
     /** Asks the system file chooser for the file (true: to save); the interface tests answer in its place. */
-    static BiFunction<FileChooser, Boolean, File> files = (fc, save) -> save ? fc.showSaveDialog(Dialogs.main) : fc.showOpenDialog(Dialogs.main);
+    static BiFunction<FileChooser, Boolean, File> files = (fc, save) -> save ? fc.showSaveDialog(Dialogs.owner()) : fc.showOpenDialog(Dialogs.owner());
 
     public static void export(AppContext app) {
         // The passwords are part of it: the vault must be open.

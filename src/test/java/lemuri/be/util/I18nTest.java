@@ -33,7 +33,8 @@ class I18nTest {
     /** The keys used in the code: I18n.t("key", …). */
     private static Set<String> usedOnes() throws Exception {
         Set<String> keys = new TreeSet<>();
-        Pattern usage = Pattern.compile("I18n\\.t\\(\\s*\"([^\"]+)\"");
+        // A whole key, not the start of one put together in the code ("security." + id).
+        Pattern usage = Pattern.compile("I18n\\.t\\(\\s*\"([^\"]+)\"\\s*[,)]");
         try (Stream<Path> file = Files.walk(Path.of("src/main/java"))) {
             for (Path f : file.filter(x -> x.toString().endsWith(".java")).toList()) {
                 Matcher m = usage.matcher(Files.readString(f));
@@ -92,7 +93,10 @@ class I18nTest {
         assertTrue(missing.isEmpty(), "keys used in the code but missing: " + missing);
         Set<String> useless = new TreeSet<>(inFile);
         useless.removeAll(inCode);
-        useless.removeAll(strings());
+        Set<String> literals = strings();
+        useless.removeAll(literals);
+        // The texts of the security checks: "security." + id and "security." + id + ".advice", the ids in the code.
+        useless.removeIf(k -> k.startsWith("security.") && literals.contains(k.substring(9).replaceFirst("\\.advice$", "")));
         assertTrue(useless.isEmpty(), "keys never used: " + useless);
     }
 

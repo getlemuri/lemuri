@@ -84,10 +84,30 @@
         }
       }, 0);
     });
+    term.element.addEventListener('wheel', wheel, { capture: true, passive: false });
     term.registerLinkProvider({ provideLinks: clickableNames });
     // Selecting text offers it as the primary selection (pasted elsewhere with the middle button).
     term.onSelectionChange(function () { var s = term.getSelection(); if (s) java.selected(s); });
     java.ready(term.cols, term.rows);
+  }
+
+  // ── Mouse wheel ──
+  // The JavaFX WebView gives a right deltaY (40 px a notch) but a wheelDeltaY of 4800 instead of 120, and xterm reads
+  // the latter: 40 notches for one, whole screens at a time. Through the scrollback the wheel is handled here, by
+  // whole lines from deltaY, without the animation. In full screen programs (less, vim, htop) xterm keeps it: there
+  // it turns the wheel into keys or mouse reports from deltaY, which is right.
+  var wheelRest = 0;   // the part of a line not scrolled yet (touchpads send small steps)
+  function wheel(e) {
+    if (!e.deltaY || term.buffer.active.type !== 'normal' || term.modes.mouseTrackingMode !== 'none') return;
+    e.preventDefault();
+    e.stopPropagation();
+    var screen = term.element.querySelector('.xterm-screen');
+    var lineHeight = screen && term.rows ? screen.clientHeight / term.rows : 17;
+    var lines = e.deltaMode === 1 ? e.deltaY : e.deltaMode === 2 ? e.deltaY * term.rows : e.deltaY / lineHeight;
+    wheelRest += lines;
+    var whole = wheelRest < 0 ? Math.ceil(wheelRest) : Math.floor(wheelRest);
+    wheelRest -= whole;
+    if (whole) term.scrollLines(whole);
   }
 
   // ── Clickable names ──

@@ -48,7 +48,7 @@
 
   <!-- Unicode case mapping and normalization. ContactNames normalizes on purpose: it is the check that two
        contacts cannot look alike. The others compare names the user typed or chose (hosts, folders, jump hosts,
-       ssh_config keywords) to find duplicates or the host asked for by "lemuri -s": no security decision. SharingDialogs also finds the twin of a
+       ssh_config and sshd_config keywords, ASCII names of algorithms) to find duplicates or the host asked for by "lemuri -s": no security decision. SharingDialogs also finds the twin of a
        received host, with an exact lower-case comparison of the address (not equalsIgnoreCase). -->
   <Match>
     <Bug pattern="IMPROPER_UNICODE" />
@@ -57,6 +57,7 @@
       <Class name="~lemuri\.be\.util\.ContactNames(\$.*)?" />
       <Class name="~lemuri\.be\.terminal\.Jumps(\$.*)?" />
       <Class name="~lemuri\.be\.util\.SshConfig(\$.*)?" />
+      <Class name="~lemuri\.be\.monitoring\.SecurityAudit(\$.*)?" />
       <Class name="~lemuri\.fe\.c\.HostController(\$.*)?" />
       <Class name="~lemuri\.fe\.m\.AppState(\$.*)?" />
       <Class name="~lemuri\.fe\.v\.Actions(\$.*)?" />
@@ -77,6 +78,7 @@
       <Class name="~lemuri\.fe\.c\.HostController(\$.*)?" />
       <Class name="~lemuri\.fe\.c\.LanController(\$.*)?" />
       <Class name="~lemuri\.fe\.c\.MonitorController(\$.*)?" />
+      <Class name="~lemuri\.fe\.v\.Dialogs(\$.*)?" />
       <Class name="~lemuri\.fe\.c\.SharingController(\$.*)?" />
       <Class name="~lemuri\.fe\.m\.Pane(\$.*)?" />
       <Class name="~lemuri\.fe\.m\.Session(\$.*)?" />

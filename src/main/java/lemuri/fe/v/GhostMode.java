@@ -215,6 +215,7 @@ public final class GhostMode {
             leave();
         });
         window = g;
+        Dialogs.ghost = g;
         placement = new WindowPlacement(g);
 
         onSessions = ch -> refresh();
@@ -461,6 +462,9 @@ public final class GhostMode {
         if (dock.isEmpty() && !maximized) floating = WindowPlacement.bounds(window);
         dock = side.equals(dock) ? "" : side;
         maximized = false;
+        // Docked, it stays above the other windows, as a drop-down terminal: a click elsewhere does not lose it.
+        // It goes away only with F11 (or the tray), and floating free it is an ordinary window again.
+        window.setAlwaysOnTop(!dock.isEmpty());
         place();
         refresh();
     }
@@ -748,6 +752,7 @@ public final class GhostMode {
         if (!active()) return;
         Stage g = window;
         window = null;
+        Dialogs.ghost = null;
         Tray.ghostMode(false);
         maximized = false;
         app.state.sessions.removeListener(onSessions);

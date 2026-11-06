@@ -11,15 +11,23 @@ import javafx.scene.shape.Circle;
 
 /**
  * Usage ring: percentage in the centre, detail below. The colour turns
- * to warning above 75% and to critical above 90%.
+ * to warning above 75% and to critical above 90%; for a score, where more is
+ * better, to warning below 80% and to critical below 50%.
  */
 public final class Gauge extends VBox {
     private static final double RADIUS = 38;
     private final Arc value = new Arc(0, 0, RADIUS, RADIUS, 90, 0);
     private final Label percent = new Label();
     private final Label detail = new Label();
+    private final boolean score;
 
     public Gauge(String title) {
+        this(title, false);
+    }
+
+    /** With {@code score} more is better: full and green when everything is right. */
+    public Gauge(String title, boolean score) {
+        this.score = score;
         getStyleClass().add("gauge");
         setAlignment(Pos.CENTER);
         setSpacing(4);
@@ -47,8 +55,9 @@ public final class Gauge extends VBox {
         double q = quota == null ? 0 : Math.min(1, Math.max(0, quota));
         // Negative length = clockwise starting from the top.
         value.setLength(-360 * q);
-        value.getStyleClass().removeAll("gauge-normal", "gauge-warn", "gauge-critical");
-        value.getStyleClass().add(q >= 0.9 ? "gauge-critical" : q >= 0.75 ? "gauge-warn" : "gauge-normal");
+        value.getStyleClass().removeAll("gauge-normal", "gauge-good", "gauge-warn", "gauge-critical");
+        if (score) value.getStyleClass().add(q < 0.5 ? "gauge-critical" : q < 0.8 ? "gauge-warn" : "gauge-good");
+        else value.getStyleClass().add(q >= 0.9 ? "gauge-critical" : q >= 0.75 ? "gauge-warn" : "gauge-normal");
         percent.setText(quota == null ? "…" : Math.round(q * 100) + "%");
         detail.setText(detailText);
     }

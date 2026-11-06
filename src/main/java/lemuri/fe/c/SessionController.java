@@ -1,6 +1,9 @@
 package lemuri.fe.c;
 
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -10,28 +13,32 @@ import lemuri.be.dto.HostStatus;
 import lemuri.be.dto.SessionStatus;
 import lemuri.be.service.Transport;
 import lemuri.be.terminal.Jumps;
+import lemuri.be.terminal.LocalTransport;
 import lemuri.be.terminal.SshTransport;
 import lemuri.be.util.I18n;
 import lemuri.fe.m.AppState;
+import lemuri.fe.m.LocalHost;
 import lemuri.fe.m.Pane;
 import lemuri.fe.m.Selection;
 import lemuri.fe.m.Session;
 import lemuri.fe.m.Task;
 
-/** Opens and closes the SSH sessions. From the JavaFX thread. */
+/** Opens and closes the SSH sessions and the local shell tabs. From the JavaFX thread. */
 public final class SessionController {
     private final AppState state;
     private final HostController hosts;
     private final Function<Host, Transport> ssh;
     /** Runs on the JavaFX thread: the transports call back from their own threads. */
     private final Consumer<Runnable> fx;
+    /** Sessions closed by a command (disconnect, quit): their end is not an "exit" typed in the shell. */
+    private final Set<Session> stopped = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** {@code requests}: the questions of the SSH connection (fingerprint, password…), asked by the view with its dialogs. */
     public SessionController(AppState state, HostController hosts, Function<Host, SshTransport.UserPrompts> requests) {
-        this(state, hosts, h -> new SshTransport(h, requests), Platform::runLater);
+        this(state, hosts, h -> LocalHost.is(h) ? new LocalTransport() : new SshTransport(h, requests), Platform::runLater);
     }
 
-    /** For tests: transports made elsewhere, and callbacks run where the test wants. */
+    /** For tests: transports made elsewhere (for the local shell too), and callbacks run where the test wants. */
     SessionController(AppState state, HostController hosts, Function<Host, Transport> ssh, Consumer<Runnable> fx) {
         this.state = state;
         this.hosts = hosts;
@@ -40,33 +47,45 @@ public final class SessionController {
     }
 
     private Session createSession(Host h) {
-        return createSession(h, null, null);
+        return createSession(h, null, null, -1);
     }
 
     /**
      * {@code owner}: the tab the new session is a part of, null for a new tab; {@code place} puts it in the
-     * tab's layout before the views hear of it.
+     * tab's layout before the views hear of it. {@code at}: where a new tab goes in the row, -1 at the end.
      */
-    private Session createSession(Host h, Session owner, Consumer<Session> place) {
+    private Session createSession(Host h, Session owner, Consumer<Session> place, int at) {
+        boolean local = LocalHost.is(h);
         long n = state.sessions.stream().filter(s -> s.host.id.equals(h.id)).count() + 1;
-        Task t = state.task(h.name, I18n.t("task.sshSession", h.destination()));
+        // The local shell starts at once: no line in the log for it.
+        Task t = local ? null : state.task(h.name, I18n.t("task.sshSession", h.destination()));
         // The transport gets the host with its jump hosts resolved from the list as it is now.
-        Transport tr = ssh.apply(Jumps.resolve(h, state.hosts));
+        Transport tr = ssh.apply(local ? h : Jumps.resolve(h, state.hosts));
         if (tr instanceof SshTransport st) st.onOs(os -> fx.accept(() -> hosts.refreshOs(h.id, os)));
         Session s = new Session(AppState.uid(), h, h.name + " #" + n, tr);
         s.owner(owner);
         tr.onState((state, msg) -> fx.accept(() -> {
+            SessionStatus before = s.state.get();
             s.state.set(state);
-            if (state == SessionStatus.CONNECTED) {
+            if (t != null && state == SessionStatus.CONNECTED) {
                 t.finish(Task.Outcome.OK, null);
                 hosts.refreshStatuses(Map.of(h.id, HostStatus.ONLINE));
             }
-            if (state == SessionStatus.ERROR || state == SessionStatus.CLOSED) t.finish(Task.Outcome.ERROR, msg != null ? msg : I18n.t("task.connectionClosed"));
-            // A part of a split tab goes away when its shell ends ("exit"), as in the split terminals; a tab stays to show why.
-            if (state == SessionStatus.CLOSED && s.tab().panes().size() > 1 && s.tab().panes().contains(s) && this.state.sessions.contains(s)) closePane(s);
+            if (t != null && (state == SessionStatus.ERROR || state == SessionStatus.CLOSED)) t.finish(Task.Outcome.ERROR, msg != null ? msg : I18n.t("task.connectionClosed"));
+            // Only the first report of the end: a transport closed again reports it once more.
+            if (state != SessionStatus.CLOSED || before == SessionStatus.CLOSED) return;
+            // Closed from the app (its tab or part closed, disconnect, quit): nothing else to do.
+            boolean byApp = stopped.remove(s);
+            if (byApp || !this.state.sessions.contains(s) || !s.tab().panes().contains(s)) return;
+            // "exit" in an SSH shell that was running: a local shell takes its place, as when ssh ends in a terminal.
+            if (!local && before == SessionStatus.CONNECTED) replaceWithLocal(s);
+            // A part of a split tab goes away when its shell ends, as in the split terminals; so does a local tab.
+            // An SSH tab that never connected stays, to show why.
+            else if (s.tab().panes().size() > 1) closePane(s);
+            else if (local) closeSession(s);
         }));
         if (owner == null) {
-            state.sessions.add(s);
+            state.sessions.add(at < 0 ? state.sessions.size() : at, s);
             state.activeSession.put(h.id, s);
         } else {
             place.accept(s);
@@ -75,6 +94,36 @@ public final class SessionController {
             state.sessions.add(after + 1, s);
         }
         return s;
+    }
+
+    /** Opens a local shell in a new tab and shows it. */
+    public Session openLocal() {
+        return openSession(LocalHost.INSTANCE);
+    }
+
+    /** Like {@link #split(Session, boolean)}, with a local shell in the new part. */
+    public Session splitLocal(Session target, boolean sideBySide) {
+        return split(target, sideBySide, LocalHost.INSTANCE);
+    }
+
+    /**
+     * An SSH shell has ended: a local shell goes in its place, in the same tab or part of a tab, and gets the
+     * view if the ended one had it.
+     */
+    private void replaceWithLocal(Session ended) {
+        Session tab = ended.tab();
+        boolean inView = state.node() instanceof Selection.HostItem d && "console".equals(state.position.get().item())
+                && tab.panes().contains(state.activeSession.get(d.hostId()));
+        Session fresh;
+        if (tab.panes().size() > 1) {
+            fresh = split(ended, true, LocalHost.INSTANCE);
+            closePane(ended);
+        } else {
+            // In the row of tabs, where the ended one was.
+            fresh = createSession(LocalHost.INSTANCE, null, null, state.sessions.indexOf(ended) + 1);
+            closeSession(ended);
+        }
+        if (inView) showSession(fresh);
     }
 
     /** Opens a session and goes to the host console. */
@@ -111,7 +160,7 @@ public final class SessionController {
     public Session split(Session target, boolean sideBySide, Host host) {
         Session tab = target.tab();
         if (tab.layout() == null) tab.layout(new Pane(tab));
-        return createSession(host, tab, s -> tab.layout().split(target, s, sideBySide));
+        return createSession(host, tab, s -> tab.layout().split(target, s, sideBySide), -1);
     }
 
     /**
@@ -150,7 +199,7 @@ public final class SessionController {
         // Back to one part, nothing left to sync: and a later split must not start synced by surprise.
         if (remaining.panes().size() < 2) remaining.synced.set(false);
         // Last: a transport may report the end right away, and by then the session is no longer in the tab.
-        s.transport.close();
+        stop(s);
     }
 
     /** Brings the session tab to the front: the console shows it, the tree its host. */
@@ -174,7 +223,7 @@ public final class SessionController {
         s.layout(null);
         for (Session p : parts) {
             if (p != s) p.owner(null);
-            p.transport.close();
+            stop(p);
             state.sessions.remove(p);
         }
         for (Session p : parts) {
@@ -187,11 +236,18 @@ public final class SessionController {
     }
 
     public void disconnectHost(String hostId) {
-        state.sessions.stream().filter(s -> s.host.id.equals(hostId)).forEach(s -> s.transport.close());
+        state.sessions.stream().filter(s -> s.host.id.equals(hostId)).forEach(this::stop);
     }
 
     /** When the app closes. */
     public void closeAll() {
-        state.sessions.forEach(s -> s.transport.close());
+        state.sessions.forEach(this::stop);
+    }
+
+    /** Closes the transport from the app: its end does not count as an "exit" typed in the shell. */
+    private void stop(Session s) {
+        // A transport already closed reports nothing more: it is not marked, or it would stay in the set.
+        if (s.state.get().alive()) stopped.add(s);
+        s.transport.close();
     }
 }

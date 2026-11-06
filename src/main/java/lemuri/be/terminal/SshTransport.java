@@ -237,7 +237,7 @@ public class SshTransport implements Transport {
         jsch.setKnownHosts(known.toString());
         jsch.setHostKeyRepository(new KnownKeys(jsch.getHostKeyRepository()));
         if (host.authMethod == Host.AuthMethod.KEY && host.key != null && !host.key.isBlank()) {
-            Path k = Path.of(host.key).isAbsolute() ? Path.of(host.key) : ssh.resolve(host.key);
+            Path k = keyFile(host.key);
             if (Files.exists(k)) jsch.addIdentity(k.toString());
             else {
                 warnings.accept("\u001b[33mssh: " + I18n.t("ssh.keyNotFound", k) + "\u001b[0m\r\n");
@@ -443,6 +443,12 @@ public class SshTransport implements Transport {
      * A keyboard-interactive question that asks for the account password and nothing else. When in doubt,
      * no: then the user answers, and the silent metrics connection does not answer at all.
      */
+    /** The key file of a host as written in it: an absolute path, or a name inside ~/.ssh. */
+    public static Path keyFile(String key) {
+        Path k = Path.of(key);
+        return k.isAbsolute() ? k : Path.of(System.getProperty("user.home"), ".ssh").resolve(key);
+    }
+
     public static boolean passwordQuestion(String question) {
         // Without "user@host": a server called "code-server" does not make the question suspicious.
         String d = question.toLowerCase(Locale.ROOT).replaceAll("\\S*@\\S*", " ");

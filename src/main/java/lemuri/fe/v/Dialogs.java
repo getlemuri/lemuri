@@ -57,8 +57,22 @@ public final class Dialogs {
      */
     public static Window main;
 
+    /** The ghost window while ghost mode is on (the main window is hidden then), otherwise null. */
+    static Window ghost;
+
+    /**
+     * The window dialogs and file choosers belong to: the main one, or the ghost while the main one is hidden.
+     * Without it a docked ghost, which stays above the other windows, would cover them.
+     */
+    public static Window owner() {
+        if (main != null && main.isShowing()) return main;
+        if (ghost != null && ghost.isShowing()) return ghost;
+        return null;
+    }
+
     public static void prepare(Dialog<?> d, String title) {
-        if (main != null && main.isShowing()) d.initOwner(main);
+        Window owner = owner();
+        if (owner != null) d.initOwner(owner);
         d.setTitle(title);
         d.setHeaderText(null);
         d.setGraphic(null);
