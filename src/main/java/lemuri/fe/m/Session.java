@@ -5,6 +5,8 @@ import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import lemuri.be.dto.Host;
 import lemuri.be.dto.SessionStatus;
 import lemuri.be.service.Transport;
@@ -20,6 +22,8 @@ public class Session {
     public final Transport transport;
     public final long startup = System.currentTimeMillis();
     public final ObjectProperty<SessionStatus> state = new SimpleObjectProperty<>(SessionStatus.CONNECTING);
+    /** Why the connection failed, in the user's words; set with the ERROR state. */
+    public final StringProperty error = new SimpleStringProperty("");
     /**
      * For a tab: what is typed in one of its parts goes to all of them, like tmux synchronize-panes.
      * Off at the start, and off again when the tab is back to one part.

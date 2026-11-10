@@ -19,7 +19,7 @@
 - **Live metrics**: CPU, RAM, disks and uptime, read over SSH with no agent to install.
 - **Team sharing**: send a host with its password, sealed for one contact and signed by you, directly over the local network or as an encrypted text for email or chat. No server, no account.
 - **Ghost mode**: the window becomes a see-through panel on the desktop, which can stick to a side of the screen.
-- Tray icon, light and dark themes, English and Italian.
+- Tray icon, light and dark themes, English and Italian, updates from the app with signed releases.
 
 Every feature in detail: [docs/features.md](docs/features.md).
 
@@ -32,6 +32,8 @@ git clone https://github.com/getlemuri/lemuri
 cd lemuri
 ./mvnw javafx:run
 ```
+
+Later versions can be installed from the app itself (*Settings → Updates*): it checks once a day, verifies that the release tag is signed, and updates and rebuilds this folder for you, as long as it has no changes of your own. By hand, `git pull` (or `git checkout` of a newer tag) is enough: `bin/lemuri` rebuilds what changed.
 
 On Linux, `bin/lemuri --install-launcher` adds Lemuri to the applications menu, for your user only; with `--pin` it also keeps the icon in the GNOME dock (on other desktops, pin it from the menu). `--uninstall-launcher` removes it.
 

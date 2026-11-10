@@ -9,6 +9,7 @@ import lemuri.be.service.MetricsService;
 import lemuri.be.service.ProbeService;
 import lemuri.be.service.SharingService;
 import lemuri.be.service.Transport;
+import lemuri.be.service.UpdateService;
 import lemuri.be.service.Vault;
 import lemuri.be.terminal.SshTransport;
 import lemuri.fe.m.AppState;
@@ -25,25 +26,28 @@ public final class AppContext {
     public final SessionController sessions;
     public final MonitorController monitor;
     public final SharingController sharing;
+    public final UpdateController updates;
 
     public AppContext(HostRepository repository, Vault vault, MetricsService metrics,
-                      ProbeService probe, SharingService sharing, Function<Host, SshTransport.UserPrompts> requests) {
-        this(repository, vault, metrics, probe, sharing, (state, hosts) -> new SessionController(state, hosts, requests));
+                      ProbeService probe, SharingService sharing, UpdateService updates,
+                      Function<Host, SshTransport.UserPrompts> requests) {
+        this(repository, vault, metrics, probe, sharing, updates, (state, hosts) -> new SessionController(state, hosts, requests));
     }
 
     private AppContext(HostRepository repository, Vault vault, MetricsService metrics, ProbeService probe, SharingService sharing,
-                       BiFunction<AppState, HostController, SessionController> sessions) {
+                       UpdateService updates, BiFunction<AppState, HostController, SessionController> sessions) {
         this.vault = vault;
         this.hosts = new HostController(state, repository, vault);
         this.sessions = sessions.apply(state, hosts);
         this.monitor = new MonitorController(state, hosts, metrics, probe, vault);
         this.sharing = new SharingController(state, sharing);
+        this.updates = new UpdateController(updates);
     }
 
     /** For the interface tests: sessions get the transports made by {@code transports}, never a real SSH connection. */
     public static AppContext withTransports(HostRepository repository, Vault vault, MetricsService metrics, ProbeService probe,
                                             SharingService sharing, Function<Host, Transport> transports) {
-        return new AppContext(repository, vault, metrics, probe, sharing,
+        return new AppContext(repository, vault, metrics, probe, sharing, UpdateService.NONE,
                 (state, hosts) -> new SessionController(state, hosts, transports, Platform::runLater));
     }
 
@@ -51,6 +55,7 @@ public final class AppContext {
     public void stop() {
         monitor.stop();
         sharing.stop();
+        updates.stop();
         sessions.closeAll();
     }
 }

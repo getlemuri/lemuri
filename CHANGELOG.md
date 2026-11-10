@@ -16,6 +16,8 @@ What changes for users, version by version. The format follows [Keep a Changelog
 - Tooltips were white on a dark theme: they are now always dark with light grey text.
 
 ### Added
+- Updates from the app: a daily check on GitHub (it can be turned off) and *Settings → Updates → Check now*. A new version shows in the status bar with its notes; *Update and restart* installs it only if its tag is signed with the release key, builds it and restarts, and goes back to the previous version if anything fails.
+- When a connection fails, the terminal shows why in the middle, like the connecting screen, with *Retry* (a new connection in the same tab or split part), *Show the terminal* and *Close*.
 - The app starts with the bottom panel open on a shell on this computer.
 - The host tree shows how full each host's disk is, with a small bar coloured by usage; the tooltip lists all its disks. To keep it current, the metrics of your hosts are read every 5 minutes while the app is open, unless the reachability check is set to never.
 - `bin/lemuri --install-launcher [--pin]`: Lemuri in the applications menu of Linux desktops and, on request, in the GNOME dock.

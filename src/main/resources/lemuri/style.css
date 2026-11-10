@@ -728,6 +728,8 @@
 .connecting-spinner { -fx-progress-color: #7cc4ff; -fx-pref-width: 34; -fx-pref-height: 34; }
 .connecting-title { -fx-text-fill: #e6edf3; -fx-font-size: 14px; }
 .connecting-where { -fx-text-fill: #8b949e; -fx-font-size: 12px; -fx-font-family: "DejaVu Sans Mono", monospace; }
+.connecting-why { -fx-text-fill: #f0a8a8; -fx-font-size: 13px; }
+.icon.connecting-failed-icon { -fx-stroke: #f85149; }
 
 /* A split tab: thin lines between its terminals, a little brighter under the mouse; see-through in ghost mode too. */
 .terminal-split, .terminal-split > .split-pane-divider { -fx-background-color: #000000; -fx-padding: 0; -fx-background-insets: 0; -fx-box-border: transparent; }

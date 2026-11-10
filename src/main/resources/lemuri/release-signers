@@ -1,0 +1,3 @@
+# Keys that sign the release tags (git tag -s): an update is installed only if its tag is signed by one of them.
+# Format of ssh-keygen ALLOWED SIGNERS; git verify-tag reads it.
+releases@getlemuri namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFcZOa0SthciGOWn4TPNMyw0y5OnUyAehZBZlWbKxqD7

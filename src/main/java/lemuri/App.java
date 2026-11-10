@@ -1,9 +1,7 @@
 package lemuri;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Locale;
-import java.util.Properties;
 import java.util.prefs.Preferences;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -14,6 +12,8 @@ import lemuri.be.monitoring.Probe;
 import lemuri.be.sharing.Sharing;
 import lemuri.be.storage.FileVault;
 import lemuri.be.storage.JsonHostRepository;
+import lemuri.be.update.GitUpdater;
+import lemuri.be.update.Versions;
 import lemuri.be.util.I18n;
 import lemuri.be.util.LegacyNames;
 import lemuri.be.util.Log;
@@ -28,6 +28,7 @@ import lemuri.fe.v.SessionViews;
 import lemuri.fe.v.SharingDialogs;
 import lemuri.fe.v.Splash;
 import lemuri.fe.v.Tray;
+import lemuri.fe.v.UpdateDialogs;
 import lemuri.fe.v.WindowFrame;
 
 /**
@@ -39,13 +40,7 @@ public class App extends Application {
     public static final String VERSION = version();
 
     private static String version() {
-        Properties p = new Properties();
-        try (InputStream in = App.class.getResourceAsStream("/lemuri/version.properties")) {
-            if (in != null) p.load(in);
-        } catch (IOException e) {
-            // Without the file the version is unknown, nothing else changes.
-        }
-        String v = p.getProperty("version", "?");
+        String v = Versions.current();
         return "v" + (v.matches("\\d+\\.\\d+\\.0") ? v.substring(0, v.length() - 2) : v);
     }
     // The language: the one chosen in the menu, or the system one if there is a translation, otherwise English.
@@ -124,7 +119,7 @@ public class App extends Application {
         FileVault vault = new FileVault();
         Metrics metrics = new Metrics(vault);
         AppContext app = new AppContext(new JsonHostRepository(), vault, metrics,
-                new Probe(), new Sharing(vault), h -> Dialogs.sshRequests(h, vault));
+                new Probe(), new Sharing(vault), GitUpdater.here(), h -> Dialogs.sshRequests(h, vault));
         SessionViews.attach(app);
         Console console = new Console(app);
         ghost = console.ghost();
@@ -137,6 +132,8 @@ public class App extends Application {
             stage.close();
             Platform.exit();
         };
+        app.updates.quit = quit;
+        UpdateDialogs.browser(getHostServices()::showDocument);
         // With the tray icon, the X only hides the window: sessions stay open and you quit from the icon menu.
         Runnable closeWindow = () -> {
             if (Tray.present()) Tray.hide(stage);
@@ -164,6 +161,7 @@ public class App extends Application {
             app.sharing.onArrival = i -> SharingDialogs.propose(app, i);
             app.sharing.lan.onRequest = r -> SharingDialogs.pairingRequest(app.sharing.lan, r);
             app.sharing.restart();
+            app.updates.launch();
         };
     }
 

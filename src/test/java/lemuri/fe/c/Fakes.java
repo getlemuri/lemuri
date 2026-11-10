@@ -102,6 +102,10 @@ final class Fakes {
             state.accept(s, null);
         }
 
+        void state(SessionStatus s, String message) {
+            state.accept(s, message);
+        }
+
         @Override public void onData(Consumer<String> cb) {}
         @Override public void onState(BiConsumer<SessionStatus, String> cb) { state = cb; }
         @Override public void launch(int columns, int lines) {}

@@ -138,17 +138,59 @@ public final class SettingsDialog {
                         new Ui.Detail(I18n.t("settings.logs"), Ui.code(data.resolve("logs").toString())),
                         new Ui.Detail("Java", new Label(System.getProperty("java.version")))))));
 
-        List<Page> pages = List.of(appearance, vault, backup, server, network, info);
+        // ── Updates ── (the check button acts right away; the automatic check is a choice to apply)
+        CheckBox automaticUpdates = new CheckBox(I18n.t("settings.updates.automatic"));
+        automaticUpdates.setSelected(app.updates.automatic());
+        Label updateState = new Label();
+        updateState.setWrapText(true);
+        Button showUpdate = Ui.primary(I18n.t("settings.updates.show"), "download", () -> {
+            if (app.updates.available.get() != null) UpdateDialogs.offer(app.updates, app.updates.available.get());
+        });
+        Runnable onUpdates = () -> {
+            var r = app.updates.available.get();
+            long last = app.updates.lastCheck();
+            updateState.setText(r != null ? I18n.t("settings.updates.available", r.tag())
+                    : last == 0 ? I18n.t("settings.updates.never")
+                    : I18n.t("settings.updates.latest", "v" + app.updates.current(), Ui.dateTime(last)));
+            showUpdate.setVisible(r != null);
+            showUpdate.setManaged(r != null);
+        };
+        Button checkUpdates = Ui.button(I18n.t("settings.updates.check"), "refresh", () -> {});
+        checkUpdates.setOnAction(e -> {
+            updateState.setText(I18n.t("settings.updates.checking"));
+            app.updates.checkNow().whenComplete((r, error) -> Platform.runLater(() -> {
+                if (error != null) {
+                    Throwable t = error.getCause() != null ? error.getCause() : error;
+                    updateState.setText(I18n.t("settings.updates.error", t.getMessage() == null ? t.toString() : t.getMessage()));
+                    return;
+                }
+                onUpdates.run();
+                // Asked by hand: what is new opens right away.
+                r.ifPresent(x -> UpdateDialogs.offer(app.updates, x));
+            }));
+        });
+        checkUpdates.disableProperty().bind(app.updates.checking);
+        // Weak: the setting window goes, the controller stays; the label keeps the listener alive while it is shown.
+        javafx.beans.InvalidationListener followUpdates = o -> onUpdates.run();
+        updateState.getProperties().put("followUpdates", followUpdates);
+        app.updates.available.addListener(new javafx.beans.WeakInvalidationListener(followUpdates));
+        onUpdates.run();
+        Page updates = page(I18n.t("settings.updates"), "download",
+                group(I18n.t("common.status"), updateState, line(checkUpdates, showUpdate)),
+                group(I18n.t("settings.updates.automaticGroup"), automaticUpdates, note(I18n.t("settings.updates.note"))));
+
+        List<Page> pages = List.of(appearance, vault, backup, server, network, updates, info);
 
         // ── The choices to apply: Apply is enabled only if something changed ──
         Runnable[] save = new Runnable[1];
         Supplier<String> choices = () -> dark.isSelected() + "|" + frame.isSelected() + "|"
                 + splash.isSelected() + "|" + language.getSelectionModel().getSelectedIndex() + "|" + lan.isSelected()
-                + "|" + probe.getSelectionModel().getSelectedIndex() + "|" + typesCommands.isSelected();
+                + "|" + probe.getSelectionModel().getSelectedIndex() + "|" + typesCommands.isSelected()
+                + "|" + automaticUpdates.isSelected();
         String[] savedOnes = {choices.get()};
         SimpleBooleanProperty changedOnes = new SimpleBooleanProperty(false);
         Runnable compare = () -> changedOnes.set(!choices.get().equals(savedOnes[0]));
-        for (CheckBox c : List.of(dark, frame, splash, lan, typesCommands)) c.selectedProperty().addListener(o -> compare.run());
+        for (CheckBox c : List.of(dark, frame, splash, lan, typesCommands, automaticUpdates)) c.selectedProperty().addListener(o -> compare.run());
         probe.getSelectionModel().selectedIndexProperty().addListener(o -> compare.run());
         language.getSelectionModel().selectedIndexProperty().addListener(o -> compare.run());
         save[0] = () -> {
@@ -161,6 +203,7 @@ public final class SettingsDialog {
             int minutes = probeChoices[Math.max(0, probe.getSelectionModel().getSelectedIndex())];
             if (minutes != MonitorController.probeMinutes()) app.monitor.probeMinutes(minutes);
             Terminal.typesCommands(typesCommands.isSelected());
+            app.updates.automatic(automaticUpdates.isSelected());
             savedOnes[0] = choices.get();
             changedOnes.set(false);
         };

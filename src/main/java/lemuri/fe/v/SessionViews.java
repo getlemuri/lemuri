@@ -8,6 +8,7 @@ import javafx.collections.ListChangeListener;
 import javafx.concurrent.Worker;
 import javafx.css.PseudoClass;
 import javafx.geometry.Insets;
+import javafx.scene.control.Button;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -121,7 +122,7 @@ public final class SessionViews {
         Terminal t = terminal(s);
         StackPane.setMargin(bar, new Insets(0, t.scrollBarWidth(), 0, 0));
         t.ghostShown().addListener(new WeakChangeListener<>(keepOffScrollBar(bar, t)));
-        slot.getChildren().setAll(t, connecting(s), bar);
+        slot.getChildren().setAll(t, connecting(s), failed(s), bar);
         return slot;
     }
 
@@ -148,6 +149,47 @@ public final class SessionViews {
         box.getStyleClass().add("connecting");
         box.visibleProperty().bind(s.state.isEqualTo(SessionStatus.CONNECTING));
         box.managedProperty().bind(box.visibleProperty());
+        return box;
+    }
+
+    /**
+     * Over the terminal when the connection failed, in the same place as the spinner: why, and Retry, which opens
+     * a new connection in the same tab or part. "Show the terminal" uncovers the full output (the details of ssh,
+     * a changed host key); Close closes the tab or part.
+     */
+    private static Node failed(Session s) {
+        Label icon = new Label(null, Icons.icon("plug-off", 30, "connecting-failed-icon"));
+        Label what = new Label(I18n.t("session.failedTo", s.host.name));
+        what.getStyleClass().add("connecting-title");
+        Label why = new Label();
+        // The SSH messages start in lower case (they follow "ssh: " in the terminal): here they open a sentence.
+        why.textProperty().bind(javafx.beans.binding.Bindings.createStringBinding(() -> {
+            String e = s.error.get();
+            return e == null || e.isEmpty() ? "" : e.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + e.substring(1);
+        }, s.error));
+        why.setWrapText(true);
+        why.setMaxWidth(520);
+        why.setAlignment(Pos.CENTER);
+        why.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        why.getStyleClass().add("connecting-why");
+        Label where = new Label(s.host.destination());
+        where.getStyleClass().add("connecting-where");
+        javafx.beans.property.BooleanProperty uncovered = new javafx.beans.property.SimpleBooleanProperty();
+        Button retry = Ui.primary(I18n.t("session.retry"), "refresh", () -> app.sessions.retry(s));
+        Button terminal = Ui.button(I18n.t("session.showTerminal"), "terminal", () -> uncovered.set(true));
+        Button close = Ui.button(I18n.t("window.close"), "close", () -> app.sessions.closePane(s));
+        HBox buttons = new HBox(8, retry, terminal, close);
+        buttons.setAlignment(Pos.CENTER);
+        VBox.setMargin(buttons, new Insets(8, 0, 0, 0));
+        VBox box = new VBox(10, icon, what, why, where, buttons);
+        box.setAlignment(Pos.CENTER);
+        box.getStyleClass().addAll("connecting", "connecting-failed");
+        box.visibleProperty().bind(s.state.isEqualTo(SessionStatus.ERROR).and(uncovered.not()));
+        box.managedProperty().bind(box.visibleProperty());
+        // Retry gets the focus, so Enter or Space tries again at once.
+        box.visibleProperty().addListener((o, before, now) -> {
+            if (now) javafx.application.Platform.runLater(retry::requestFocus);
+        });
         return box;
     }
 

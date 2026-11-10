@@ -309,7 +309,25 @@ public final class Console extends BorderPane {
         onVault.run();
         Label version = new Label("Lemuri " + App.VERSION, AppIcon.view(14));
         version.getStyleClass().add("status-item");
-        HBox bar = new HBox(sessionsStatus, contacts, Ui.space(), Transfers.indicator(), vault, version);
+        // A new version found by the daily check: until it is installed, skipped or put off.
+        Label update = new Label();
+        update.getStyleClass().addAll("status-item", "status-update");
+        update.setGraphic(Icons.icon("download", 13, "color-ok"));
+        update.setOnMouseClicked(e -> {
+            if (app.updates.offered.get() != null) UpdateDialogs.offer(app.updates, app.updates.offered.get());
+        });
+        Runnable onUpdate = () -> {
+            var r = app.updates.offered.get();
+            update.setVisible(r != null);
+            update.setManaged(r != null);
+            if (r != null) {
+                update.setText(I18n.t("status.update", r.tag()));
+                update.setTooltip(new Tooltip(I18n.t("status.update.tip")));
+            }
+        };
+        app.updates.offered.addListener(o -> onUpdate.run());
+        onUpdate.run();
+        HBox bar = new HBox(sessionsStatus, contacts, Ui.space(), Transfers.indicator(), update, vault, version);
         bar.getStyleClass().add("status-bar");
         bar.setAlignment(Pos.CENTER_LEFT);
         return bar;

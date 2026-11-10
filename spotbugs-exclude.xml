@@ -12,7 +12,7 @@
 
   <!-- Public final JavaFX properties and observable lists: the views bind to them. -->
   <Match>
-    <Class name="~lemuri\.fe\.(m\.(AppState|Task)|v\.ActivityLog)" />
+    <Class name="~lemuri\.fe\.(m\.(AppState|Task)|v\.ActivityLog|c\.UpdateController)" />
     <Bug pattern="PA_PUBLIC_MUTABLE_OBJECT_ATTRIBUTE" />
   </Match>
 
@@ -126,6 +126,14 @@
       <Class name="lemuri.be.terminal.JumpProxy" />
       <Class name="lemuri.be.terminal.SshTransport$Prompts" />
     </Or>
+  </Match>
+
+  <!-- The updater runs fixed programs: git, ssh-keygen, the mvnw of the app's own copy and /bin/sh with a fixed
+       script (the pid and the launcher path are arguments, never part of the script). The only outside value is the
+       release tag, accepted only as "v" followed by digits and dots (Versions.valid). -->
+  <Match>
+    <Class name="lemuri.be.update.GitUpdater" />
+    <Bug pattern="COMMAND_INJECTION" />
   </Match>
 
   <!-- "lemuri -s" runs stty with a fixed program name and a mode chosen in the code ("echo" or "-echo"). -->

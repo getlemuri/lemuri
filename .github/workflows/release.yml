@@ -1,4 +1,4 @@
-# A tag like v0.2.0 becomes a GitHub release: the full checks run again on it, and the release notes are the
+# A signed tag like v0.2.0 becomes a GitHub release: the full checks run again on it, and the release notes are the
 # section of CHANGELOG.md with that version. There are no ready-made packages yet: GitHub attaches the sources.
 name: Release
 
@@ -21,6 +21,12 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: The tag is signed with a release key
+        # The app installs an update only if its tag is signed with a key in release-signers: an unsigned tag
+        # would become a release that nobody can install from the app.
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=src/main/resources/lemuri/release-signers verify-tag "$GITHUB_REF_NAME"
       - name: Build and test
         run: ./mvnw -B verify && ./mvnw -B spotbugs:check
       - name: The version of the tag is the one in pom.xml

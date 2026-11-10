@@ -77,6 +77,16 @@ public final class Pane {
         return first.split(target, added, sideBySide) || second.split(target, added, sideBySide);
     }
 
+    /** Puts {@code fresh} where {@code old} is, same place and size. False if {@code old} is not here. */
+    public boolean replace(Session old, Session fresh) {
+        if (!divided()) {
+            if (session != old) return false;
+            session = fresh;
+            return true;
+        }
+        return first.replace(old, fresh) || second.replace(old, fresh);
+    }
+
     /** Takes {@code s} away: the part next to it takes all the space. False if {@code s} is not here or is the only one. */
     public boolean remove(Session s) {
         if (!divided()) return false;

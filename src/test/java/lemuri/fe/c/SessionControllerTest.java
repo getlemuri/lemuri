@@ -207,6 +207,54 @@ class SessionControllerTest {
     }
 
     @Test
+    void retryReplacesAFailedTabInTheSamePlace() {
+        Session first = c.openSession(state.host("web"));
+        Session failed = c.openSession(state.host("db"));
+        Session last = c.openSession(state.host("web"));
+        c.showSession(failed);
+        transport(failed).state(SessionStatus.ERROR, "the server does not answer");
+        assertEquals("the server does not answer", failed.error.get());
+
+        Session fresh = c.retry(failed);
+
+        assertEquals(List.of(first, fresh, last), state.sessions);
+        assertEquals("db", fresh.host.id);
+        assertEquals(SessionStatus.CONNECTING, fresh.state.get());
+        assertTrue(transport(failed).closed);
+        assertSame(fresh, state.activeSession.get("db"));
+        assertEquals(new Selection.HostItem("db"), state.node());
+    }
+
+    @Test
+    void retryReplacesAFailedPartInTheSamePlace() {
+        Session tab = c.openSession(state.host("web"));
+        Session below = c.split(tab, false, state.host("db"));
+        Session right = c.split(tab, true);
+        transport(below).state(SessionStatus.ERROR, "timeout");
+
+        Session fresh = c.retry(below);
+
+        assertEquals(List.of(tab, right, fresh), tab.panes());
+        assertFalse(tab.layout().sideBySide(), "still below");
+        assertSame(tab, fresh.owner());
+        assertFalse(state.sessions.contains(below));
+    }
+
+    @Test
+    void retryOfTheTabPartKeepsTheLayout() {
+        Session tab = c.openSession(state.host("web"));
+        Session right = c.split(tab, true, state.host("db"));
+        transport(tab).state(SessionStatus.ERROR, "timeout");
+
+        Session fresh = c.retry(tab);
+
+        Session now = right.tab();
+        assertEquals(List.of(fresh, right), now.panes());
+        assertEquals("web", fresh.host.id);
+        assertFalse(state.sessions.contains(tab));
+    }
+
+    @Test
     void exitInAConnectedSshTabOpensALocalShellInItsPlace() {
         Session first = c.openSession(state.host("web"));
         Session ssh = c.openSession(state.host("db"));

@@ -66,6 +66,7 @@ public final class SessionController {
         s.owner(owner);
         tr.onState((state, msg) -> fx.accept(() -> {
             SessionStatus before = s.state.get();
+            if (state == SessionStatus.ERROR) s.error.set(msg != null ? msg : "");
             s.state.set(state);
             if (t != null && state == SessionStatus.CONNECTED) {
                 t.finish(Task.Outcome.OK, null);
@@ -124,6 +125,27 @@ public final class SessionController {
             closeSession(ended);
         }
         if (inView) showSession(fresh);
+    }
+
+    /**
+     * A new connection to the host of {@code failed}, in its place: the same tab in the row, or the same part
+     * of a split tab. The failed one is closed; the new one gets the view if the failed one had it.
+     */
+    public Session retry(Session failed) {
+        Session tab = failed.tab();
+        if (!state.sessions.contains(failed)) return null;
+        boolean inView = state.node() instanceof Selection.HostItem d && "console".equals(state.position.get().item())
+                && tab.panes().contains(state.activeSession.get(d.hostId()));
+        Session fresh;
+        if (tab.panes().size() > 1) {
+            fresh = createSession(failed.host, tab, s -> tab.layout().replace(failed, s), -1);
+            closePane(failed);
+        } else {
+            fresh = createSession(failed.host, null, null, state.sessions.indexOf(failed) + 1);
+            closeSession(failed);
+        }
+        if (inView) showSession(fresh);
+        return fresh;
     }
 
     /** Opens a session and goes to the host console. */

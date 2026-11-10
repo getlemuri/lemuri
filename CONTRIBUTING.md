@@ -11,7 +11,7 @@ Thanks for wanting to help!
 - **Other distributions**: `bash src/test/distros/run.sh` (Docker needed; `DOCKER="sudo docker"` if your user is not in the docker group) starts SSH servers of seven distributions in containers, on 127.0.0.1 only, runs `DistrosTest` against them (sign-in with password and key, shell, metrics, updates and reboot, SFTP, jump host, `lemuri -s`) and removes them. A weekly GitHub Action runs it too.
 - **Layers**: code in `be` must not use JavaFX or anything in `fe`; the frontend reaches the backend only through the interfaces in `be/service` (see [docs/architecture.md](docs/architecture.md)).
 - **Changelog**: a change users will notice gets a line under *Unreleased* in [CHANGELOG.md](CHANGELOG.md).
-- **Releases**: set the version in `pom.xml`, rename *Unreleased* in `CHANGELOG.md` to the version with its date, commit, then push a tag like `v0.2.0`. The Release workflow checks everything again and publishes the release with that section of the changelog as notes.
+- **Releases**: set the version in `pom.xml`, rename *Unreleased* in `CHANGELOG.md` to the version with its date, commit, then push a **signed** tag like `v0.2.0` (`git tag -s v0.2.0 -m v0.2.0`, with an SSH key listed in `src/main/resources/lemuri/release-signers`). The Release workflow refuses unsigned tags, checks everything again and publishes the release with that section of the changelog as notes.
 - **Security issues**: see [SECURITY.md](SECURITY.md), not public issues.
 
 ## Running
