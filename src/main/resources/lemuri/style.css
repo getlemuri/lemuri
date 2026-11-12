@@ -92,6 +92,16 @@
 }
 .brand-name { -fx-font-size: 15px; -fx-font-weight: bold; }
 .brand-version { -fx-text-fill: -text-faint; }
+/* The "!" of a newer version, next to the version: a small amber disc, also on the dark bar. */
+.brand-update, .brand-update:hover, .brand-update:focused, .brand-update:armed {
+    -fx-background-color: -warn; -fx-background-radius: 9; -fx-background-insets: 0;
+    -fx-border-width: 0; -fx-effect: null;
+    -fx-text-fill: #1e1e1e; -fx-font-size: 12px; -fx-font-weight: bold;
+    -fx-min-width: 18; -fx-pref-width: 18; -fx-max-width: 18;
+    -fx-min-height: 18; -fx-pref-height: 18; -fx-max-height: 18;
+    -fx-padding: 0; -fx-cursor: hand;
+}
+.brand-update:hover { -fx-background-color: derive(-warn, 25%); }
 
 .search {
     -fx-alignment: center-left;

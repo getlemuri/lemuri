@@ -79,7 +79,22 @@ public final class Console extends BorderPane {
         // The icon sits in a box as wide as the activity bar (see .brand-box), right above it.
         Region box = AppIcon.tile();
         box.getStyleClass().add("brand-box");
-        HBox brand = new HBox(6, box, name, version);
+        // A yellow "!" next to the version for as long as a newer one is out; a click shows what is new.
+        Button newer = new Button("!");
+        newer.getStyleClass().add("brand-update");
+        newer.setFocusTraversable(false);
+        newer.setOnAction(e -> {
+            if (app.updates.available.get() != null) UpdateDialogs.offer(app.updates, app.updates.available.get());
+        });
+        Runnable onNewer = () -> {
+            var r = app.updates.available.get();
+            newer.setVisible(r != null);
+            newer.setManaged(r != null);
+            if (r != null) newer.setTooltip(new Tooltip(I18n.t("update.title", r.tag())));
+        };
+        app.updates.available.addListener(o -> onNewer.run());
+        onNewer.run();
+        HBox brand = new HBox(6, box, name, version, newer);
         brand.setAlignment(Pos.CENTER_LEFT);
         // The icon box goes from the top to the bottom of the bar.
         brand.setMaxHeight(Double.MAX_VALUE);

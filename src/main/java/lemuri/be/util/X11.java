@@ -11,7 +11,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
@@ -137,6 +139,66 @@ public final class X11 implements AutoCloseable {
             // A round trip, so the request has surely left before the connection closes.
             x.atom("_NET_ACTIVE_WINDOW");
             return true;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Tells the window manager that the window of this process with that title, opened over another one, is a
+     * dialog: JavaFX leaves it a normal window, and a dock then counts it as one more window of the app.
+     * False if it is not on the screen (yet) or there is no X display.
+     */
+    public static boolean markDialog(String title) {
+        return markDialogs(title);
+    }
+
+    /**
+     * The same for the windows of this process created over another one and not on the screen yet, which have no
+     * title so far. This is the moment that counts: GNOME's dock counts the windows of an app when they appear.
+     */
+    public static boolean markUnshownDialogs() {
+        return markDialogs(null);
+    }
+
+    private static boolean markDialogs(String title) {
+        String display = System.getenv("DISPLAY");
+        if (display == null || Os.MAC) return false;
+        try (X11 x = connect(display)) {
+            int wmPid = x.atom("_NET_WM_PID"), wmName = x.atom("_NET_WM_NAME");
+            int transientFor = x.atom("WM_TRANSIENT_FOR"), type = x.atom("_NET_WM_WINDOW_TYPE");
+            int dialog = x.atom("_NET_WM_WINDOW_TYPE_DIALOG");
+            long pid = ProcessHandle.current().pid();
+            // The window manager lists the windows on the screen; one not shown yet is only a child of the root.
+            int[] shown = ints(x.property(x.root, x.atom("_NET_CLIENT_LIST")));
+            int[] windows = shown;
+            if (title == null) {
+                Set<Integer> listed = new HashSet<>();
+                for (int w : shown) listed.add(w);
+                windows = Arrays.stream(x.children(x.root)).filter(w -> !listed.contains(w)).toArray();
+            }
+            boolean found = false;
+            for (int w : windows) {
+                try {
+                    int[] p = ints(x.property(w, wmPid));
+                    if (p.length != 1 || Integer.toUnsignedLong(p[0]) != pid) continue;
+                    if (title != null && !new String(x.property(w, wmName), StandardCharsets.UTF_8).equals(title)) continue;
+                    // Only windows that belong to another one: the main window may have the same title.
+                    if (ints(x.property(w, transientFor)).length != 1) continue;
+                } catch (IOException gone) {
+                    // A window of another program closed in the meantime.
+                    continue;
+                }
+                // ChangeProperty, replacing the value with one atom (type ATOM is 4).
+                ByteBuffer b = buffer(28);
+                b.put((byte) 18).put((byte) 0).putShort((short) 7).putInt(w).putInt(type).putInt(4)
+                        .put((byte) 32).put((byte) 0).putShort((short) 0).putInt(1).putInt(dialog);
+                write(x.channel, b);
+                found = true;
+            }
+            // A round trip, so the requests have surely left before the connection closes.
+            x.atom("_NET_ACTIVE_WINDOW");
+            return found;
         } catch (IOException | RuntimeException e) {
             return false;
         }
@@ -320,6 +382,17 @@ public final class X11 implements AutoCloseable {
         write(channel, b);
         ByteBuffer where = reply();
         return new int[] {where.getShort(12), where.getShort(14), Short.toUnsignedInt(size.getShort(16)), Short.toUnsignedInt(size.getShort(18))};
+    }
+
+    /** The windows directly inside {@code window} (QueryTree). */
+    private int[] children(int window) throws IOException {
+        ByteBuffer b = buffer(8);
+        b.put((byte) 15).put((byte) 0).putShort((short) 2).putInt(window);
+        write(channel, b);
+        ByteBuffer r = reply();
+        int[] out = new int[Math.min(Short.toUnsignedInt(r.getShort(16)), (r.capacity() - 32) / 4)];
+        for (int i = 0; i < out.length; i++) out[i] = r.getInt(32 + 4 * i);
+        return out;
     }
 
     private int atom(String name) throws IOException {

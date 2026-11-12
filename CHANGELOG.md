@@ -4,6 +4,15 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-12
+
+### Added
+- A yellow *!* next to the version in the top bar for as long as a newer version is out: a click shows what is new.
+
+### Fixed
+- After an update, *Restart now* and *Close* did nothing and the window could not be closed.
+- On Linux, an open dialog no longer shows as a second window of Lemuri in the dock.
+
 ## [0.1.1] - 2026-11-12
 
 ### Fixed
@@ -58,6 +67,7 @@ First public version.
 - Backup and restore; the `lemuri` command opens a shell to a saved host from any terminal.
 - English and Italian, light and dark themes.
 
-[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/getlemuri/lemuri/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/getlemuri/lemuri/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/getlemuri/lemuri/releases/tag/v0.1.0

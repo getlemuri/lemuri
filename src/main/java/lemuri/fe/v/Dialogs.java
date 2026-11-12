@@ -24,6 +24,7 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.DialogEvent;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -31,6 +32,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 import javafx.util.StringConverter;
@@ -38,6 +40,7 @@ import lemuri.App;
 import lemuri.be.dto.Host;
 import lemuri.be.service.Vault;
 import lemuri.be.terminal.SshTransport;
+import lemuri.be.util.X11;
 import lemuri.be.util.Folders;
 import lemuri.be.util.I18n;
 import lemuri.be.util.Log;
@@ -86,6 +89,43 @@ public final class Dialogs {
         p.setHeader(centredTitle(head));
         // With the custom frame, dialogs too have the app bar in place of the system one.
         if (WindowFrame.active()) DialogFrame.install(d, title);
+        markDialogs();
+        d.addEventHandler(DialogEvent.DIALOG_SHOWN, e -> {
+            if (!d.getDialogPane().getScene().getWindow().getProperties().containsKey(MARKED)) markLater(d.getTitle());
+        });
+    }
+
+    private static final String MARKED = "lemuri.x11-dialog";
+    private static boolean markingDialogs;
+
+    /**
+     * On X the window manager is told that the windows opened over another one are dialogs, so the dock does not
+     * count them as more windows of the app (one more dot next to the icon). JavaFX adds a window to its list
+     * after creating it and before putting it on the screen, and GNOME's dock counts the windows as they appear.
+     */
+    private static void markDialogs() {
+        if (markingDialogs || System.getenv("DISPLAY") == null) return;
+        markingDialogs = true;
+        Window.getWindows().addListener((ListChangeListener<Window>) c -> {
+            while (c.next()) {
+                for (Window w : c.getAddedSubList()) {
+                    if (!(w instanceof Stage s) || s.getOwner() == null) continue;
+                    if (X11.markUnshownDialogs()) s.getProperties().put(MARKED, true);
+                }
+            }
+        });
+    }
+
+    /** The same once the window is on the screen, for when it could not be found before. A few tries, off the JavaFX thread. */
+    private static void markLater(String title) {
+        if (title == null || System.getenv("DISPLAY") == null) return;
+        Thread.ofVirtual().start(() -> {
+            try {
+                for (int i = 0; i < 10 && !X11.markDialog(title); i++) Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
 
     /** The title of a dialog in the middle of its bar, with the app icon, name and version on the left. */

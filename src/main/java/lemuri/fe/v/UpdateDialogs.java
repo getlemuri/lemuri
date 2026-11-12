@@ -89,16 +89,18 @@ public final class UpdateDialogs {
         ButtonType restart = new ButtonType(I18n.t("update.restart"), ButtonBar.ButtonData.OK_DONE);
         // Nothing to press while git and Maven work: closing halfway would leave the copy between two versions.
         d.getDialogPane().getButtonTypes().setAll(ButtonType.CLOSE);
-        Button close = (Button) d.getDialogPane().lookupButton(ButtonType.CLOSE);
-        close.setDisable(true);
+        d.getDialogPane().lookupButton(ButtonType.CLOSE).setDisable(true);
+        // A flag and not the state of the Close button: the pane makes new buttons when their list changes.
+        boolean[] working = {true};
         d.setOnCloseRequest(e -> {
-            if (close.isDisable()) e.consume();
+            if (working[0]) e.consume();
         });
 
         c.install(r, step -> {
             steps.getChildren().add(new Label("• " + step));
             now.setText(step);
         }).whenComplete((ok, error) -> javafx.application.Platform.runLater(() -> {
+            working[0] = false;
             body.getChildren().removeAll(head, note);
             if (error == null) {
                 Label done = new Label(I18n.t("update.done", r.tag()));
@@ -116,7 +118,7 @@ public final class UpdateDialogs {
                 why.setWrapText(true);
                 why.setPrefRowCount(10);
                 body.getChildren().addAll(failed, why);
-                close.setDisable(false);
+                d.getDialogPane().lookupButton(ButtonType.CLOSE).setDisable(false);
             }
             d.getDialogPane().getScene().getWindow().sizeToScene();
         }));
