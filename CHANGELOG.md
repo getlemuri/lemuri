@@ -4,6 +4,8 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-12
+
 ### Fixed
 - A terminal closed while it was still signing in left its SSH connection open in the background.
 - The upload confirmation took about ten seconds to appear after the files were picked.
@@ -14,10 +16,15 @@ What changes for users, version by version. The format follows [Keep a Changelog
 - Moving the window, a dialog or the ghost window by dragging was jerky: it now follows the mouse smoothly.
 - Resizing the window or a dialog from its edges no longer shakes the opposite edge, and the terminals work out their columns and rows once, when the mouse is released.
 - Tooltips were white on a dark theme: they are now always dark with light grey text.
+- The mouse wheel scrolled the terminal far too much: it now moves 2 lines a notch.
+- Ghost mode: dialogs and file choosers opened while the main window is hidden no longer end up behind the ghost window.
 
 ### Added
 - Updates from the app: a daily check on GitHub (it can be turned off) and *Settings → Updates → Check now*. A new version shows in the status bar with its notes; *Update and restart* installs it only if its tag is signed with the release key, builds it and restarts, and goes back to the previous version if anything fails.
 - When a connection fails, the terminal shows why in the middle, like the connecting screen, with *Retry* (a new connection in the same tab or split part), *Show the terminal* and *Close*.
+- SSH security of each host, read only: a *Security* ring next to CPU, memory and disk, and three cards (connection, key and login, server) with the problems first, the line to change or the command to run under each one. It checks the negotiated algorithms, Terrapin, the server key and version, your key, the sshd settings, brute force protection, root login and pending security updates.
+- Shells on this computer in tabs: from the split menu, and in place of an SSH shell that ends with `exit`.
+- A filter box above the host tree.
 - The app starts with the bottom panel open on a shell on this computer.
 - The host tree shows how full each host's disk is, with a small bar coloured by usage; the tooltip lists all its disks. To keep it current, the metrics of your hosts are read every 5 minutes while the app is open, unless the reachability check is set to never.
 - `bin/lemuri --install-launcher [--pin]`: Lemuri in the applications menu of Linux desktops and, on request, in the GNOME dock.
@@ -28,6 +35,7 @@ What changes for users, version by version. The format follows [Keep a Changelog
 - Interactive mode: the names of an earlier `ls` stay clickable as long as the prompt is the same.
 - Ghost mode: the controls on the right of the bar are centred and grouped by separators; no light border around its menus.
 - Ghost mode: a docked window follows the mouse while it is resized, instead of a line showing the new edge.
+- Ghost mode: a docked window stays above the other windows until F11.
 - A new look for the number badges of the host tree and of the Team icon.
 - The scroll bar of the terminals has no track: only a thin thumb, right on the terminal.
 - F11 fades the window in and out, and it appears already in its place.
@@ -50,5 +58,6 @@ First public version.
 - Backup and restore; the `lemuri` command opens a shell to a saved host from any terminal.
 - English and Italian, light and dark themes.
 
-[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/getlemuri/lemuri/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/getlemuri/lemuri/releases/tag/v0.1.0
