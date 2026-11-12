@@ -44,7 +44,9 @@ class GitUpdaterTest {
         Files.writeString(upstream.resolve("bin/lemuri"), "#!/bin/sh\n");
         Files.writeString(upstream.resolve(".gitignore"), "target/\n");
         commit("0.1.0");
-        git(upstream, "-c", "tag.gpgSign=false", "tag", "-a", "v0.1.0", "-m", "v0.1.0");
+        // The identity is given here too: a machine without a git identity (the CI runner) refuses to tag.
+        git(upstream, "-c", "user.name=t", "-c", "user.email=t@example.org", "-c", "tag.gpgSign=false",
+                "tag", "-a", "v0.1.0", "-m", "v0.1.0");
         commit("0.2.0");
         signedTag("v0.2.0", key);
 
