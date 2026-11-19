@@ -176,6 +176,11 @@ verbose "Downloading from: $distributionUrl"
 verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
 
 # select .zip or .tar.gz
+# Lemuri: the checksum in maven-wrapper.properties is the one of the .zip; without unzip the .tar.gz would be
+# fetched and fail the check with a misleading "might be compromised". Say what is missing instead.
+if [ -n "${distributionSha256Sum-}" ] && ! command -v unzip >/dev/null; then
+  die "unzip is needed to install Maven the first time: install it (for example: sudo apt install unzip, sudo dnf install unzip)"
+fi
 if ! command -v unzip >/dev/null; then
   distributionUrl="${distributionUrl%.zip}.tar.gz"
   distributionUrlName="${distributionUrl##*/}"
