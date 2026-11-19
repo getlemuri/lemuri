@@ -14,7 +14,7 @@ Lemuri includes the following components. Their license texts are in [licenses/]
 | [error-prone annotations](https://errorprone.info/error_prone_annotations) | 2.50.0 | Apache 2.0 | Apache-2.0.txt |
 | [Java Native Access](https://github.com/java-native-access/jna) | 5.19.1 | Apache-2.0 (chosen; also available under LGPL-2.1-or-later) | Apache-2.0.txt, jna-libffi-LICENSE.txt |
 | [Java Native Access Platform](https://github.com/java-native-access/jna) | 5.19.1 | Apache-2.0 (chosen; also available under LGPL-2.1-or-later) | Apache-2.0.txt |
-| [Bouncy Castle Provider](https://www.bouncycastle.org/download/bouncy-castle-java/) | 1.86 | Bouncy Castle Licence | bouncycastle-LICENSE.txt |
+| [Bouncy Castle Provider](https://www.bouncycastle.org/download/bouncy-castle-java/) | 1.87 | Bouncy Castle Licence | bouncycastle-LICENSE.txt |
 | [JetBrains Java Annotations](https://github.com/JetBrains/java-annotations) | 26.1.0 | The Apache Software License, Version 2.0 | Apache-2.0.txt |
 | [Kotlin Stdlib](https://kotlinlang.org/) | 2.4.20 | Apache-2.0 | Apache-2.0.txt |
 | [pty4j](https://github.com/JetBrains/pty4j) | 0.14.0 | Eclipse Public License 1.0 | EPL-1.0.txt |
