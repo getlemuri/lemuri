@@ -4,6 +4,15 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-20
+
+### Fixed
+- Starting Lemuri could sometimes take more than ten seconds before the splash screen: after an update, `bin/lemuri` now builds offline first and goes online only if something is missing.
+- Clicking the Lemuri icon while the app is already open (or hidden in the tray) brings it up at once, without starting Java again; the same for `bin/lemuri --toggle`.
+
+### Changed
+- Bouncy Castle 1.87 and Maven 3.10.1.
+
 ## [0.1.2] - 2026-11-12
 
 ### Added
@@ -67,7 +76,8 @@ First public version.
 - Backup and restore; the `lemuri` command opens a shell to a saved host from any terminal.
 - English and Italian, light and dark themes.
 
-[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/getlemuri/lemuri/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/getlemuri/lemuri/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/getlemuri/lemuri/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/getlemuri/lemuri/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/getlemuri/lemuri/releases/tag/v0.1.0
