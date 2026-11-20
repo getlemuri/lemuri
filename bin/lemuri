@@ -146,7 +146,9 @@ classpath() {
 start_app() {
     local built="$APP/target/.lemuri-built" java jar javafx='' others="$APP/target/classes" jars
     if [ ! -f "$built" ] || [ -n "$(find "$APP/src/main" "$APP/pom.xml" -newer "$built" -print -quit)" ]; then
-        (cd "$APP" && ./mvnw -q process-classes) >&2 || return 1
+        # Offline first: online, Maven checks the remote repositories from time to time, which can take
+        # more than ten seconds with nothing on the screen. Online only if something is missing locally.
+        (cd "$APP" && { ./mvnw -q -o process-classes || ./mvnw -q process-classes; }) >&2 || return 1
         touch "$built"
     fi
     classpath || return 1
@@ -161,11 +163,24 @@ start_app() {
     "$java" --module-path "$javafx" --add-modules javafx.controls,javafx.web -cp "$others" lemuri.App
 }
 
+# Already running (maybe hidden in the tray): ask it directly to show itself, or with --toggle to show or hide the
+# terminal, as a second copy of the app would, but without starting Maven and a Java machine just for that.
+# Only if a lemuri.App of this user is running: a port left by a copy that crashed may now belong to something else.
+signal_running() {
+    local f=~/.lemuri/instance.port port code
+    command -v pgrep > /dev/null && pgrep -u "$(id -u)" -f 'lemuri\.App' > /dev/null || return 1
+    [ -r "$f" ] && read -r port code < "$f" && [ -n "$code" ] || return 1
+    exec 3<> "/dev/tcp/127.0.0.1/$port" || return 1
+    if [ "$1" = --toggle ]; then printf '%s toggle\n' "$code" >&3; else printf '%s\n' "$code" >&3; fi
+    exec 3>&-
+} 2> /dev/null
+
 case "$1" in
     -s|--shell|-l|--list|-h|--help) ;;
     --install-launcher) shift; install_launcher "$@"; exit ;;
     --uninstall-launcher) uninstall_launcher; exit ;;
     *)
+        signal_running "$1" && exit 0
         [ -t 1 ] && { start_app; exit; }
         # Started from an icon there is no terminal: without this a failure would look like nothing happening.
         mkdir -p ~/.cache/lemuri
