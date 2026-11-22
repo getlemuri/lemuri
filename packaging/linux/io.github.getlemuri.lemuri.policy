@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- The password prompt of an update: pkexec running lemuri-install says what it is for, instead of the generic
+     "run a program as root". Only that program, only an administrator, asked every time. -->
+<policyconfig>
+  <vendor>Lemuri</vendor>
+  <vendor_url>https://github.com/getlemuri/lemuri</vendor_url>
+  <action id="io.github.getlemuri.lemuri.install-update">
+    <description>Install an update of Lemuri</description>
+    <description xml:lang="it">Installare un aggiornamento di Lemuri</description>
+    <message>Lemuri needs the system password to install its update, after checking its signature.</message>
+    <message xml:lang="it">Lemuri chiede la password di sistema per installare il suo aggiornamento, dopo averne controllato la firma.</message>
+    <icon_name>lemuri</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/opt/lemuri/bin/lemuri-install</annotate>
+  </action>
+</policyconfig>

@@ -1,0 +1,34 @@
+#!/bin/sh
+# Installs an update of Lemuri, as root (pkexec runs it, after the system password): lemuri-install DEB SIG VERSION.
+# The backend has checked the package already, as the user; this checks it again where no process of the user can
+# reach it any more: a copy in a folder of root, its signature against the keys of the installed package (also
+# root's), its name and version, and that the version is newer than the installed one: an old package, signed when
+# it was new, may have holes fixed since. Only then apt installs that copy. Exit codes: 3 signature, 4 not the package
+# expected, 5 wrong arguments, 6 not newer than the installed one; otherwise apt's.
+set -eu
+[ $# -eq 3 ] || { echo "usage: lemuri-install DEB SIG VERSION" >&2; exit 5; }
+deb=$1 sig=$2 version=$3
+here=$(dirname "$(readlink -f "$0")")
+signers=$here/../share/package-signers
+[ -f "$signers" ] || { echo "No release keys in $signers" >&2; exit 3; }
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+cp -- "$deb" "$work/lemuri.deb"
+cp -- "$sig" "$work/lemuri.deb.sig"
+# Readable by apt's own user, writable by root only.
+chmod 755 "$work"
+chmod 644 "$work/lemuri.deb" "$work/lemuri.deb.sig"
+
+principal=$(ssh-keygen -Y find-principals -s "$work/lemuri.deb.sig" -f "$signers" 2> /dev/null | head -1) || true
+[ -n "$principal" ] || { echo "The package is not signed by a release key" >&2; exit 3; }
+ssh-keygen -Y verify -f "$signers" -I "$principal" -n file -s "$work/lemuri.deb.sig" < "$work/lemuri.deb" > /dev/null 2>&1 \
+    || { echo "The signature of the package is not valid" >&2; exit 3; }
+[ "$(dpkg-deb --field "$work/lemuri.deb" Package)" = lemuri ] \
+    && [ "$(dpkg-deb --field "$work/lemuri.deb" Version)" = "$version" ] \
+    || { echo "The package is not Lemuri $version" >&2; exit 4; }
+installed=$(dpkg-query -W -f='${Version}' lemuri 2> /dev/null || true)
+[ -z "$installed" ] || dpkg --compare-versions "$version" gt "$installed" \
+    || { echo "Lemuri $version is not newer than the installed $installed" >&2; exit 6; }
+
+apt-get install -y "$work/lemuri.deb"
