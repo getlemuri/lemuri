@@ -1,15 +1,15 @@
 #include "dialogs/Settings.h"
 
-#include "app/Backend.h"
-#include "app/Dock.h"
-#include "app/Model.h"
-#include "app/Texts.h"
+#include "app/core/Backend.h"
+#include "app/launch/Dock.h"
+#include "app/core/Model.h"
+#include "app/tools/Texts.h"
 #include "terminal/TerminalView.h"
-#include "widgets/Icons.h"
-#include "widgets/Theme.h"
-#include "widgets/Ui.h"
-#include "window/Actions.h"
-#include "window/Splash.h"
+#include "widgets/look/Icons.h"
+#include "widgets/look/Theme.h"
+#include "widgets/parts/Ui.h"
+#include "window/main/Actions.h"
+#include "window/main/Splash.h"
 
 #include <QApplication>
 #include <QButtonGroup>

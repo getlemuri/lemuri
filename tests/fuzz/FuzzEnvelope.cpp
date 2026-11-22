@@ -1,7 +1,7 @@
 // Text pasted by the user: a host envelope or a key card, then the parcel inside it, as Team opens them.
-#include "base/I18n.h"
-#include "sharing/Envelope.h"
-#include "sharing/Parcel.h"
+#include "base/config/I18n.h"
+#include "sharing/crypto/Envelope.h"
+#include "sharing/crypto/Parcel.h"
 
 #include <QCoreApplication>
 #include <cstdint>

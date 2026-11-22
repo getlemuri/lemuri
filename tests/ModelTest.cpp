@@ -1,6 +1,6 @@
 // The tabs and splits of the Model, against tests/fakecore.py.
-#include "app/Backend.h"
-#include "app/Model.h"
+#include "app/core/Backend.h"
+#include "app/core/Model.h"
 #include "terminal/TerminalView.h"
 
 #include <QJsonArray>

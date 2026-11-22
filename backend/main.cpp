@@ -1,9 +1,9 @@
 // lemuri-core: the backend of Lemuri, started by the app (see Core and PROTOCOL.md).
-#include "base/Files.h"
-#include "base/I18n.h"
-#include "base/Legacy.h"
-#include "base/Log.h"
-#include "base/Prefs.h"
+#include "base/system/Files.h"
+#include "base/config/I18n.h"
+#include "base/config/Legacy.h"
+#include "base/core/Log.h"
+#include "base/config/Prefs.h"
 #include "Core.h"
 #include "ssh/Ssh.h"
 

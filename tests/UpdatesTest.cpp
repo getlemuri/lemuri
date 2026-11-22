@@ -1,5 +1,5 @@
 // What the package updater takes from GitHub's answer, and version order: the same cases as the first Lemuri's. The download and the signature are in tests/update_test.py.
-#include "base/Error.h"
+#include "base/core/Error.h"
 #include "updates/Updates.h"
 
 #include <QtTest>

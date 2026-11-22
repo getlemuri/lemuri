@@ -1,5 +1,5 @@
 // The dialogs give their wrapped texts all the height they need, whatever the length and the language.
-#include "widgets/Ui.h"
+#include "widgets/parts/Ui.h"
 
 #include <QLabel>
 #include <QTimer>

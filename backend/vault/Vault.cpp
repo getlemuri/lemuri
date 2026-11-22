@@ -1,9 +1,9 @@
 #include "vault/Vault.h"
 
-#include "base/Error.h"
-#include "base/Files.h"
-#include "base/I18n.h"
-#include "base/Legacy.h"
+#include "base/core/Error.h"
+#include "base/system/Files.h"
+#include "base/config/I18n.h"
+#include "base/config/Legacy.h"
 #include "vault/Crypto.h"
 
 #include <QFile>

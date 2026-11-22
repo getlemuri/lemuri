@@ -1,9 +1,9 @@
 // What is kept on disk: the vault (the old formats written here from their specification) and the names of the first
 // versions. HOME is a temporary folder.
-#include "base/Error.h"
-#include "base/I18n.h"
-#include "base/Legacy.h"
-#include "base/Prefs.h"
+#include "base/core/Error.h"
+#include "base/config/I18n.h"
+#include "base/config/Legacy.h"
+#include "base/config/Prefs.h"
 #include "vault/Crypto.h"
 #include "vault/Vault.h"
 

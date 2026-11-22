@@ -1,8 +1,8 @@
 // A line from any PC of the local network, as Lan answers it: hello, delivery, anything else. One trusted contact
 // ("contact" below) whose deliveries are sealed with a fixed key, so the fuzzer can reach past the envelope too.
-#include "base/I18n.h"
-#include "sharing/Envelope.h"
-#include "sharing/Lan.h"
+#include "base/config/I18n.h"
+#include "sharing/crypto/Envelope.h"
+#include "sharing/lan/Lan.h"
 
 #include <QCoreApplication>
 #include <cstdint>

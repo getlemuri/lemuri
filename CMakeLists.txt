@@ -47,25 +47,25 @@ pkg_check_modules(VTERM REQUIRED IMPORTED_TARGET vterm)
 
 # Everything but main(): the app and the tests link it.
 add_library(lemuri-ui STATIC
-    src/app/Backend.cpp
-    src/app/Dock.cpp
-    src/app/Instance.cpp
-    src/app/Model.cpp
-    src/app/Shots.cpp
-    src/app/Startup.cpp
-    src/app/Texts.cpp
-    src/widgets/Chrome.cpp
-    src/widgets/Icons.cpp
-    src/widgets/Style.cpp
-    src/widgets/Ui.cpp
+    src/app/core/Backend.cpp
+    src/app/launch/Dock.cpp
+    src/app/launch/Instance.cpp
+    src/app/core/Model.cpp
+    src/app/tools/Shots.cpp
+    src/app/launch/Startup.cpp
+    src/app/tools/Texts.cpp
+    src/widgets/parts/Chrome.cpp
+    src/widgets/look/Icons.cpp
+    src/widgets/look/Style.cpp
+    src/widgets/parts/Ui.cpp
     src/terminal/Ghost.cpp
     src/terminal/TabStrip.cpp
     src/terminal/TerminalView.cpp
-    src/window/Actions.cpp
-    src/window/HostTree.cpp
-    src/window/MainWindow.cpp
-    src/window/Splash.cpp
-    src/window/Views.cpp
+    src/window/main/Actions.cpp
+    src/window/panels/HostTree.cpp
+    src/window/main/MainWindow.cpp
+    src/window/main/Splash.cpp
+    src/window/panels/Views.cpp
     src/dialogs/Settings.cpp
     src/dialogs/Team.cpp
 )
@@ -90,35 +90,35 @@ pkg_check_modules(ARGON2 REQUIRED IMPORTED_TARGET libargon2)
 pkg_check_modules(LIBSSH REQUIRED IMPORTED_TARGET libssh>=0.10)
 add_library(lemuri-backend-parts OBJECT
     backend/Core.cpp
-    backend/base/Files.cpp
-    backend/base/I18n.cpp
-    backend/base/Legacy.cpp
-    backend/base/Log.cpp
-    backend/base/Net.cpp
-    backend/base/Prefs.cpp
-    backend/base/Runtime.cpp
+    backend/base/system/Files.cpp
+    backend/base/config/I18n.cpp
+    backend/base/config/Legacy.cpp
+    backend/base/core/Log.cpp
+    backend/base/system/Net.cpp
+    backend/base/config/Prefs.cpp
+    backend/base/core/Runtime.cpp
     backend/vault/Crypto.cpp
     backend/vault/Vault.cpp
     backend/vault/VaultAccess.cpp
-    backend/hosts/Folders.cpp
-    backend/hosts/Host.cpp
-    backend/hosts/Hosts.cpp
-    backend/hosts/Jumps.cpp
-    backend/hosts/SshConfig.cpp
+    backend/hosts/list/Folders.cpp
+    backend/hosts/list/Host.cpp
+    backend/hosts/list/Hosts.cpp
+    backend/hosts/routes/Jumps.cpp
+    backend/hosts/routes/SshConfig.cpp
     backend/ssh/Sftp.cpp
     backend/ssh/Ssh.cpp
-    backend/sessions/LocalShell.cpp
-    backend/sessions/Sessions.cpp
-    backend/sessions/Transfers.cpp
-    backend/monitoring/Metrics.cpp
-    backend/monitoring/Monitor.cpp
-    backend/monitoring/Probe.cpp
-    backend/monitoring/SecurityAudit.cpp
-    backend/sharing/ContactNames.cpp
-    backend/sharing/Envelope.cpp
-    backend/sharing/Lan.cpp
-    backend/sharing/Parcel.cpp
-    backend/sharing/Team.cpp
+    backend/sessions/terminals/LocalShell.cpp
+    backend/sessions/terminals/Sessions.cpp
+    backend/sessions/transfers/Transfers.cpp
+    backend/monitoring/live/Metrics.cpp
+    backend/monitoring/live/Monitor.cpp
+    backend/monitoring/live/Probe.cpp
+    backend/monitoring/audit/SecurityAudit.cpp
+    backend/sharing/team/ContactNames.cpp
+    backend/sharing/crypto/Envelope.cpp
+    backend/sharing/lan/Lan.cpp
+    backend/sharing/crypto/Parcel.cpp
+    backend/sharing/team/Team.cpp
     backend/backup/Backup.cpp
     backend/backup/SshFolder.cpp
     backend/backend.qrc

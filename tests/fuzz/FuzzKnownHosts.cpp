@@ -1,6 +1,6 @@
 // The ~/.ssh files of a backup, as an import judges and merges them (the backup's author may be anyone).
 #include "backup/SshFolder.h"
-#include "base/I18n.h"
+#include "base/config/I18n.h"
 
 #include <cstdint>
 

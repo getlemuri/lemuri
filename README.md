@@ -65,7 +65,7 @@ backends run in temporary home folders.
 build. How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Screenshots by hand: `LEMURI_SHOT=file.png QT_QPA_PLATFORM=offscreen build/lemuri`, with `LEMURI_SHOT_NODE`
-(`dc`, `team`, `folder:x`, `host:id`, `console:id`, `log`) and `LEMURI_SHOT_DO` (see `src/app/Shots.cpp`).
+(`dc`, `team`, `folder:x`, `host:id`, `console:id`, `log`) and `LEMURI_SHOT_DO` (see `src/app/tools/Shots.cpp`).
 
 ## Packages
 

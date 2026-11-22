@@ -1,12 +1,12 @@
 #include "ssh/Ssh.h"
 
-#include "base/Error.h"
-#include "base/Handles.h"
-#include "base/I18n.h"
-#include "base/Net.h"
-#include "base/Posix.h"
-#include "base/Runtime.h"
-#include "monitoring/SecurityAudit.h"
+#include "base/core/Error.h"
+#include "base/system/Handles.h"
+#include "base/config/I18n.h"
+#include "base/system/Net.h"
+#include "base/system/Posix.h"
+#include "base/core/Runtime.h"
+#include "monitoring/audit/SecurityAudit.h"
 
 #include <QDir>
 #include <QLocalSocket>

@@ -1,5 +1,5 @@
 // Lemuri in the GNOME dock, against a fake gsettings that keeps the favourites in a file.
-#include "app/Dock.h"
+#include "app/launch/Dock.h"
 
 #include <QDir>
 #include <QFile>

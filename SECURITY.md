@@ -132,13 +132,13 @@ Their fingerprints are also published on the website, so they can be checked awa
 | Area | Files |
 |---|---|
 | Vault (encryption of saved passwords), AES-GCM and Argon2id | `backend/vault/Vault.cpp`, `backend/vault/Crypto.cpp` |
-| SSH connections, host key checks, jump hosts | `backend/ssh/Ssh.cpp`, `backend/hosts/Jumps.cpp`, `backend/hosts/SshConfig.cpp` |
-| Background sign-in with saved passwords (fixed commands, output and time limits) | `backend/monitoring/Metrics.cpp`, `backend/monitoring/Probe.cpp` |
-| Uploads and downloads over SFTP (paths sent to the server) | `backend/sessions/Transfers.cpp`, `backend/ssh/Sftp.cpp` |
+| SSH connections, host key checks, jump hosts | `backend/ssh/Ssh.cpp`, `backend/hosts/routes/Jumps.cpp`, `backend/hosts/routes/SshConfig.cpp` |
+| Background sign-in with saved passwords (fixed commands, output and time limits) | `backend/monitoring/live/Metrics.cpp`, `backend/monitoring/live/Probe.cpp` |
+| Uploads and downloads over SFTP (paths sent to the server) | `backend/sessions/transfers/Transfers.cpp`, `backend/ssh/Sftp.cpp` |
 | Backups, and which files of `~/.ssh` an import may write | `backend/backup/Backup.cpp`, `backend/backup/SshFolder.cpp` |
-| Envelopes, contacts, hosts arriving from a contact | `backend/sharing/Envelope.cpp`, `backend/sharing/Team.cpp`, `backend/sharing/Parcel.cpp` (`admit`), `backend/sharing/ContactNames.cpp` |
-| Local network protocol (announcements, pairing, deliveries) | `backend/sharing/Lan.cpp` |
+| Envelopes, contacts, hosts arriving from a contact | `backend/sharing/crypto/Envelope.cpp`, `backend/sharing/team/Team.cpp`, `backend/sharing/crypto/Parcel.cpp` (`admit`), `backend/sharing/team/ContactNames.cpp` |
+| Local network protocol (announcements, pairing, deliveries) | `backend/sharing/lan/Lan.cpp` |
 | Package updates (signature check, installation) | `backend/updates/Updates.cpp`, `packaging/linux/lemuri-install`, `.github/workflows/release.yml` |
-| The local shell | `backend/sessions/LocalShell.cpp` |
+| The local shell | `backend/sessions/terminals/LocalShell.cpp` |
 | Commands typed into the terminal, what a paste may contain | `src/terminal/TerminalView.cpp` |
-| Single running copy | `src/app/Instance.cpp` |
+| Single running copy | `src/app/launch/Instance.cpp` |

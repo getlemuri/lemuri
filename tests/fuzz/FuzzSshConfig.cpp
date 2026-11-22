@@ -1,6 +1,6 @@
 // ~/.ssh/config, as the import of hosts reads it: Host blocks, patterns, Include, % tokens.
-#include "base/I18n.h"
-#include "hosts/SshConfig.h"
+#include "base/config/I18n.h"
+#include "hosts/routes/SshConfig.h"
 
 #include <QDir>
 #include <QFile>

@@ -1,8 +1,8 @@
-#include "app/Instance.h"
-#include "app/Shots.h"
-#include "app/Startup.h"
-#include "widgets/Style.h"
-#include "widgets/Theme.h"
+#include "app/launch/Instance.h"
+#include "app/tools/Shots.h"
+#include "app/launch/Startup.h"
+#include "widgets/look/Style.h"
+#include "widgets/look/Theme.h"
 
 #include <QApplication>
 #include <QFont>

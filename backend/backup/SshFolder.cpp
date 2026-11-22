@@ -1,9 +1,9 @@
 #include "backup/SshFolder.h"
 
-#include "base/Error.h"
-#include "base/Handles.h"
-#include "base/I18n.h"
-#include "sharing/ContactNames.h"
+#include "base/core/Error.h"
+#include "base/system/Handles.h"
+#include "base/config/I18n.h"
+#include "sharing/team/ContactNames.h"
 
 #include <QDir>
 #include <QRegularExpression>

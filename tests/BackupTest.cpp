@@ -1,8 +1,8 @@
 // Backups and the files of ~/.ssh they carry, the same cases as the first Lemuri's. HOME is a temporary folder: the user's ~/.ssh is never read or written.
 #include "backup/Backup.h"
 #include "backup/SshFolder.h"
-#include "base/Error.h"
-#include "base/I18n.h"
+#include "base/core/Error.h"
+#include "base/config/I18n.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>

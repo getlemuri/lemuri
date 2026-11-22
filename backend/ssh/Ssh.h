@@ -1,7 +1,7 @@
 #pragma once
 
-#include "hosts/Host.h"
-#include "sessions/Transport.h"
+#include "hosts/list/Host.h"
+#include "sessions/terminals/Transport.h"
 
 #include <QList>
 #include <QString>

@@ -1,15 +1,15 @@
 #include "terminal/Ghost.h"
 
-#include "app/Instance.h"
-#include "app/Model.h"
-#include "app/Texts.h"
+#include "app/launch/Instance.h"
+#include "app/core/Model.h"
+#include "app/tools/Texts.h"
 #include "terminal/TerminalView.h"
-#include "widgets/Chrome.h"
-#include "widgets/Icons.h"
-#include "widgets/Theme.h"
-#include "window/Actions.h"
-#include "window/HostTree.h"
-#include "window/Views.h"
+#include "widgets/parts/Chrome.h"
+#include "widgets/look/Icons.h"
+#include "widgets/look/Theme.h"
+#include "window/main/Actions.h"
+#include "window/panels/HostTree.h"
+#include "window/panels/Views.h"
 
 #include <QApplication>
 #include <QCloseEvent>

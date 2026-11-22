@@ -1,10 +1,10 @@
 // The monitoring of the backend: what the servers answer, read; the security checks; the probe's greeting.
 // The same cases as the first Lemuri's: both apps must read a server the same way.
-#include "base/Error.h"
-#include "base/Net.h"
-#include "monitoring/Metrics.h"
-#include "monitoring/Probe.h"
-#include "monitoring/SecurityAudit.h"
+#include "base/core/Error.h"
+#include "base/system/Net.h"
+#include "monitoring/live/Metrics.h"
+#include "monitoring/live/Probe.h"
+#include "monitoring/audit/SecurityAudit.h"
 
 #include <QProcess>
 #include <QTcpServer>

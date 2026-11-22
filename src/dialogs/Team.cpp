@@ -1,13 +1,13 @@
 #include "dialogs/Team.h"
 
-#include "app/Backend.h"
-#include "app/Model.h"
-#include "app/Texts.h"
-#include "widgets/Chrome.h"
-#include "widgets/Icons.h"
-#include "widgets/Theme.h"
-#include "widgets/Ui.h"
-#include "window/Actions.h"
+#include "app/core/Backend.h"
+#include "app/core/Model.h"
+#include "app/tools/Texts.h"
+#include "widgets/parts/Chrome.h"
+#include "widgets/look/Icons.h"
+#include "widgets/look/Theme.h"
+#include "widgets/parts/Ui.h"
+#include "window/main/Actions.h"
 
 #include <QApplication>
 #include <QButtonGroup>

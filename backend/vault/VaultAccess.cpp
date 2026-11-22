@@ -1,9 +1,9 @@
 #include "vault/VaultAccess.h"
 
-#include "base/Error.h"
-#include "base/I18n.h"
-#include "base/Params.h"
-#include "base/Runtime.h"
+#include "base/core/Error.h"
+#include "base/config/I18n.h"
+#include "base/core/Params.h"
+#include "base/core/Runtime.h"
 #include "vault/Vault.h"
 
 using Params::flag;

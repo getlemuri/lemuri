@@ -1,5 +1,5 @@
 #include "terminal/TerminalView.h"
-#include "widgets/Theme.h"
+#include "widgets/look/Theme.h"
 
 #include <QApplication>
 #include <QClipboard>

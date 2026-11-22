@@ -1,7 +1,7 @@
 #include "terminal/TabStrip.h"
 
-#include "widgets/Icons.h"
-#include "widgets/Theme.h"
+#include "widgets/look/Icons.h"
+#include "widgets/look/Theme.h"
 
 #include <QHelpEvent>
 #include <QMouseEvent>

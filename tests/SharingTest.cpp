@@ -1,11 +1,11 @@
 // Sharing between contacts in the backend: envelopes, key cards, contact names, parcels and the local network, the
 // same cases as the first Lemuri's; the envelopes it sealed must keep opening here.
-#include "base/Error.h"
-#include "base/I18n.h"
-#include "sharing/ContactNames.h"
-#include "sharing/Envelope.h"
-#include "sharing/Lan.h"
-#include "sharing/Parcel.h"
+#include "base/core/Error.h"
+#include "base/config/I18n.h"
+#include "sharing/team/ContactNames.h"
+#include "sharing/crypto/Envelope.h"
+#include "sharing/lan/Lan.h"
+#include "sharing/crypto/Parcel.h"
 
 #include <QtTest>
 #include <arpa/inet.h>

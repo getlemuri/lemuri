@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hosts/Host.h"
+#include "hosts/list/Host.h"
 
 #include <QByteArray>
 #include <QHash>

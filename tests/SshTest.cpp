@@ -1,10 +1,10 @@
 // SSH without a server: jump hosts, ~/.ssh/config, the questions of a sign-in and the errors become sentences (with
 // libssh's messages and real sockets on loopback). HOME is a temporary folder.
-#include "base/Error.h"
-#include "base/Files.h"
-#include "base/I18n.h"
-#include "hosts/Jumps.h"
-#include "hosts/SshConfig.h"
+#include "base/core/Error.h"
+#include "base/system/Files.h"
+#include "base/config/I18n.h"
+#include "hosts/routes/Jumps.h"
+#include "hosts/routes/SshConfig.h"
 #include "ssh/Sftp.h"
 #include "ssh/Ssh.h"
 

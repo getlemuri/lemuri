@@ -1,5 +1,5 @@
 // MessageFormat patterns ({0}, '' for ') as the messages*.properties files have them.
-#include "app/Texts.h"
+#include "app/tools/Texts.h"
 
 #include <QtTest>
 

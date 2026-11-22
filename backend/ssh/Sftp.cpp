@@ -1,7 +1,7 @@
 #include "ssh/Sftp.h"
 
-#include "base/Handles.h"
-#include "base/I18n.h"
+#include "base/system/Handles.h"
+#include "base/config/I18n.h"
 #include "ssh/Ssh.h"
 
 #include <QFile>
