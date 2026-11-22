@@ -1,0 +1,60 @@
+# Every push and pull request: the texts, the app's and the backend's tests, the backend end to end, the package
+# updates, sharing between two backends, a picture of every page, the third-party notices and the Linux package. On the oldest Ubuntu supported (its
+# Qt is the oldest the app builds with).
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qt6-base-dev qt6-qpa-plugins libvterm-dev libxcb1-dev \
+              libssh-dev libargon2-dev libssl-dev cmake ninja-build dpkg-dev fakeroot fonts-dejavu-core \
+              python3-paramiko
+      - name: Texts
+        run: python3 tests/texts_test.py
+      - name: App, backend and their tests
+        run: |
+          cmake -S . -B build -G Ninja -DLEMURI_WERROR=ON
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+      - name: Backend end to end (SSH server on loopback)
+        run: python3 tests/core_test.py
+      - name: Package updates (fake GitHub)
+        run: python3 tests/update_test.py
+      - name: Sharing between two backends
+        run: python3 tests/team_test.py
+      - name: A picture of every page
+        run: tests/shots.sh
+      - name: Third-party notices up to date
+        run: ./licenses.sh && git diff --exit-code THIRD-PARTY-NOTICES.md
+      - name: Linux package
+        run: packaging/linux/build.sh
+
+  # The unit tests, the backend end to end and sharing between two backends again, built with AddressSanitizer,
+  # LeakSanitizer and UBSan: memory errors, leaks and undefined behaviour. Not ThreadSanitizer: with the system Qt
+  # (not built with TSan) it reports Qt's own reference counts and event queue as races (tests/tsan.supp).
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qt6-base-dev qt6-qpa-plugins libvterm-dev libxcb1-dev \
+              libssh-dev libargon2-dev libssl-dev cmake ninja-build python3-paramiko
+      - name: AddressSanitizer and UBSan
+        run: tests/sanitize.sh address

@@ -1,0 +1,140 @@
+# A signed tag like v0.2.0 becomes a GitHub release with the Linux package of Lemuri and its signature
+# (lemuri_<version>_amd64.deb and .deb.sig), which the installed copies download and check
+# (backend/updates/Updates.cpp). The release notes are the section of CHANGELOG.md with that version.
+#
+# Three jobs, so that the signing key never shares a machine with the build:
+# - build: checks the tag, runs the tests, makes the package. No secrets: whatever apt installs or the build runs
+#   cannot see the key.
+# - sign: in the environment "release" (Settings → Environments: a reviewer's approval before every run, tags v*
+#   only), with the secret LEMURI_PACKAGE_KEY. It runs nothing from the build: no apt, no code of the repository,
+#   only ssh-keygen on the package, after checking it is the one the build made (its SHA-256).
+# - publish: the provenance attestation of the package (who built it, from which commit) and the release.
+# The public part of the key is in backend/package-signers; see SECURITY.md for the backup key and its rotation.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      QT_QPA_PLATFORM: offscreen
+    outputs:
+      sha256: ${{ steps.package.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The tag is signed with a release key
+        run: |
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=.github/release-signers verify-tag "$GITHUB_REF_NAME"
+      - name: The version of the tag is the one in CMakeLists.txt
+        run: |
+          version=$(sed -n 's/^project(lemuri VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME, CMakeLists.txt $version"; exit 1; }
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v v="$version" '/^## \[/ { on = index($0, "## [" v "]") == 1; next } /^\[[^]]*\]: / { on = 0 } on' CHANGELOG.md > notes.md
+          [ -s notes.md ] || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+      - name: Build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qt6-base-dev qt6-qpa-plugins libvterm-dev libxcb1-dev \
+              libssh-dev libargon2-dev libssl-dev cmake ninja-build dpkg-dev fakeroot fonts-dejavu-core python3-paramiko
+      - name: Tests
+        run: |
+          python3 tests/texts_test.py
+          cmake -S . -B build -G Ninja -DLEMURI_WERROR=ON
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+          python3 tests/core_test.py
+          python3 tests/update_test.py
+      - name: Package
+        id: package
+        run: |
+          packaging/linux/build.sh
+          deb="dist/lemuri_${GITHUB_REF_NAME#v}_amd64.deb"
+          [ -f "$deb" ] || { echo "The package is not version ${GITHUB_REF_NAME#v}"; exit 1; }
+          echo "sha256=$(sha256sum "$deb" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          cp notes.md dist/
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: package
+          path: |
+            dist/lemuri_*.deb
+            dist/lemuri_*.tar.gz
+            dist/notes.md
+          if-no-files-found: error
+          retention-days: 3
+
+  sign:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      # Only the file with the public keys, to check the signature as the installed copies will: nothing to run.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: backend/package-signers
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: package
+          path: dist
+      - name: The package is the one the build made
+        env:
+          EXPECTED: ${{ needs.build.outputs.sha256 }}
+        run: |
+          deb="dist/lemuri_${GITHUB_REF_NAME#v}_amd64.deb"
+          echo "$EXPECTED  $deb" | sha256sum -c -
+      - name: Signature
+        env:
+          LEMURI_PACKAGE_KEY: ${{ secrets.LEMURI_PACKAGE_KEY }}
+        run: |
+          [ -n "$LEMURI_PACKAGE_KEY" ] || { echo "The secret LEMURI_PACKAGE_KEY is missing"; exit 1; }
+          key=$(mktemp)
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$LEMURI_PACKAGE_KEY" > "$key"
+          deb="dist/lemuri_${GITHUB_REF_NAME#v}_amd64.deb"
+          ssh-keygen -q -Y sign -f "$key" -n file "$deb"
+          # Checked as the installed copies will: a key they do not know would make an update nobody can install.
+          principal=$(ssh-keygen -Y find-principals -s "$deb.sig" -f backend/package-signers)
+          ssh-keygen -q -Y verify -f backend/package-signers -I "$principal" -n file -s "$deb.sig" < "$deb"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signature
+          path: dist/lemuri_*.deb.sig
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: The package is still the one the build made
+        env:
+          EXPECTED: ${{ needs.build.outputs.sha256 }}
+        run: echo "$EXPECTED  dist/lemuri_${GITHUB_REF_NAME#v}_amd64.deb" | sha256sum -c -
+      # Anyone can check where a package comes from: gh attestation verify lemuri_*.deb --repo getlemuri/lemuri
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/lemuri_*.deb
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "Lemuri $GITHUB_REF_NAME" \
+              --notes-file dist/notes.md --verify-tag dist/lemuri_*.deb dist/lemuri_*.deb.sig dist/lemuri_*.tar.gz
