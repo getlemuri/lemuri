@@ -1,0 +1,4 @@
+# The shell scripts: Unix line endings everywhere.
+*.sh text eol=lf
+# License texts as their authors wrote them (some with Windows line endings).
+licenses/** -text

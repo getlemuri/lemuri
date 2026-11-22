@@ -1,0 +1,8 @@
+# ThreadSanitizer, for tests/sanitize.sh thread: reports inside Qt's own D-Bus thread. The system Qt is not built
+# with TSan, so its locking is invisible and every message that thread passes looks like a race. Nothing broader
+# (such as called_from_lib for Qt) belongs here: it would hide Qt's mutexes too, and every event posted from a
+# worker thread would then look like a race. Reports on Qt's implicitly shared types copied across threads remain:
+# read them, but a clean run needs a Qt built with -fsanitize=thread.
+race:libQt6DBus.so
+race:libdbus-1.so
+race:QDBusConnection

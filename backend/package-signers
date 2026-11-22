@@ -1,0 +1,9 @@
+# Keys that sign the Linux packages of Lemuri (lemuri_VERSION_ARCH.deb.sig, ssh-keygen -Y sign -n file): an
+# update is installed only if its package is signed by one of them. Format of ssh-keygen ALLOWED SIGNERS, with
+# namespaces="file".
+# - packages@getlemuri: the release key, the LEMURI_PACKAGE_KEY secret of the "release" environment (and
+#   ~/.ssh/lemuri-packages on the release computer, for packaging/sign.sh).
+# - packages-backup@getlemuri: the backup key, kept offline and never used, except to replace the release key if it
+#   is lost or stolen (SECURITY.md, "Package signing keys").
+packages@getlemuri namespaces="file" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOjPfRJO/e+3qh1U7M6CygY6aetJDTPgNQUeeGbWIkzt
+packages-backup@getlemuri namespaces="file" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK2x9lW5Ag5CCK3JjqEJzjJqZ4hC+6trZFozMOCh8Wip

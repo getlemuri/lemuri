@@ -1,0 +1,29 @@
+# Builds
+build/
+build-*/
+dist/
+*.zip
+
+.idea/
+.vscode/
+*.iml
+.DS_Store
+CMakeLists.txt.user
+
+# App data and credentials: they live in ~/.lemuri (and ~/.ssh), never in the repository.
+hosts.json
+hosts.json.bak
+vault.json
+*.bak
+.env
+.env.*
+*.pem
+*.key
+*.p12
+id_rsa*
+id_ed25519*
+id_ecdsa*
+lemuri-packages*
+
+# Python
+__pycache__/

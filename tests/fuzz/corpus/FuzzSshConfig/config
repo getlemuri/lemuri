@@ -1,0 +1,9 @@
+Host web*
+  HostName %h.example.com
+  User deploy
+  Port 2222
+  IdentityFile ~/.ssh/id_%r
+  ProxyJump bastion
+Include ~/.ssh/other
+Host *
+  User root

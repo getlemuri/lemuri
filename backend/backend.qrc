@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/i18n">
+    <file alias="messages.properties">i18n/messages.properties</file>
+    <file alias="messages_it.properties">i18n/messages_it.properties</file>
+  </qresource>
+  <qresource prefix="/lemuri">
+    <file alias="package-signers">package-signers</file>
+  </qresource>
+</RCC>
