@@ -55,7 +55,7 @@ void writePrivate(const QString &file, const QByteArray &content) {
     QByteArray p = QFile::encodeName(file);
     ::unlink(p.constData());
     int fd = ::open(p.constData(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
-    if (fd < 0) throw Fail{file + ": " + QString::fromLocal8Bit(std::strerror(errno))};
+    if (fd < 0) throw Fail{file + ": " + systemError()};
     qsizetype done = 0;
     while (done < content.size()) {
         ssize_t n = ::write(fd, content.constData() + done, size_t(content.size() - done));
@@ -63,11 +63,11 @@ void writePrivate(const QString &file, const QByteArray &content) {
         if (n <= 0) {
             int e = errno;
             ::close(fd);
-            throw Fail{file + ": " + QString::fromLocal8Bit(std::strerror(e))};
+            throw Fail{file + ": " + systemError(e)};
         }
         done += n;
     }
-    if (::fsync(fd) != 0 || ::close(fd) != 0) throw Fail{file + ": " + QString::fromLocal8Bit(std::strerror(errno))};
+    if (::fsync(fd) != 0 || ::close(fd) != 0) throw Fail{file + ": " + systemError()};
 }
 
 QString kindLabel(SshFolder::Kind kind) {

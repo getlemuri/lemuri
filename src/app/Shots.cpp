@@ -12,6 +12,7 @@
 #include "window/Splash.h"
 
 #include <QApplication>
+#include <QScreen>
 #include <QCheckBox>
 #include <QContextMenuEvent>
 #include <QJsonArray>
@@ -180,7 +181,10 @@ void save(MainWindow *window, const QString &file) {
         return;
     }
     QWidget *modal = QApplication::activeModalWidget();
-    (modal ? modal->grab() : window->grab()).save(file);
+    QWidget *shown = modal ? modal : window;
+    // LEMURI_SHOT_SCREEN: what the window system shows on a real screen, not what Qt paints (size, clipping).
+    if (qEnvironmentVariableIsSet("LEMURI_SHOT_SCREEN") && shown->screen()) shown->screen()->grabWindow(shown->winId()).save(file);
+    else shown->grab().save(file);
 }
 }  // namespace
 

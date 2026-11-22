@@ -30,23 +30,7 @@ reply=$(printf '{"op":"hello","id":1}\n' | HOME=$work/home "$stage/bin/lemuri-co
 case $reply in *'"version":"v'$version'"'*) ;; *) echo "The backend did not answer: $reply" >&2; exit 1 ;; esac
 
 echo "== Menu entry, icons, licences"
-mkdir -p "$stage/share/applications"
-cat > "$stage/share/applications/lemuri.desktop" << DESKTOP
-[Desktop Entry]
-Type=Application
-Name=Lemuri
-Comment=SSH console for your servers
-Exec=lemuri
-Icon=lemuri
-Terminal=false
-Categories=Network;System;
-StartupWMClass=lemuri
-Actions=toggle;
-
-[Desktop Action toggle]
-Name=Show or hide
-Exec=lemuri --toggle
-DESKTOP
+install -Dm644 "$here/packaging/linux/lemuri.desktop" "$stage/share/applications/lemuri.desktop"
 for icon in "$here"/packaging/icons/hicolor/*/apps/lemuri.png; do
     size=$(basename "$(dirname "$(dirname "$icon")")")
     install -Dm644 "$icon" "$stage/share/icons/hicolor/$size/apps/lemuri.png"

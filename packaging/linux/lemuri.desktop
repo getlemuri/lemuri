@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Lemuri
+GenericName=SSH Client
+Comment=SSH console for your servers
+Exec=lemuri
+Icon=lemuri
+Terminal=false
+Categories=Network;RemoteAccess;
+Keywords=ssh;sftp;terminal;server;vps;
+StartupWMClass=lemuri
+Actions=toggle;
+
+[Desktop Action toggle]
+Name=Show or hide
+Exec=lemuri --toggle

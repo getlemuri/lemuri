@@ -58,3 +58,28 @@ jobs:
               libssh-dev libargon2-dev libssl-dev cmake ninja-build python3-paramiko
       - name: AddressSanitizer and UBSan
         run: tests/sanitize.sh address
+
+  # The package of debian/, as a PPA or the Debian archive would build it: in /usr, without the updater. lintian
+  # says what Debian would object to; the package must install, find its backend and answer.
+  debian:
+    runs-on: ubuntu-24.04
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends devscripts equivs lintian
+          sudo mk-build-deps --install --remove --tool 'apt-get -y --no-install-recommends' debian/control
+      - name: Package
+        run: dpkg-buildpackage -b -us -uc
+      - name: lintian
+        run: lintian --info --display-info --fail-on error ../lemuri_*.deb
+      - name: Installs and runs
+        run: |
+          sudo apt-get install -y --no-install-recommends qt6-qpa-plugins ../lemuri_*.deb
+          test -x /usr/libexec/lemuri/lemuri-core
+          printf '{"op":"hello","id":1}\n' | HOME=$(mktemp -d) /usr/libexec/lemuri/lemuri-core | head -1 | grep '"version"'
+          HOME=$(mktemp -d) LEMURI_SHOT=$RUNNER_TEMP/shot.png timeout 60 lemuri
+          test -s "$RUNNER_TEMP/shot.png"

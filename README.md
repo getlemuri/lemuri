@@ -8,8 +8,8 @@ that docks to an edge of the screen.
 It reads the data of the first Lemuri (`~/.lemuri` and its settings) and exchanges hosts with it, so moving to this
 version keeps your servers, vault and contacts.
 
-**Status: early (0.x).** Developed and used daily on Ubuntu with GNOME. The GitHub workflows (CI and releases) are
-written but have not run yet, and the macOS package has never been built.
+**Status: early (0.x).** Developed and used daily on Ubuntu with GNOME; the releases come from the GitHub workflow.
+The macOS package has never been built, and Windows is not supported yet.
 
 ## Architecture
 
@@ -62,15 +62,21 @@ The SSH server needs python3-paramiko. No test needs a display, a network or a r
 backends run in temporary home folders.
 
 `.github/workflows/build.yml` runs all of this on Ubuntu 24.04 with warnings treated as errors, plus the sanitizer
-build; it has not run on GitHub yet. How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
+build. How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Screenshots by hand: `LEMURI_SHOT=file.png QT_QPA_PLATFORM=offscreen build/lemuri`, with `LEMURI_SHOT_NODE`
 (`dc`, `team`, `folder:x`, `host:id`, `console:id`, `log`) and `LEMURI_SHOT_DO` (see `src/app/Shots.cpp`).
 
 ## Packages
 
-    packaging/linux/build.sh      # dist/lemuri_<version>_<arch>.deb and .tar.gz
+    packaging/linux/build.sh      # dist/lemuri_<version>_<arch>.deb and .tar.gz, in /opt/lemuri, updating itself
+    dpkg-buildpackage -b -us -uc  # ../lemuri_<version>-1_<arch>.deb from debian/, in /usr, updated by apt
     packaging/mac/build.sh        # on a Mac: dist/Lemuri-<version>-mac-<arch>.zip (never built yet)
+
+The package of `debian/` is the one for a PPA or a distribution: it is built with `-DLEMURI_SELF_UPDATE=OFF`, so the
+app only says when a new version is out (if asked, or if the daily check is turned on) and leaves installing it to
+the package manager; the backend goes in `libexec/lemuri`, with the menu entry, the icons and the AppStream data
+(`packaging/linux/`). The CI builds it and runs lintian on it.
 
 Both contain the app and its backend, nothing else. The Linux package uses the distribution's Qt,
 libvterm, libssh, libargon2 and OpenSSL, so it installs wherever Qt is at least the version it was built against;
@@ -95,6 +101,8 @@ built from source does not update itself.
 ## Security
 
 How to report a vulnerability, what Lemuri protects against and its known limitations: [SECURITY.md](SECURITY.md).
+What it does on your servers without being asked (a reachability check, and a connection kept open to read their
+resources, both stopped by *Settings → Servers → Never*) is described there too.
 
 ## License
 

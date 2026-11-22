@@ -67,13 +67,13 @@ bool blank(const QString &s) {
 void write(const QString &name, const QByteArray &content, bool everyone) {
     mode_t mode = everyone ? 0644 : 0600;
     Fd fd(::open(path(name).constData(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, mode));
-    if (!fd) throw Fail(SshFolder::dir() + "/" + name + ": " + QString::fromLocal8Bit(std::strerror(errno)));
+    if (!fd) throw Fail(SshFolder::dir() + "/" + name + ": " + systemError());
     ::fchmod(fd.get(), mode);
     qsizetype done = 0;
     while (done < content.size()) {
         ssize_t n = ::write(fd.get(), content.constData() + done, size_t(content.size() - done));
         if (n < 0 && errno == EINTR) continue;
-        if (n <= 0) throw Fail(name + ": " + QString::fromLocal8Bit(std::strerror(errno)));
+        if (n <= 0) throw Fail(name + ": " + systemError());
         done += n;
     }
 }
@@ -195,7 +195,7 @@ SshFolder::Installed SshFolder::install(const QString &name, const QByteArray &c
     QByteArray d = QFile::encodeName(dir());
     struct stat st;
     if (::stat(d.constData(), &st) != 0) {
-        if (!QDir().mkpath(dir())) throw Fail{dir() + ": " + QString::fromLocal8Bit(std::strerror(errno))};
+        if (!QDir().mkpath(dir())) throw Fail{dir() + ": " + systemError()};
         ::chmod(d.constData(), 0700);
     }
     bool pub = name.endsWith(".pub");
@@ -214,7 +214,7 @@ SshFolder::Installed SshFolder::install(const QString &name, const QByteArray &c
             if (missing.isEmpty()) return {name, name, Outcome::Same};
             Fd fd(::open(path(name).constData(), O_WRONLY | O_APPEND | O_NOFOLLOW | O_CLOEXEC));
             if (!fd || ::write(fd.get(), missing.constData(), size_t(missing.size())) != missing.size())
-                throw Fail(name + ": " + QString::fromLocal8Bit(std::strerror(errno)));
+                throw Fail(name + ": " + systemError());
             return {name, name, Outcome::Merged};
         }
     }

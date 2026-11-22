@@ -30,6 +30,8 @@ private:
     void refresh(const QString &id, bool force);
     QList<Probe::Target> targets() const;
     static int probeMinutes();
+    /** The minutes as they can be: 0 (never) or at least Probe::MIN_MINUTES. */
+    static int minutes(int n);
 
     Events &events;
     Loop &loop;

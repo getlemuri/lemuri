@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QProcessEnvironment>
 
@@ -30,9 +31,14 @@ Backend::~Backend() {
 }
 
 void Backend::start() {
-    // LEMURI_CORE, or lemuri-core beside the app (the build folder, bin/ of the package, MacOS/ of the Mac app).
-    QString core = qEnvironmentVariable("LEMURI_CORE", QDir(QCoreApplication::applicationDirPath()).filePath("lemuri-core"));
-    process.start(core, {});
+    // LEMURI_CORE, or lemuri-core beside the app (the build folder, bin/ of the .deb in /opt, MacOS/ of the Mac app),
+    // or in libexec/lemuri as a distribution installs it (/usr/bin/lemuri, /usr/libexec/lemuri/lemuri-core).
+    QDir here(QCoreApplication::applicationDirPath());
+    QString core = here.filePath("lemuri-core");
+#ifdef LEMURI_CORE_FROM_BIN
+    if (!QFileInfo::exists(core)) core = QDir::cleanPath(here.filePath(LEMURI_CORE_FROM_BIN "/lemuri-core"));
+#endif
+    process.start(qEnvironmentVariable("LEMURI_CORE", core), {});
 }
 
 void Backend::dropReplies(const QString &why) {

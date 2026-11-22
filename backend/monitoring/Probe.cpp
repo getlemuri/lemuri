@@ -20,10 +20,11 @@ Probe::~Probe() {
     stop();
 }
 
-void Probe::launch(Outcomes o) {
+void Probe::launch(Outcomes o, Connected c) {
     std::lock_guard<std::mutex> l(m);
     if (launched || stopped) return;
     outcomes = std::move(o);
+    connected = std::move(c);
     launched = true;
     ticking = std::thread([this] { clock(); });
     if (minutes > 0) test(targets);
@@ -31,7 +32,7 @@ void Probe::launch(Outcomes o) {
 
 void Probe::every(int n) {
     std::lock_guard<std::mutex> l(m);
-    minutes = std::max(0, n);
+    minutes = n <= 0 ? 0 : std::max(MIN_MINUTES, n);
     period++;
     changed.notify_all();
 }
@@ -76,27 +77,37 @@ void Probe::clock() {
     }
 }
 
-/** With the lock held. One thread per host; the outcomes all together once each is known. */
+/** With the lock held. POOL workers take the hosts in turn; the outcomes all together once each is known. */
 void Probe::test(const QList<Target> &l) {
     if (l.isEmpty() || stopped) return;
     for (const Target &t : l) tried.insert(t.id, t.address + ":" + QString::number(t.port));
     Outcomes give = outcomes;
-    rounds.start([this, l, give] {
-        auto states = std::make_shared<QHash<QString, Host::Reach>>();
-        auto guard = std::make_shared<std::mutex>();
-        std::vector<std::thread> each;
-        for (const Target &t : l)
-            each.emplace_back([t, states, guard] {
-                Host::Reach s = reachable(t.address, t.port) ? Host::Reach::Online : Host::Reach::Offline;
-                std::lock_guard<std::mutex> g(*guard);
-                states->insert(t.id, s);
-            });
-        for (auto &t : each) t.join();
+    Connected open = connected;
+    rounds.start([this, l, give, open] {
+        QHash<QString, Host::Reach> states;
+        std::mutex guard;
+        qsizetype next = 0;
+        auto work = [&] {
+            for (;;) {
+                Target t;
+                {
+                    std::lock_guard<std::mutex> g(guard);
+                    if (next >= l.size()) return;
+                    t = l[next++];
+                }
+                bool up = (open && open(t.id)) || reachable(t.address, t.port);
+                std::lock_guard<std::mutex> g(guard);
+                states.insert(t.id, up ? Host::Reach::Online : Host::Reach::Offline);
+            }
+        };
+        std::vector<std::thread> workers;
+        for (qsizetype i = 0; i < std::min<qsizetype>(POOL, l.size()); i++) workers.emplace_back(work);
+        for (auto &w : workers) w.join();
         {
             std::lock_guard<std::mutex> g(m);
             if (stopped) return;
         }
-        give(*states);
+        give(states);
     });
 }
 

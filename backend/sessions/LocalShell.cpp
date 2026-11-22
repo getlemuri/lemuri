@@ -1,5 +1,6 @@
 #include "sessions/LocalShell.h"
 
+#include "base/Error.h"
 #include "base/I18n.h"
 #include "base/Runtime.h"
 
@@ -75,7 +76,7 @@ void LocalShell::run() {
         child = pid;
     }
     if (pid < 0) {
-        QString why = QString::fromLocal8Bit(std::strerror(errno));
+        QString why = systemError();
         onData("\r\n\x1b[31m" + I18n::t("terminal.localError", why) + "\x1b[0m\r\n");
         closed = true;
         onState(State::Error, why);

@@ -32,6 +32,8 @@ private:
     void texts(const QJsonValue &all, const QString &language);
     /** The hosts, then the probe and the readings, the sharing and the daily update check. */
     void startWork();
+    /** The first time on GNOME: asks whether Lemuri goes among the favourites of the dock (see Dock). */
+    void offerDock();
 
     QString shot, cache;
     QJsonObject saved, said;

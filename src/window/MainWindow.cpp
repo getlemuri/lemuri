@@ -763,14 +763,14 @@ void MainWindow::ask(int ask, const QString &kind, const QJsonObject &m) {
         d.body()->addWidget(l);
     }
     auto *field = new QLineEdit;
-    field->setEchoMode(QLineEdit::Password);
+    Ui::revealable(field);
     field->setMinimumWidth(400);
     d.body()->addWidget(field);
     QLineEdit *again = nullptr;
     if (create) {
         d.body()->addWidget(new QLabel(T("vault.repeat")));
         again = new QLineEdit;
-        again->setEchoMode(QLineEdit::Password);
+        Ui::revealable(again);
         d.body()->addWidget(again);
     }
     QCheckBox *remember = nullptr;

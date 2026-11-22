@@ -1,6 +1,7 @@
 #include "dialogs/Settings.h"
 
 #include "app/Backend.h"
+#include "app/Dock.h"
 #include "app/Model.h"
 #include "app/Texts.h"
 #include "terminal/TerminalView.h"
@@ -131,11 +132,11 @@ void BackupDialogs::exportAll(Model *model, Actions *actions, QWidget *parent) {
             else d.body()->addWidget(sshTable(files, T("backup.col.usedBy"), boxes));
             d.body()->addWidget(new QLabel(T("backup.passphrase")));
             auto *pass = new QLineEdit;
-            pass->setEchoMode(QLineEdit::Password);
+            Ui::revealable(pass);
             d.body()->addWidget(pass);
             d.body()->addWidget(new QLabel(T("vault.repeat")));
             auto *again = new QLineEdit;
-            again->setEchoMode(QLineEdit::Password);
+            Ui::revealable(again);
             d.body()->addWidget(again);
             QLabel *problem = warnLabel();
             d.body()->addWidget(problem);
@@ -174,7 +175,7 @@ void BackupDialogs::importFrom(Model *model, Actions *actions, QWidget *parent) 
     FramedDialog d(parent, T("backup.import.title"));
     d.body()->addWidget(new QLabel(T("backup.passphrase")));
     auto *pass = new QLineEdit;
-    pass->setEchoMode(QLineEdit::Password);
+    Ui::revealable(pass);
     pass->setMinimumWidth(420);
     d.body()->addWidget(pass);
     QLabel *error = warnLabel();
@@ -262,7 +263,9 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
         notes->setReadOnly(true);
         notes->setMinimumSize(560, 280);
         d.body()->addWidget(notes);
-        if (blocker.isString()) d.body()->addWidget(note(T("update.manual", blocker.toString())));
+        // Updated by a package manager: said as it is; any other reason comes with what to do by hand.
+        QString reason = blocker.toString();
+        if (blocker.isString()) d.body()->addWidget(note(reason == T("update.blocker.packageManager") ? reason : T("update.manual", reason)));
         QPushButton *page = d.addButton(T("update.page"), true);
         QObject::connect(page, &QPushButton::clicked, &d, [r] { QDesktopServices::openUrl(QUrl(r["url"].toString())); });
         QPushButton *skip = d.addButton(T("update.skip"));
@@ -371,13 +374,15 @@ namespace {
 struct Choices {
     QComboBox *language = nullptr, *probe = nullptr;
     QCheckBox *splash = nullptr, *types = nullptr, *lan = nullptr, *carrierGrade = nullptr, *automatic = nullptr;
+    /** Only on GNOME with the installed app (Dock::available). */
+    QCheckBox *dock = nullptr;
     static inline const QStringList CODES{"auto", "en", "it"};
-    static inline const QList<int> PROBE_MINUTES{1, 5, 0};
+    static inline const QList<int> PROBE_MINUTES{5, 15, 0};
 
     /** All of them in one string: Apply is on only if it differs from the one saved. */
     QString state() const {
         return QString("%1|%2|%3|%4|%5|%6|%7").arg(language->currentIndex()).arg(probe->currentIndex()).arg(types->isChecked())
-                .arg(lan->isChecked()).arg(automatic->isChecked()).arg(splash->isChecked()).arg(carrierGrade->isChecked());
+                .arg(lan->isChecked()).arg(automatic->isChecked()).arg(splash->isChecked()).arg(carrierGrade->isChecked()) + (dock && dock->isChecked() ? "|dock" : "");
     }
 };
 
@@ -394,7 +399,13 @@ QWidget *appearancePage(const QJsonObject &ui, Choices &c) {
     auto *languageRow = line({new QLabel(T("settings.language")), c.language});
     c.splash = new QCheckBox(T("menu.splash"));
     c.splash->setChecked(ui["splash"].toString("true") != "false");
-    return page({group(T("settings.language"), {languageRow, note(T("settings.afterRestart"))}), group(T("settings.window"), {c.splash})});
+    QList<QWidget *> window{c.splash};
+    if (Dock::available()) {
+        c.dock = new QCheckBox(T("settings.dock"));
+        c.dock->setChecked(Dock::pinned());
+        window << c.dock << note(T("settings.dock.note"));
+    }
+    return page({group(T("settings.language"), {languageRow, note(T("settings.afterRestart"))}), group(T("settings.window"), window)});
 }
 
 /** The vault's state, and its buttons, which act at once. */
@@ -422,9 +433,10 @@ QWidget *backupPage(Model *model, Actions *actions, QWidget *parent) {
 /** How often the probe runs; whether Lemuri may type commands into the terminal. */
 QWidget *serversPage(const QJsonObject &ui, Choices &c) {
     c.probe = new QComboBox;
-    c.probe->addItems({T("settings.probe.every1"), T("settings.probe.every5"), T("settings.probe.never")});
+    c.probe->addItems({T("settings.probe.every5"), T("settings.probe.every15"), T("settings.probe.never")});
+    // Every minute, a choice of older versions, is every 5 minutes now (Probe::MIN_MINUTES).
     int minutes = ui["probeMinutes"].toString("5").toInt();
-    c.probe->setCurrentIndex(minutes == 1 ? 0 : minutes == 0 ? 2 : 1);
+    c.probe->setCurrentIndex(minutes == 0 ? 2 : minutes >= 15 ? 1 : 0);
     c.types = new QCheckBox(T("settings.typesCommands"));
     c.types->setChecked(ui["terminalCommands"].toString() == "true");
     return page({group(T("settings.probe"), {c.probe, note(T("settings.probe.note"))}),
@@ -578,7 +590,8 @@ void buttons(FramedDialog &d, Model *model, const Choices &c) {
     auto compare = [=] { apply->setEnabled(c.state() != *saved); };
     QObject::connect(c.language, &QComboBox::currentIndexChanged, &d, compare);
     QObject::connect(c.probe, &QComboBox::currentIndexChanged, &d, compare);
-    for (QCheckBox *box : {c.types, c.lan, c.automatic, c.splash}) QObject::connect(box, &QCheckBox::toggled, &d, compare);
+    for (QCheckBox *box : {c.types, c.lan, c.automatic, c.splash, c.carrierGrade, c.dock})
+        if (box) QObject::connect(box, &QCheckBox::toggled, &d, compare);
     compare();
     auto save = [=] {
         model->request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"language", Choices::CODES[c.language->currentIndex()]},
@@ -591,6 +604,11 @@ void buttons(FramedDialog &d, Model *model, const Choices &c) {
         if (c.carrierGrade->isChecked() != model->lanCarrierGrade())
             model->request("lan.carrierGrade", {{"on", c.carrierGrade->isChecked()}}, [model](const QJsonValue &) { model->refreshTeam(); });
         model->request("update.automatic", {{"on", c.automatic->isChecked()}});
+        if (c.dock && c.dock->isChecked() != Dock::pinned()) {
+            // Chosen here: the question of the first start is not asked any more.
+            model->request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"dockAsked", "true"}}}});
+            if (!Dock::pin(c.dock->isChecked())) Ui::warning(QApplication::activeWindow(), T("settings.dock"), T("settings.dock.failed"));
+        }
         *saved = c.state();
         compare();
     };

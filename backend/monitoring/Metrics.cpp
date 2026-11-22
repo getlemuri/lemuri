@@ -353,6 +353,15 @@ QJsonArray Metrics::cpuHistory(const QString &hostId) {
     return a;
 }
 
+bool Metrics::connected(const QString &hostId) {
+    std::shared_ptr<SshConnection> c;
+    {
+        std::lock_guard<std::mutex> l(m);
+        c = connections.value(hostId).connection;
+    }
+    return c && c->seemsAlive();
+}
+
 void Metrics::forget(const QString &hostId) {
     std::shared_ptr<SshConnection> c;
     {
@@ -412,6 +421,7 @@ QByteArray Metrics::run(const Host &h, const Jumps::Route &route, const QString 
             Vault *v = vault;
             auto prompts = [v](const Host &server) {
                 SshPrompts p;
+                p.unattended = true;
                 auto tried = std::make_shared<bool>(false);
                 QString sid = server.id();
                 p.password = [v, tried, sid](const QString &) {

@@ -62,6 +62,11 @@ inline const QColor vaultIcon("#e2c08d");
 inline const QColor ok("#21bf4b");
 inline const QColor idle("#9a9a9a");
 inline const QColor critical("#e3323f");
+/** The text of a button that deletes something: lighter than `critical`, readable on the controls (about 5.5:1). */
+inline const QColor dangerText("#ff6b73");
+/** The filled button of a destructive choice: white text on it reads well (about 6:1). */
+inline const QColor criticalFill("#b8262f");
+inline const QColor criticalFillHover("#9f1f28");
 inline const QColor danger("#d9776f");
 inline const QColor warn("#fcc45e");
 inline const QColor amber("#fbab19");
@@ -112,7 +117,7 @@ inline QString css(QString sheet) {
         {"disabled", disabled}, {"topText", topText}, {"topFaint", topFaint}, {"accent", accent}, {"accentDark", accentDark},
         {"accentOff", accentOff}, {"accentOffText", accentOffText}, {"textSelection", textSelection},
         {"rowSelected", rowSelected}, {"menuSelected", menuSelected}, {"listSelected", listSelected}, {"badge", badge},
-        {"dropTarget", dropTarget}, {"dropText", dropText}, {"critical", critical}, {"warn", warn}, {"amber", amber},
+        {"dropTarget", dropTarget}, {"dropText", dropText}, {"critical", critical}, {"dangerText", dangerText}, {"criticalFill", criticalFill}, {"criticalFillHover", criticalFillHover}, {"warn", warn}, {"amber", amber},
         {"failed", failed}, {"failure", failure}, {"errorSoft", errorSoft}, {"okBack", okBack}, {"okText", okText},
         {"warnBack", warnBack}, {"errorBack", errorBack}, {"errorText", errorText}, {"infoBack", infoBack},
         {"infoText", infoText}, {"terminalActions", terminalActions}, {"actionIcon", actionIcon},

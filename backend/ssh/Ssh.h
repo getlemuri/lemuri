@@ -32,6 +32,11 @@ struct SshPrompts {
     std::function<QString(const QString &question)> reply = [](const QString &) { return QString(); };
     /** Signed in: a password just typed can now be remembered. */
     std::function<void()> authenticated = [] {};
+    /**
+     * Nobody is watching (the background readings): no key that wants a touch (FIDO, "sk-" keys) and no ssh-agent
+     * holding one, so that a security key never blinks out of nowhere.
+     */
+    bool unattended = false;
 };
 
 /**
@@ -78,6 +83,8 @@ public:
     QByteArray run(const QString &command, int max, int timeoutSeconds, int *exitCode = nullptr);
     /** Still connected (the server may have closed an idle connection). */
     bool alive();
+    /** As alive(), without waiting: a connection busy with a command is in use, so it is alive. */
+    bool seemsAlive();
 
     /** What was agreed with the server, for the security checks. */
     struct Negotiated {
@@ -148,6 +155,10 @@ private:
 namespace Ssh {
 /** Once, at startup. */
 void init();
+/** Whether the ssh-agent holds a key that wants a touch ("sk-" types); true if the agent does not answer. */
+bool agentHoldsSecurityKeys();
+/** The key types in the agent's answer to SSH_AGENTC_REQUEST_IDENTITIES (the message, without its length). */
+QStringList agentKeyTypes(const QByteArray &answer);
 /** A keyboard-interactive question that asks for the account password and nothing else. When in doubt, no. */
 bool passwordQuestion(const QString &question);
 /** From libssh's message to the sentence for the user (the key of the messages), or null if not one we know. */

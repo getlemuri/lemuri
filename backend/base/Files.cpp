@@ -1,5 +1,6 @@
 #include "base/Files.h"
 
+#include "base/Error.h"
 #include "base/Handles.h"
 
 #include <QDir>
@@ -41,7 +42,7 @@ bool Files::writePrivate(const QString &file, const QByteArray &bytes, QString *
     ::unlink(tmp.constData());
     Fd fd(::open(tmp.constData(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600));
     auto failed = [&](const char *what) {
-        if (error) *error = QString("%1: %2").arg(what, QString::fromLocal8Bit(std::strerror(errno)));
+        if (error) *error = QString("%1: %2").arg(what, systemError());
         fd.reset();
         ::unlink(tmp.constData());
         return false;

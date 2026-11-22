@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+# The Debian and Ubuntu package (a PPA, one day the archive): installed in /usr, updated by apt, so built without
+# the updater of the GitHub .deb (LEMURI_SELF_UPDATE). The tests run in the CI of the repository: they need an SSH
+# server and Python modules that a build machine has not.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake+ninja
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DLEMURI_SELF_UPDATE=OFF -DLEMURI_TESTS=OFF
+
+override_dh_auto_test:

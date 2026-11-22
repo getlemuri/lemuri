@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What software centres (GNOME Software, KDE Discover, Flathub) show about Lemuri. -->
+<component type="desktop-application">
+  <id>io.github.getlemuri.lemuri</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Lemuri</name>
+  <summary>SSH console for your servers</summary>
+  <developer id="io.github.getlemuri">
+    <name>Lemuri contributors</name>
+  </developer>
+  <description>
+    <p>
+      Lemuri is a free, open-source, lightweight desktop SSH client for managing servers and VPS, featuring host trees,
+      split terminals, SFTP transfers, live metrics, an encrypted vault, backups, and secure team sharing.
+    </p>
+    <ul>
+      <li>Servers in folders, with disk usage, pending updates, reboots needed and an SSH security check</li>
+      <li>Shells in tabs and split panes, synced typing, jump hosts checked against known_hosts</li>
+      <li>Files over SFTP from the terminal: drop to upload, right click a name to download</li>
+      <li>An encrypted vault for passwords (AES-GCM, Argon2id)</li>
+      <li>Hosts shared with your team, sealed and signed, as text or over the local network</li>
+      <li>Encrypted backups, import of ~/.ssh/config, a see-through ghost terminal</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">lemuri.desktop</launchable>
+  <url type="homepage">https://getlemuri.github.io/</url>
+  <url type="bugtracker">https://github.com/getlemuri/lemuri/issues</url>
+  <url type="vcs-browser">https://github.com/getlemuri/lemuri</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Hosts in folders and a split terminal</caption>
+      <image>https://getlemuri.github.io/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <categories>
+    <category>Network</category>
+    <category>System</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-11-22">
+      <description>
+        <p>The first release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

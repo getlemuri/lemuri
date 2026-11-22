@@ -27,3 +27,12 @@ lemuri-packages*
 
 # Python
 __pycache__/
+# dpkg-buildpackage (debian/)
+/obj-*/
+/debian/.debhelper/
+/debian/lemuri/
+/debian/files
+/debian/*.substvars
+/debian/*.debhelper.log
+/debian/debhelper-build-stamp
+/lemuri-build-deps_*

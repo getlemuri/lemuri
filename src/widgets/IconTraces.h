@@ -24,6 +24,7 @@ inline const QHash<QString, QString> &iconTraces() {
         {"upload", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"},
         {"download", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"},
         {"eye", "M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"},
+        {"eye-off", "M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM3 3l18 18"},
         {"sidebar-close", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 3v18M16 15l-3-3 3-3"},
         {"chevrons-left", "M11 17l-5-5 5-5M18 17l-5-5 5-5"},
         {"chevrons-right", "M13 17l5-5-5-5M6 17l5-5-5-5"},

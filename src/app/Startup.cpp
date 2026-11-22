@@ -1,9 +1,11 @@
 #include "app/Startup.h"
 
+#include "app/Dock.h"
 #include "app/Instance.h"
 #include "app/Shots.h"
 #include "app/Texts.h"
 #include "window/MainWindow.h"
+#include "widgets/Ui.h"
 #include "window/Splash.h"
 
 #include <QApplication>
@@ -12,7 +14,10 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QJsonDocument>
+#include <QLabel>
+#include <QVBoxLayout>
 #include <QStandardPaths>
+#include <QTimer>
 #include <cstdio>
 
 Startup::Startup(QString shot) : shot(std::move(shot)) {
@@ -88,7 +93,29 @@ void Startup::texts(const QJsonValue &all, const QString &language) {
     backend.request("prefs.get", {{"node", "ui"}}, [this](const QJsonValue &p, const QString &) {
         if (p.toObject()["splash"].isString()) Splash::remember(p.toObject()["splash"].toString() != "false");
         if (window) window->prefs(p.toObject());
+        if (shot.isEmpty() && p.toObject()["dockAsked"].toString() != "true") offerDock();
     });
+}
+
+void Startup::offerDock() {
+    // Once the window is in view, past the splash screen; asked once, whatever the answer.
+    auto *wait = new QTimer(&model);
+    QObject::connect(wait, &QTimer::timeout, &model, [this, wait] {
+        if (splashing || !window || !window->isVisible() || !window->isActiveWindow()) return;
+        wait->deleteLater();
+        if (!Dock::available()) return;
+        if (!Dock::pinned()) {
+            FramedDialog d(window.get(), T("dock.title"));
+            auto *text = new QLabel(T("dock.question"));
+            text->setWordWrap(true);
+            text->setMinimumWidth(380);
+            d.body()->addWidget(text);
+            d.buttons(T("dock.add"), false, T("dock.notNow"))->setFocus();
+            if (d.exec() == QDialog::Accepted && !Dock::pin(true)) Ui::warning(window.get(), T("dock.title"), T("settings.dock.failed"));
+        }
+        backend.request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"dockAsked", "true"}}}});
+    });
+    wait->start(1500);
 }
 
 void Startup::startWork() {

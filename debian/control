@@ -1,0 +1,32 @@
+Source: lemuri
+Section: net
+Priority: optional
+Maintainer: Lemuri contributors <noreply@getlemuri.github.io>
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               ninja-build,
+               pkgconf,
+               qt6-base-dev,
+               libvterm-dev,
+               libssh-dev (>= 0.10),
+               libargon2-dev,
+               libssl-dev,
+               libxcb1-dev
+Standards-Version: 4.7.0
+Homepage: https://getlemuri.github.io/
+Vcs-Browser: https://github.com/getlemuri/lemuri
+Vcs-Git: https://github.com/getlemuri/lemuri.git
+Rules-Requires-Root: no
+
+Package: lemuri
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: openssh-client
+Description: SSH console for your servers
+ Lemuri is a free, open-source, lightweight desktop SSH client for managing
+ servers and VPS: hosts in folders, shells in tabs and split panes, SFTP
+ transfers from the terminal, live metrics, pending updates and an SSH
+ security check for each server, an encrypted password vault, encrypted
+ backups and hosts shared with a team.
+ .
+ It is a native Qt 6 application written in C++.

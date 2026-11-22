@@ -77,6 +77,18 @@ Documented choices, not vulnerabilities, although ideas to improve them are welc
   most one a minute from each address and five a minute in all; one address cannot hold more than 4 connections.
   100.64.0.0/10 (Tailscale, carrier-grade NAT) counts as local only if you turn it on in *Settings → Local network*:
   on a phone's hotspot those addresses are the operator's other customers.
+  Someone on the network can still keep those limits busy while you wait for a link, so that your own request is
+  refused: a denial of service, never a way in, since a link still needs the code compared on both screens.
+- **In the background**, without you doing anything, the backend (as long as *Settings → Servers → Check whether
+  hosts answer* is not *Never*):
+  - every 5 or 15 minutes opens a TCP connection to the SSH port of each host that has no connection open already,
+    exchanges the version line and closes, without logging in (at most 16 hosts at a time). Each leaves a line in
+    the server's sshd log;
+  - signs in to each host that is not one of those received from your contacts, and keeps that connection open to
+    read resources, updates and the SSH security checks. It uses only what needs nobody: keys without passphrase,
+    ssh-agent, and passwords of a vault that is already unlocked, each tried once. Keys that want a touch (FIDO,
+    `sk-` types) are never used in the background, nor is an agent that holds one. An agent that asks to confirm each
+    use (`ssh-add -c`) cannot be told apart and would ask; with one, set the check to *Never*.
 - **A `~/.ssh/config` from a backup** is never imported unless you tick it, and whatever in it is more than a plain
   connection setting (an allowlist: commands, libraries such as `PKCS11Provider`, `ForwardAgent`, `Include`, control
   sockets, forwarded ports...) is named next to it first. `authorized_keys`, `rc` and `environment` are never written.
@@ -103,6 +115,11 @@ getlemuri/lemuri` shows that it was built by this repository's workflow, from wh
 4. Publish a security advisory saying from which version the old key is no longer trusted. Until each copy has
    updated, a stolen key can still sign packages it accepts: that is why the advisory goes out at once, and why an
    update is never installed without the system password.
+
+**What the backup key does not protect against:** the two keys weigh the same. Whoever steals the release key can
+sign an update that removes the backup key from `package-signers`, and a copy that installs it before the
+advisory trusts the thief from then on. Requiring two signatures for an update that changes the keys (as TUF does) is
+planned; until then, the system password before every update is the last check.
 
 **If both keys are lost**, the installed copies cannot be updated any more: a new package, with new keys, has to be
 installed by hand. After using the backup key, make a new backup key the same way.

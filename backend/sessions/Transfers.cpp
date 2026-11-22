@@ -17,7 +17,9 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QLocale>
 #include <QRegularExpression>
+#include <QStorageInfo>
 #include <chrono>
 
 namespace {
@@ -46,6 +48,9 @@ struct Transfers::Transfer {
     std::atomic<bool> cancelled{false}, started{false};
     std::atomic<int> skipped{0};
     std::atomic<qint64> done{0}, total{1};
+    /** Past this many bytes the server is sending more than it said: stopped (0: no limit). */
+    qint64 limit = 0;
+    std::atomic<bool> overflowed{false};
     QString name;
     std::mutex guard;
     qint64 last = 0;
@@ -64,6 +69,10 @@ struct Transfers::Transfer {
     }
     bool count(qint64 n) {
         done += n;
+        if (limit > 0 && done > limit) {
+            overflowed = true;
+            cancelled = true;
+        }
         update(false);
         return !cancelled;
     }
@@ -133,20 +142,54 @@ void upload(Sftp &c, const QString &path, const QString &folder, Transfers::Tran
     }
 }
 
-qint64 remoteSize(Sftp &c, const QString &path) {
+/** What a download brings: counted before it starts, to ask about it and to check the space. */
+struct Survey {
+    qint64 files = 0, bytes = 0;
+    /** Files here that the download would replace (inside a folder that is already here). */
+    qint64 replaced = 0;
+};
+
+/** Asked before downloading more than this: a click on the wrong folder should not fill the disk. */
+constexpr qint64 ASK_FILES = 10'000;
+constexpr qint64 ASK_BYTES = 5LL * 1024 * 1024 * 1024;
+/** Left free on the disk, and allowed beyond what the server said (files that grew meanwhile). */
+constexpr qint64 SPARE_BYTES = 64LL * 1024 * 1024;
+
+QString sizeText(qint64 bytes) {
+    return QLocale(I18n::language()).formattedDataSize(bytes, 1, QLocale::DataSizeTraditionalFormat);
+}
+
+/** Folders deeper than this are not followed: nobody nests real files so deep, a server that lies does. */
+constexpr int MAX_DEPTH = 64;
+/** More names than this in one download: refused, it would take hours just to list them. */
+constexpr qint64 MAX_ENTRIES = 200'000;
+
+void survey(Sftp &c, const QString &path, const QString &dest, int depth, Survey &s) {
     Sftp::Attrs a = c.lstat(path);
-    if (a.link) return 0;
-    if (!a.dir) return a.size;
-    qint64 t = 0;
-    for (const Sftp::Entry &e : c.list(path)) {
-        if (!Sftp::safeLocalName(e.name)) continue;
-        t += e.attrs.dir ? remoteSize(c, Sftp::join(path, e.name)) : e.attrs.link ? 0 : e.attrs.size;
+    if (a.link) return;
+    if (!a.dir) {
+        s.files++;
+        s.bytes += std::max<qint64>(a.size, 0);
+        if (QFileInfo(dest).isFile()) s.replaced++;
+        return;
     }
-    return t;
+    if (depth >= MAX_DEPTH) throw Fail{I18n::t("transfer.download.tooDeep", MAX_DEPTH)};
+    for (const Sftp::Entry &e : c.list(path)) {
+        if (++s.files > MAX_ENTRIES) throw Fail{I18n::t("transfer.download.tooMany", MAX_ENTRIES)};
+        s.files--;
+        if (!Sftp::safeLocalName(e.name)) continue;
+        QString inside = Sftp::join(path, e.name), there = dest + "/" + e.name;
+        if (e.attrs.dir) survey(c, inside, there, depth + 1, s);
+        else if (!e.attrs.link) {
+            s.files++;
+            s.bytes += std::max<qint64>(e.attrs.size, 0);
+            if (QFileInfo(there).isFile()) s.replaced++;
+        }
+    }
 }
 
 /** As upload, the other way: links on the server not followed, names unsafe here skipped, temporary names. */
-void download(Sftp &c, const QString &path, const QString &folder, Transfers::Transfer &w) {
+void download(Sftp &c, const QString &path, const QString &folder, Transfers::Transfer &w, int depth = 0) {
     QString name = Sftp::lastName(path);
     if (!Sftp::safeLocalName(name)) {
         w.skipped++;
@@ -168,7 +211,11 @@ void download(Sftp &c, const QString &path, const QString &folder, Transfers::Tr
                 w.skipped++;
                 continue;
             }
-            download(c, Sftp::join(path, e.name), dest, w);
+            if (depth + 1 > MAX_DEPTH) {
+                w.skipped++;
+                continue;
+            }
+            download(c, Sftp::join(path, e.name), dest, w, depth + 1);
             if (w.cancelled) return;
         }
         return;
@@ -425,13 +472,30 @@ QJsonObject Transfers::download(const QJsonObject &m) {
     t->host = sessions.host(sid);
     t->targets << "local:" + target;
     return start(sid, t, [this, path, local, name, target, replace](Transfer &k, Sftp &c) {
-        // It did not exist when asked, but something has put it there while this one waited.
-        if (!replace && QFileInfo::exists(target)
-            && !confirm(I18n::t("transfer.download"), I18n::t("transfer.download.replace", target), I18n::t("transfer.overwrite")))
+        QString title = I18n::t("transfer.download");
+        Survey s;
+        survey(c, path, target, 0, s);
+        QFileInfo here(target);
+        // A file: replaced only if the user said so, or asked now (it was not there when they chose).
+        if (here.exists() && !here.isDir() && !replace && !confirm(title, I18n::t("transfer.download.replace", target), I18n::t("transfer.overwrite")))
+            k.cancelled = true;
+        // A folder already here: the two are merged, and the files with the same name replaced. Said once, with how many.
+        if (!k.cancelled && here.isDir() && s.replaced > 0
+            && !confirm(title, I18n::t("transfer.download.merge", target, s.replaced), I18n::t("transfer.download.mergeAction")))
+            k.cancelled = true;
+        if (!k.cancelled && (s.files > ASK_FILES || s.bytes > ASK_BYTES)
+            && !confirm(title, I18n::t("transfer.download.large", name, s.files, sizeText(s.bytes)), title))
             k.cancelled = true;
         if (k.cancelled) return I18n::t("transfer.download.cancelled");
-        k.setTotal(remoteSize(c, path));
+        QStorageInfo disk(local);
+        qint64 free = disk.isValid() ? disk.bytesAvailable() : -1;
+        if (free >= 0 && s.bytes + SPARE_BYTES > free)
+            throw Fail{I18n::t("transfer.download.noSpace", sizeText(s.bytes), sizeText(free))};
+        k.setTotal(s.bytes);
+        // The sizes come from the server: if it sends much more than it said, the download stops.
+        k.limit = s.bytes + s.bytes / 10 + SPARE_BYTES;
         ::download(c, path, local, k);
+        if (k.overflowed) throw Fail{I18n::t("transfer.download.overflow", sizeText(s.bytes))};
         return k.cancelled ? I18n::t("transfer.download.cancelled") : I18n::t("transfer.downloaded", name, local) + k.skippedReported();
     });
 }

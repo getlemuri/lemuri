@@ -10,6 +10,9 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QtTest>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <unistd.h>
 
 using namespace SecurityAudit;
@@ -229,6 +232,38 @@ private slots:
         server.close();
         QVERIFY(!Probe::reachable("127.0.0.1", port));
         QVERIFY(!Probe::reachable("", 22));
+    }
+
+    /** Many hosts in one round, a few workers; a host with a connection open is not knocked on. */
+    void aRoundOfManyHostsAndTheConnectedOnes() {
+        QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        quint16 closed = server.serverPort();
+        server.close();
+        QList<Probe::Target> targets;
+        for (int i = 0; i < 3 * Probe::POOL; i++) targets.append({QString("h%1").arg(i), "127.0.0.1", closed});
+        std::mutex m;
+        std::condition_variable done;
+        QHash<QString, Host::Reach> states;
+        std::atomic<int> asked{0};
+        Probe probe;
+        probe.launch(
+            [&](const QHash<QString, Host::Reach> &s) {
+                std::lock_guard<std::mutex> l(m);
+                states = s;
+                done.notify_all();
+            },
+            [&](const QString &id) {
+                asked++;
+                return id.endsWith('0');
+            });
+        probe.list(targets);
+        std::unique_lock<std::mutex> l(m);
+        QVERIFY(done.wait_for(l, std::chrono::seconds(10), [&] { return !states.isEmpty(); }));
+        QCOMPARE(states.size(), targets.size());
+        QCOMPARE(asked.load(), int(targets.size()));
+        for (const Probe::Target &t : targets)
+            QCOMPARE(states.value(t.id), t.id.endsWith('0') ? Host::Reach::Online : Host::Reach::Offline);
     }
 };
 

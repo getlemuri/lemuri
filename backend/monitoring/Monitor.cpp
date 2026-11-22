@@ -37,7 +37,12 @@ Monitor::Monitor(Events &events, Loop &loop, Hosts &hosts, Vault &vault) : event
 }
 
 int Monitor::probeMinutes() {
-    return Prefs("lemuri/ui").getInt("probeMinutes", Probe::DEFAULT_MINUTES);
+    return minutes(Prefs("lemuri/ui").getInt("probeMinutes", Probe::DEFAULT_MINUTES));
+}
+
+int Monitor::minutes(int n) {
+    // Every minute was a choice once: it becomes the shortest there is now.
+    return n <= 0 ? 0 : std::max(Probe::MIN_MINUTES, n);
 }
 
 QList<Probe::Target> Monitor::targets() const {
@@ -58,7 +63,7 @@ void Monitor::ops(Router &router) {
     });
     router.op("monitor.probeMinutes", [this](const QJsonObject &m) {
         if (m.contains("minutes")) {
-            int n = Params::integer(m, "minutes", Probe::DEFAULT_MINUTES);
+            int n = minutes(Params::integer(m, "minutes", Probe::DEFAULT_MINUTES));
             Prefs("lemuri/ui").put("probeMinutes", QString::number(n));
             probe.every(n);
         }
@@ -95,7 +100,8 @@ void Monitor::launch() {
     if (launched) return;
     launched = true;
     probe.every(probeMinutes());
-    probe.launch([this](const QHash<QString, Host::Reach> &states) { loop.post([this, states] { hosts.refreshStatuses(states); }); });
+    probe.launch([this](const QHash<QString, Host::Reach> &states) { loop.post([this, states] { hosts.refreshStatuses(states); }); },
+                 [this](const QString &id) { return metrics.connected(id); });
     probe.list(targets());
     // The check is cheap and often, so that unlocking the vault shows up soon; the readings keep their own pace.
     auto *timer = new QTimer(&loop);

@@ -75,7 +75,7 @@ Event `hosts` (same fields as the op) after every change, and when the probe fin
 | op | params | ok |
 |---|---|---|
 | `monitor.start` | | starts the reachability probe and the periodic readings (call once, after `hosts`) |
-| `monitor.probeMinutes` | `minutes?` (0: never on its own) | the minutes |
+| `monitor.probeMinutes` | `minutes?` (0: never on its own; otherwise at least 5) | the minutes |
 | `monitor.tryAll` | | |
 | `metrics.refresh` | `host, force?` | (the reading arrives as an event) |
 | `metrics.last` | | `{hostId: MetricsResult}` |

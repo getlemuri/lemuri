@@ -147,7 +147,7 @@ public:
         key = new QLineEdit(h["key"].isString() ? h["key"].toString() : "id_ed25519");
         keyCaption = add(T("hostForm.key"), key);
         password = new QLineEdit;
-        password->setEchoMode(QLineEdit::Password);
+        Ui::revealable(password);
         password->setPlaceholderText(existing ? T("hostForm.password.keep") : T("hostForm.password.ask"));
         passwordCaption = add(T("auth.password"), password);
         jump = new QComboBox;
@@ -449,14 +449,14 @@ void Actions::unlockVault(std::function<void()> then) {
     }
     d.body()->addWidget(new QLabel(T("vault.master")));
     auto *field = new QLineEdit;
-    field->setEchoMode(QLineEdit::Password);
+    Ui::revealable(field);
     field->setMinimumWidth(380);
     d.body()->addWidget(field);
     QLineEdit *again = nullptr;
     if (create) {
         d.body()->addWidget(new QLabel(T("vault.repeat")));
         again = new QLineEdit;
-        again->setEchoMode(QLineEdit::Password);
+        Ui::revealable(again);
         d.body()->addWidget(again);
     }
     QLabel *note = Ui::faint(T(create ? "vault.create.note" : "vault.unlock.note"));
@@ -517,7 +517,7 @@ void Actions::changeVaultPassword() {
         auto field = [&](const QString &caption) {
             d.body()->addWidget(new QLabel(caption));
             auto *f = new QLineEdit;
-            f->setEchoMode(QLineEdit::Password);
+            Ui::revealable(f);
             f->setMinimumWidth(380);
             d.body()->addWidget(f);
             return f;
@@ -738,7 +738,8 @@ void Actions::download(Session *s, const QString &name, const QString &lsCommand
                            [=, this](const QJsonValue &v) {
                 QJsonObject r = v.toObject();
                 QString target = QDir(into).filePath(r["name"].toString());
-                bool replace = QFileInfo::exists(target);
+                // A file already here: asked now. A folder: the backend asks, once it knows how many files would be replaced.
+                bool replace = QFileInfo::exists(target) && !QFileInfo(target).isDir();
                 if (replace && !Ui::confirm(window, T("transfer.download"), T("transfer.download.replace", target), T("transfer.overwrite"))) return;
                 model->request("sftp.download", {{"session", backendId}, {"path", r["path"]}, {"into", into}, {"replace", replace}}, nullptr,
                                [this](const QString &why) { Ui::warning(window, T("transfer.download"), why); });

@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="/">
     <file alias="logo.png">res/logo.png</file>
+    <file alias="chevron-down.png">res/chevron-down.png</file>
+    <file alias="chevron-down-off.png">res/chevron-down-off.png</file>
   </qresource>
 </RCC>

@@ -9,11 +9,14 @@
 #include "ssh/Ssh.h"
 
 #include <QElapsedTimer>
+#include <QtEndian>
 #include <QTemporaryDir>
 #include <QtTest>
 #include <arpa/inet.h>
+#include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <thread>
 #include <unistd.h>
 
@@ -221,6 +224,73 @@ private slots:
         QCOMPARE(agent.authMethod(), QString("AGENT"));
         QCOMPARE(agent.user(), me());
         QCOMPARE(agent.id().size(), 8);
+    }
+
+    // ── ssh-agent and security keys ──
+
+    static QByteArray string(const QByteArray &b) {
+        QByteArray r(4, 0);
+        qToBigEndian(quint32(b.size()), r.data());
+        return r + b;
+    }
+
+    /** SSH_AGENT_IDENTITIES_ANSWER with keys of these types (fake blobs: the type and a few bytes). */
+    static QByteArray identities(const QStringList &types) {
+        QByteArray r(1, char(12));
+        QByteArray count(4, 0);
+        qToBigEndian(quint32(types.size()), count.data());
+        r += count;
+        for (const QString &t : types) r += string(string(t.toLatin1()) + QByteArray(8, 'k')) + string("comment");
+        return r;
+    }
+
+    /** A one-shot agent on a socket in `dir`: answers the identities request with `answer`. */
+    static std::thread fakeAgent(const QString &path, const QByteArray &answer) {
+        int fd = ::socket(AF_UNIX, SOCK_STREAM, 0);
+        sockaddr_un a{};
+        a.sun_family = AF_UNIX;
+        std::strncpy(a.sun_path, QFile::encodeName(path).constData(), sizeof a.sun_path - 1);
+        if (::bind(fd, reinterpret_cast<sockaddr *>(&a), sizeof a) != 0 || ::listen(fd, 1) != 0) qFatal("fake agent");
+        return std::thread([fd, answer] {
+            int c = ::accept(fd, nullptr, nullptr);
+            char request[5];
+            if (c >= 0 && ::recv(c, request, 5, MSG_WAITALL) == 5) {
+                QByteArray out = string(answer);
+                (void)!::write(c, out.constData(), size_t(out.size()));
+            }
+            if (c >= 0) ::close(c);
+            ::close(fd);
+        });
+    }
+
+    void theKeyTypesOfTheAgentAreRead() {
+        QCOMPARE(Ssh::agentKeyTypes(identities({"ssh-ed25519", "sk-ssh-ed25519@openssh.com"})),
+                 QStringList({"ssh-ed25519", "sk-ssh-ed25519@openssh.com"}));
+        QCOMPARE(Ssh::agentKeyTypes(identities({})), QStringList());
+        // Cut short or lying about its sizes: what can be read, nothing past the end.
+        QCOMPARE(Ssh::agentKeyTypes(identities({"ssh-rsa", "ssh-ed25519"}).chopped(20)), QStringList({"ssh-rsa"}));
+        QCOMPARE(Ssh::agentKeyTypes(QByteArray("\x0c\xff\xff\xff\xff\x7f\xff\xff\xff", 9)), QStringList());
+        QCOMPARE(Ssh::agentKeyTypes(QByteArray(1, char(5))), QStringList());
+    }
+
+    void anAgentWithASecurityKeyIsLeftAloneInTheBackground() {
+        QTemporaryDir dir;
+        QByteArray saved = qgetenv("SSH_AUTH_SOCK");
+        QString path = dir.filePath("agent");
+        qputenv("SSH_AUTH_SOCK", path.toUtf8());
+        std::thread a = fakeAgent(path, identities({"ssh-ed25519", "sk-ecdsa-sha2-nistp256@openssh.com"}));
+        QVERIFY(Ssh::agentHoldsSecurityKeys());
+        a.join();
+        QFile::remove(path);
+        std::thread b = fakeAgent(path, identities({"ssh-ed25519", "rsa-sha2-512"}));
+        QVERIFY(!Ssh::agentHoldsSecurityKeys());
+        b.join();
+        QFile::remove(path);
+        // No agent there: not asked, so kept away from.
+        QVERIFY(Ssh::agentHoldsSecurityKeys());
+        qunsetenv("SSH_AUTH_SOCK");
+        QVERIFY(!Ssh::agentHoldsSecurityKeys());
+        if (!saved.isEmpty()) qputenv("SSH_AUTH_SOCK", saved);
     }
 
     // ── The questions of a sign-in ──

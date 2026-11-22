@@ -205,6 +205,10 @@ std::optional<Release> PackageUpdater::parse(const QByteArray &json, const QStri
 }
 
 QString PackageUpdater::blocker() const {
+#ifdef LEMURI_NO_SELF_UPDATE
+    // Built for a package manager (LEMURI_SELF_UPDATE OFF): it brings the new versions.
+    return I18n::t("update.blocker.packageManager");
+#endif
     if (!testing) {
         if (!QCoreApplication::applicationFilePath().startsWith(HOME + "/") || run(10, {"dpkg-query", "-W", "lemuri"}).code != 0)
             return I18n::t("update.blocker.notDeb");
@@ -415,7 +419,12 @@ void Updates::install(const Reply &r) {
 }
 
 bool Updates::automatic() const {
+#ifdef LEMURI_NO_SELF_UPDATE
+    // Updated by a package manager: no daily call to GitHub unless the user turns it on.
+    return Prefs(NODE).getBool("automatic", false);
+#else
     return Prefs(NODE).getBool("automatic", true);
+#endif
 }
 
 QJsonObject Updates::state() const {

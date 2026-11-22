@@ -19,6 +19,8 @@ int main(int argc, char *argv[]) {
     std::signal(SIGPIPE, SIG_IGN);
     QCoreApplication app(argc, argv);
     app.setApplicationName("lemuri-core");
+    // First, while this is the only thread (it sets the locale of the error texts).
+    Ssh::init();
     // The names of the first versions, before anything reads them.
     Legacy::migrate();
     // The language chosen in the settings (shared with the first Lemuri), or the system's.
@@ -26,7 +28,6 @@ int main(int argc, char *argv[]) {
     Files::privateFolder(Files::data());
     Log::start();
     std::fprintf(stderr, "Lemuri backend %s started\n", LEMURI_VERSION);
-    Ssh::init();
     int code;
     {
         Core core;

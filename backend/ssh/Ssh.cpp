@@ -1,5 +1,6 @@
 #include "ssh/Ssh.h"
 
+#include "base/Error.h"
 #include "base/Handles.h"
 #include "base/I18n.h"
 #include "base/Net.h"
@@ -8,6 +9,7 @@
 #include "monitoring/SecurityAudit.h"
 
 #include <QDir>
+#include <QLocalSocket>
 #include <clocale>
 #include <QFile>
 #include <QFileInfo>
@@ -113,6 +115,8 @@ int keyBits(ssh_key key) {
 void Ssh::init() {
     // The system's error texts (strerror, inside libssh's messages too) in English: errorKey()
     // recognises them and turns them into the user's language; an Italian "Connessione rifiutata" it would not.
+    // libssh gives no finer code than "fatal" or "denied", so its texts are all there is. Called in
+    // main(), before the backend starts its threads: setlocale is not safe once threads run.
     std::setlocale(LC_MESSAGES, "C");
     ssh_init();
 }
@@ -226,7 +230,7 @@ std::shared_ptr<SshConnection::Link> SshConnection::openLink(const std::shared_p
         throw failure(why);
     }
     int pair[2];
-    if (Posix::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) != 0) throw failure(QString::fromLocal8Bit(std::strerror(errno)));
+    if (Posix::socketpair(AF_UNIX, SOCK_STREAM, 0, pair) != 0) throw failure(systemError());
     l->local = pair[1];
     *fd = pair[0];
     SshConnection::Link *raw = l.get();
@@ -271,6 +275,67 @@ void checkHostKey(ssh_session s, const Host &h, const SshPrompts &p, const std::
 
 enum class Tried { Yes, No, Cancelled };
 
+bool securityKey(ssh_key key) {
+    switch (ssh_key_type(key)) {
+    case SSH_KEYTYPE_SK_ECDSA:
+    case SSH_KEYTYPE_SK_ECDSA_CERT01:
+    case SSH_KEYTYPE_SK_ED25519:
+    case SSH_KEYTYPE_SK_ED25519_CERT01:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/** A big-endian uint32 of the agent protocol (RFC draft-miller-ssh-agent), or -1 past the end. */
+qint64 u32(const QByteArray &b, qsizetype at) {
+    if (at < 0 || at + 4 > b.size()) return -1;
+    auto c = [&](qsizetype i) { return quint32(quint8(b[at + i])); };
+    return qint64(c(0) << 24 | c(1) << 16 | c(2) << 8 | c(3));
+}
+}  // namespace
+
+QStringList Ssh::agentKeyTypes(const QByteArray &answer) {
+    // SSH_AGENT_IDENTITIES_ANSWER: byte 12, uint32 count, then per key: string blob (starting with string type), string comment.
+    QStringList types;
+    if (answer.isEmpty() || quint8(answer[0]) != 12) return types;
+    qint64 count = u32(answer, 1);
+    qsizetype at = 5;
+    for (qint64 i = 0; i < count && i < 1000; i++) {
+        qint64 blob = u32(answer, at);
+        if (blob < 4 || at + 4 + blob > answer.size()) break;
+        qint64 type = u32(answer, at + 4);
+        if (type < 0 || type > blob - 4) break;
+        types << QString::fromLatin1(answer.mid(at + 8, type));
+        at += 4 + blob;
+        qint64 comment = u32(answer, at);
+        if (comment < 0 || at + 4 + comment > answer.size()) break;
+        at += 4 + comment;
+    }
+    return types;
+}
+
+bool Ssh::agentHoldsSecurityKeys() {
+    QString path = qEnvironmentVariable("SSH_AUTH_SOCK");
+    if (path.isEmpty()) return false;
+    QLocalSocket agent;
+    agent.connectToServer(path);
+    // Not asked, not known: as if it held one, the background stays away from it.
+    if (!agent.waitForConnected(2000)) return true;
+    agent.write(QByteArray("\0\0\0\x01\x0b", 5));  // SSH_AGENTC_REQUEST_IDENTITIES
+    if (!agent.waitForBytesWritten(2000)) return true;
+    QByteArray in;
+    while (in.size() < 4 || in.size() < 4 + u32(in, 0)) {
+        if (in.size() > 4 + 256 * 1024 || !agent.waitForReadyRead(2000)) return true;
+        in += agent.readAll();
+    }
+    for (const QString &t : agentKeyTypes(in.mid(4, u32(in, 0))))
+        if (t.startsWith("sk-")) return true;
+    return false;
+}
+
+namespace {
+
 /** Signs in with a key file; `query`: only if the server accepts its public key (then the passphrase is asked). */
 bool keyFileWorks(ssh_session s, const QString &path, const SshPrompts &p, bool query) {
     QByteArray file = QFile::encodeName(path);
@@ -293,11 +358,15 @@ bool keyFileWorks(ssh_session s, const QString &path, const SshPrompts &p, bool 
         if (!raw) return false;
     }
     Key key(raw);
+    // Signing with a security key asks for a touch: not while nobody is watching.
+    if (p.unattended && securityKey(key.get())) return false;
     return ssh_userauth_publickey(s, nullptr, key.get()) == SSH_AUTH_SUCCESS;
 }
 
-bool agentWorks(ssh_session s) {
-    return !qEnvironmentVariableIsEmpty("SSH_AUTH_SOCK") && ssh_userauth_agent(s, nullptr) == SSH_AUTH_SUCCESS;
+bool agentWorks(ssh_session s, const SshPrompts &p) {
+    if (qEnvironmentVariableIsEmpty("SSH_AUTH_SOCK")) return false;
+    if (p.unattended && Ssh::agentHoldsSecurityKeys()) return false;
+    return ssh_userauth_agent(s, nullptr) == SSH_AUTH_SUCCESS;
 }
 
 /** The default keys and then every other private key in ~/.ssh that has its .pub next to it, as ssh does. */
@@ -354,9 +423,9 @@ void authenticate(ssh_session s, const Host &h, const SshPrompts &p, const std::
                 if (keyFileWorks(s, k, p, false)) return;
             } else {
                 warnings("\x1b[33mssh: " + I18n::t("ssh.keyNotFound", k) + "\x1b[0m\r\n");
-                if (agentWorks(s) || localKeysWork(s, p)) return;
+                if (agentWorks(s, p) || localKeysWork(s, p)) return;
             }
-        } else if (agentWorks(s) || localKeysWork(s, p)) {
+        } else if (agentWorks(s, p) || localKeysWork(s, p)) {
             return;
         }
     }
@@ -485,6 +554,12 @@ void SshConnection::disconnect() {
 
 bool SshConnection::alive() {
     std::lock_guard<std::mutex> l(io);
+    return session && ssh_is_connected(session);
+}
+
+bool SshConnection::seemsAlive() {
+    std::unique_lock<std::mutex> l(io, std::try_to_lock);
+    if (!l.owns_lock()) return true;
     return session && ssh_is_connected(session);
 }
 

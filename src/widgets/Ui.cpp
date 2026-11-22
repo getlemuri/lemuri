@@ -5,6 +5,7 @@
 #include "widgets/Icons.h"
 #include "widgets/Theme.h"
 
+#include <QAction>
 #include <QComboBox>
 #include <QDateTime>
 #include <QFontMetrics>
@@ -15,6 +16,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
 #include <cmath>
@@ -25,13 +27,23 @@ QPushButton *makeButton(const QString &text, const QString &icon, const char *ki
     auto *b = new QPushButton(text);
     b->setProperty("kind", kind);
     b->setCursor(Qt::PointingHandCursor);
-    QColor c = QString(kind) == "primary" ? QColor(Qt::white) : QString(kind) == "danger" ? Theme::critical : Theme::text;
+    QColor c = QString(kind) == "primary" ? QColor(Qt::white) : QString(kind) == "danger" ? Theme::dangerText : Theme::text;
     if (!icon.isEmpty()) {
         b->setIcon(Icons::icon(icon, 13, c));
         b->setIconSize(QSize(13, 13));
     }
     if (action) QObject::connect(b, &QPushButton::clicked, b, [action] { action(); });
     return b;
+}
+/** A message of a dialog: wrapped at a fixed width, with the height of all its lines asked for at that width. */
+QLabel *message(const QString &text, bool selectable) {
+    constexpr int WIDTH = 400;
+    auto *l = new QLabel(text);
+    l->setWordWrap(true);
+    if (selectable) l->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    l->setFixedWidth(WIDTH);
+    l->setMinimumHeight(l->heightForWidth(WIDTH));
+    return l;
 }
 }  // namespace
 
@@ -47,12 +59,18 @@ QPushButton:disabled { color: @disabled; border-color: @controlHover; }
 QPushButton[kind="primary"] { background: @accent; border-color: @accentDark; color: white; }
 QPushButton[kind="primary"]:hover { background: @accentDark; }
 QPushButton[kind="primary"]:disabled { background: @accentOff; border-color: @accentOff; color: @accentOffText; }
-QPushButton[kind="danger"] { color: @critical; }
+QPushButton[kind="danger"] { color: @dangerText; }
+QPushButton[kind="destroy"] { background: @criticalFill; border-color: @criticalFillHover; color: white; }
+QPushButton[kind="destroy"]:hover { background: @criticalFillHover; }
+QPushButton[kind="destroy"]:focus { border-color: white; }
 QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit { background: @bg; border: 1px solid @edge; border-radius: 3px;
     padding: 2px 6px; selection-background-color: @textSelection; selection-color: white; }
 QLineEdit, QSpinBox, QComboBox { min-height: 20px; }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus { border-color: @accent; }
-QComboBox::drop-down { border: none; width: 18px; }
+QComboBox { padding-right: 20px; }
+QComboBox::drop-down { border: none; width: 20px; subcontrol-origin: padding; subcontrol-position: center right; }
+QComboBox::down-arrow { image: url(:/chevron-down.png); width: 12px; height: 12px; }
+QComboBox::down-arrow:disabled { image: url(:/chevron-down-off.png); }
 QComboBox QAbstractItemView { background: @control; border: 1px solid @edge; selection-background-color: @rowSelected; }
 QCheckBox, QRadioButton { spacing: 6px; }
 QMenu { background: @control; border: 1px solid @edge; padding: 4px 0; }
@@ -238,23 +256,28 @@ QString Ui::disksTip(const QJsonObject &m) {
     return tip;
 }
 
+void Ui::revealable(QLineEdit *field) {
+    field->setEchoMode(QLineEdit::Password);
+    auto *eye = field->addAction(Icons::icon("eye", 16, Theme::faint, 1.8), QLineEdit::TrailingPosition);
+    eye->setToolTip(T("password.show"));
+    QObject::connect(eye, &QAction::triggered, field, [field, eye] {
+        bool hidden = field->echoMode() == QLineEdit::Password;
+        field->setEchoMode(hidden ? QLineEdit::Normal : QLineEdit::Password);
+        eye->setIcon(Icons::icon(hidden ? "eye-off" : "eye", 16, hidden ? Theme::text : Theme::faint, 1.8));
+        eye->setToolTip(T(hidden ? "password.hide" : "password.show"));
+    });
+}
+
 bool Ui::confirm(QWidget *parent, const QString &title, const QString &text, const QString &action, bool danger) {
     FramedDialog d(parent, title);
-    auto *l = new QLabel(text);
-    l->setWordWrap(true);
-    l->setMinimumWidth(380);
-    d.body()->addWidget(l);
+    d.body()->addWidget(message(text, false));
     d.buttons(action, danger)->setFocus();
     return d.exec() == QDialog::Accepted;
 }
 
 void Ui::warning(QWidget *parent, const QString &title, const QString &text) {
     FramedDialog d(parent, title);
-    auto *l = new QLabel(text);
-    l->setWordWrap(true);
-    l->setMinimumWidth(380);
-    l->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    d.body()->addWidget(l);
+    d.body()->addWidget(message(text, true));
     QPushButton *ok = d.addButton("OK");
     ok->setProperty("kind", "primary");
     QObject::connect(ok, &QPushButton::clicked, &d, &QDialog::accept);
@@ -442,11 +465,45 @@ QPushButton *FramedDialog::buttons(const QString &ok, bool danger, const QString
     QPushButton *c = addButton(cancel.isEmpty() ? T("common.cancel") : cancel);
     connect(c, &QPushButton::clicked, this, &QDialog::reject);
     QPushButton *o = addButton(ok);
-    o->setProperty("kind", danger ? "danger" : "primary");
+    // The main choice of a dialog is filled: blue, or red when it deletes something.
+    o->setProperty("kind", danger ? "destroy" : "primary");
     o->setDefault(true);
     connect(o, &QPushButton::clicked, this, &QDialog::accept);
     return o;
 }
+
+void FramedDialog::showEvent(QShowEvent *e) {
+    fitTexts();
+    QDialog::showEvent(e);
+}
+
+void FramedDialog::resizeEvent(QResizeEvent *e) {
+    QDialog::resizeEvent(e);
+    // Resized from outside (the window manager): the texts are measured again, once the layout has followed.
+    if (!fitting) QTimer::singleShot(0, this, [this] { fitTexts(); });
+}
+
+void FramedDialog::fitTexts() {
+    if (fitting) return;
+    fitting = true;
+    for (int round = 0; round < 4; round++) {
+        if (layout()) layout()->activate();
+        bool changed = false;
+        for (QLabel *l : findChildren<QLabel *>()) {
+            if (!l->wordWrap() || l->isHidden() || l->width() <= 0) continue;
+            int need = l->heightForWidth(l->width());
+            if (need > l->minimumHeight()) {
+                l->setMinimumHeight(need);
+                changed = true;
+            }
+        }
+        if (!changed) break;
+        resize(width(), std::max(height(), sizeHint().height()));
+        if (layout()) resize(width(), std::max(height(), layout()->totalHeightForWidth(width())));
+    }
+    fitting = false;
+}
+
 
 void FramedDialog::paintEvent(QPaintEvent *) {
     QPainter p(this);

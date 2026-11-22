@@ -4,6 +4,28 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- Lemuri in the GNOME dock: asked once at the first start, and a choice in *Settings → Appearance*.
+- `debian/`: a package for a PPA or a distribution, in `/usr` and updated by apt (`-DLEMURI_SELF_UPDATE=OFF`), with
+  AppStream data for the software centres.
+- Downloading a folder that is already here asks once, saying how many files would be replaced; very large downloads
+  are asked about, and refused if the disk has no room.
+- An eye in every password field shows what is typed.
+- The drop-down lists have their arrow.
+
+### Changed
+- The reachability check is every 5 or 15 minutes (every minute is gone), skips hosts with a connection already open,
+  and tries at most 16 hosts at a time.
+- The background readings never use keys that want a touch (FIDO, `sk-`), nor an ssh-agent holding one.
+- `SECURITY.md` says what Lemuri does on your servers in the background, and what the backup key does not protect
+  against.
+- The button that deletes, in a dialog, is filled red with white text; red text elsewhere is lighter and easier
+  to read.
+
+### Fixed
+- In *Settings*, ticking the Tailscale/100.64 option did not enable Apply.
+- The text of a dialog could get less height than it needs, cut at the top and the bottom (*Delete folder*).
+
 ## [0.1.0] - 2026-11-22
 
 The first release.

@@ -14,6 +14,7 @@ class IconButton;
 class QBoxLayout;
 class QDialogButtonBox;
 class QJsonObject;
+class QLineEdit;
 class QVBoxLayout;
 
 /** The pieces the views are made of, in the colours of the Theme. */
@@ -51,6 +52,9 @@ QString disksTip(const QJsonObject &metrics);
 QJsonObject fullestDisk(const QJsonObject &metrics);
 double quota(const QJsonObject &disk);
 QColor level(double quota);
+
+/** A password field with an eye at its end: a click shows what is typed, another hides it again. */
+void revealable(QLineEdit *field);
 
 /** A modal question with OK and Cancel. */
 bool confirm(QWidget *parent, const QString &title, const QString &text, const QString &action, bool danger = false);
@@ -110,6 +114,18 @@ public:
 protected:
     void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *) override;
+    /** Before it shows: every wrapped text gets the height it needs at its real width (see fitTexts). */
+    void showEvent(QShowEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
+
+private:
+    /**
+     * A wrapped QLabel tells the layout its height for a width it guesses, and a top-level window does not ask
+     * again at the real width: a text of two lines could get the height of one and a half, cut at the top and the
+     * bottom. Each one gets its height for the width it has; the window grows to hold them. Until nothing changes.
+     */
+    void fitTexts();
+    bool fitting = false;
 
 private:
     QVBoxLayout *content;

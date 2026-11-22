@@ -62,6 +62,8 @@ public:
     void security(const Host &h, const Jumps::Route &route, bool force, Outcome outcome);
 
     bool running(const QString &hostId);
+    /** The host's silent connection is open (or busy with a command). Any thread. */
+    bool connected(const QString &hostId);
     QJsonArray cpuHistory(const QString &hostId);
     /** The host was deleted: its connection is closed and what was known about it forgotten. */
     void forget(const QString &hostId);

@@ -376,6 +376,20 @@ def run(core, home, port, served, work):
         transfer("sftp.download", path="/srv/site", into=down, replace=False)
         check(read(os.path.join(down, "site", "index.html")) == "<h1>" and read(os.path.join(down, "site", "css", "a.css")) == "a{}"
               and not os.path.lexists(os.path.join(down, "site", "etc")), "a folder comes down without its links")
+        # Again, into the folder now here: merged, and the files it would replace counted and asked about once.
+        write(os.path.join(there, "index.html"), "<h2>")
+        write(os.path.join(down, "site", "mine.txt"), "MINE")
+        core.asked.clear()
+        messages = []
+        core.answers = {"confirm": lambda m: messages.append(m.get("message", "")) or False}
+        done = transfer("sftp.download", path="/srv/site", into=down, replace=False)
+        check(done["outcome"] == "CANCELLED" and read(os.path.join(down, "site", "index.html")) == "<h1>"
+              and len(messages) == 1 and " 2 " in messages[0], "a merge that would replace 2 files is asked about: " + str(messages))
+        core.answers = {"confirm": True}
+        done = transfer("sftp.download", path="/srv/site", into=down, replace=False)
+        check(done["outcome"] == "DONE" and read(os.path.join(down, "site", "index.html")) == "<h2>"
+              and read(os.path.join(down, "site", "mine.txt")) == "MINE", "merged: replaced the server's files, kept the others")
+        core.answers = {}
         write(os.path.join(served, "logs", "app.log"), "NEW LOG")
         write(os.path.join(down, "app.log"), "OLD")
         transfer("sftp.download", path="/logs/app.log", into=down, replace=True)
@@ -531,6 +545,7 @@ def run(core, home, port, served, work):
         check(any(h["id"] == hid and h.get("state") == "ONLINE" for h in core.call("hosts")["hosts"]), "the test server is online")
         core.call("host.remove", host=closed)
         check(core.call("monitor.probeMinutes", minutes=0) == 0 and core.call("monitor.probeMinutes") == 0, "probe set to never")
+        check(core.call("monitor.probeMinutes", minutes=1) == 5, "every minute becomes every 5 minutes")
         core.call("monitor.probeMinutes", minutes=5)
 
     if want("backup"):

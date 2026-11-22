@@ -57,7 +57,7 @@ qint64 now() {
 }
 
 QString errorText(int error) {
-    return QString::fromLocal8Bit(std::strerror(error));
+    return systemError(error);
 }
 
 // ── Wire: one JSON object per line ──

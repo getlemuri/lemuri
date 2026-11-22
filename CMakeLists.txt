@@ -48,6 +48,7 @@ pkg_check_modules(VTERM REQUIRED IMPORTED_TARGET vterm)
 # Everything but main(): the app and the tests link it.
 add_library(lemuri-ui STATIC
     src/app/Backend.cpp
+    src/app/Dock.cpp
     src/app/Instance.cpp
     src/app/Model.cpp
     src/app/Shots.cpp
@@ -133,6 +134,12 @@ endif()
 # install command. Only the tests' backend (lemuri-core-testing) reads them from LEMURI_UPDATE_API, _SIGNERS, _INSTALL.
 add_library(lemuri-backend STATIC backend/updates/Updates.cpp)
 target_compile_options(lemuri-backend PRIVATE ${LEMURI_WARNINGS})
+# LEMURI_SELF_UPDATE OFF: for packages that a package manager updates (apt from a PPA or the archive, Flatpak...).
+# The app still says when a new version is out, if asked or if the daily check is turned on, but never installs it.
+option(LEMURI_SELF_UPDATE "The package updates itself from the GitHub releases (the .deb in /opt/lemuri)" ON)
+if(NOT LEMURI_SELF_UPDATE)
+    target_compile_definitions(lemuri-backend PRIVATE LEMURI_NO_SELF_UPDATE)
+endif()
 target_link_libraries(lemuri-backend PUBLIC lemuri-backend-parts)
 add_executable(lemuri-core backend/main.cpp)
 target_compile_options(lemuri-core PRIVATE ${LEMURI_WARNINGS})
@@ -145,7 +152,7 @@ option(LEMURI_TESTS "Build the tests" ON)
 if(LEMURI_TESTS)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     enable_testing()
-    foreach(t TextsTest TerminalViewTest ModelTest)
+    foreach(t TextsTest TerminalViewTest ModelTest DockTest DialogTest)
         add_executable(${t} tests/${t}.cpp)
         target_link_libraries(${t} PRIVATE lemuri-ui Qt6::Test)
         add_test(NAME ${t} COMMAND ${t})
@@ -174,10 +181,26 @@ if(LEMURI_FUZZ)
     endforeach()
 endif()
 
-# cmake --install build --prefix <dir>: the layout of the package (packaging/linux/build.sh stages it this way).
+# cmake --install build --prefix <dir>.
 include(GNUInstallDirs)
-install(TARGETS lemuri lemuri-core RUNTIME DESTINATION bin)
-install(PROGRAMS packaging/linux/lemuri-install DESTINATION bin)
-install(FILES backend/package-signers DESTINATION share)
-install(FILES LICENSE THIRD-PARTY-NOTICES.md DESTINATION share/doc)
-install(DIRECTORY licenses DESTINATION share/doc)
+if(LEMURI_SELF_UPDATE)
+    # The layout of the .deb in /opt/lemuri and of the .tar.gz (packaging/linux/build.sh stages it this way).
+    install(TARGETS lemuri lemuri-core RUNTIME DESTINATION bin)
+    install(PROGRAMS packaging/linux/lemuri-install DESTINATION bin)
+    install(FILES backend/package-signers DESTINATION share)
+    install(FILES LICENSE THIRD-PARTY-NOTICES.md DESTINATION share/doc)
+    install(DIRECTORY licenses DESTINATION share/doc)
+else()
+    # The layout of a distribution (debian/, Flatpak): the app in bin, the backend in libexec/lemuri, the menu entry,
+    # the icons and the AppStream data in share. The licences go where the distribution wants them (debian/copyright).
+    install(TARGETS lemuri RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS lemuri-core RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/lemuri)
+    install(FILES packaging/linux/lemuri.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+    install(FILES packaging/linux/io.github.getlemuri.lemuri.metainfo.xml DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
+    foreach(size 16x16 24x24 32x32 48x48 64x64 128x128 256x256)
+        install(FILES packaging/icons/hicolor/${size}/apps/lemuri.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${size}/apps)
+    endforeach()
+endif()
+# Where the app looks for its backend when it is not beside it: libexec/lemuri, as seen from bin.
+file(RELATIVE_PATH LEMURI_CORE_FROM_BIN "/prefix/${CMAKE_INSTALL_BINDIR}" "/prefix/${CMAKE_INSTALL_LIBEXECDIR}/lemuri")
+target_compile_definitions(lemuri-ui PRIVATE LEMURI_CORE_FROM_BIN="${LEMURI_CORE_FROM_BIN}")
