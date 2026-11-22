@@ -4,7 +4,7 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
-## [0.1.0]
+## [0.1.0] - 2026-11-22
 
 The first release.
 
