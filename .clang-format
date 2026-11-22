@@ -1,0 +1,25 @@
+# The style of the code as it is written: 4 spaces, braces on the same line, lines up to 120 characters, short
+# functions and ifs on one line. Not enforced in CI (the existing code was not formatted with it): use it on what you
+# change, e.g. git clang-format.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+BreakConstructorInitializers: AfterColon
+PackConstructorInitializers: NextLine
+PointerAlignment: Right
+ReferenceAlignment: Right
+SpaceBeforeCpp11BracedList: false
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'          # the project's own headers first
+    Priority: 1
+  - Regex: '^<Q'         # then Qt
+    Priority: 2
+  - Regex: '.*'          # then the rest (libssh, OpenSSL, the standard library)
+    Priority: 3
+SortIncludes: CaseInsensitive

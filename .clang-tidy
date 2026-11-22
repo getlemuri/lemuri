@@ -1,0 +1,20 @@
+# clang-tidy -p build <file>: the checks that find bugs, not the ones about taste. build/compile_commands.json is
+# written by every CMake configure.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-exception-escape,
+  cert-err58-cpp,
+  clang-analyzer-*,
+  concurrency-*,
+  misc-redundant-expression,
+  misc-unused-using-decls,
+  modernize-use-override,
+  modernize-use-nullptr,
+  performance-*,
+  -performance-enum-size,
+  readability-misleading-indentation
+HeaderFilterRegex: '(backend|src)/.*'
+WarningsAsErrors: ''
