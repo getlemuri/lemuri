@@ -83,8 +83,9 @@ void Startup::texts(const QJsonValue &all, const QString &language) {
     QDir().mkpath(QFileInfo(cache).path());
     QFile out(cache);
     if (out.open(QIODevice::WriteOnly)) out.write(QJsonDocument(QJsonObject{{"language", language}, {"texts", all}}).toJson(QJsonDocument::Compact));
-    // No window yet (the first start), or one in another language: built again with these texts.
-    if (!window || saved["language"].toString() != language) {
+    // No window yet (the first start), or one built with other texts: another language, or the cached ones of the
+    // version before an update (its new keys would show as !key!). Built again with these texts.
+    if (!window || saved["language"].toString() != language || saved["texts"] != all) {
         Texts::load(all.toObject(), language);
         window.reset();
         open();

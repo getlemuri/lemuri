@@ -4,6 +4,9 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+- The first start after an update showed the new texts as `!key!` (the dock question), until the next start.
+
 ## [0.1.1] - 2026-11-26
 
 ### Added
