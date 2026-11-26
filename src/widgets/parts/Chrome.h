@@ -51,7 +51,6 @@ signals:
     void updateClicked();
 
 protected:
-    void paintEvent(QPaintEvent *) override;
     void mousePressEvent(QMouseEvent *) override;
     void mouseDoubleClickEvent(QMouseEvent *) override;
     bool eventFilter(QObject *, QEvent *) override;

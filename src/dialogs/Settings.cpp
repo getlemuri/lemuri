@@ -516,7 +516,7 @@ QWidget *sections(const QList<Page> &pages, QDialog &d, QLineEdit **search) {
     auto *left = new QWidget;
     left->setObjectName("settingsLeft");
     left->setAttribute(Qt::WA_StyledBackground);
-    left->setStyleSheet(Theme::css("#settingsLeft { background: @border; border-right: 1px solid @edge; }"
+    left->setStyleSheet(Theme::css("#settingsLeft { background: @veil; border-right: 1px solid @edge; }"
                         "QListWidget { background: transparent; border: none; outline: none; }"
                         "QListWidget::item { padding: 5px 10px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }"
                         "QListWidget::item:hover { background: @controlHover; }"

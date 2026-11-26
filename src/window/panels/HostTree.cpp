@@ -258,7 +258,7 @@ void HostTree::drawRow(QPainter *p, const QStyleOptionViewItem &option, const QM
             double q = std::clamp(Ui::quota(d), 0.0, 1.0);
             QRectF track(right - METER, mid - 4, METER, 8);
             p->setPen(Qt::NoPen);
-            p->setBrush(Theme::border);
+            p->setBrush(Theme::track);
             p->drawRoundedRect(track, 4, 4);
             if (q > 0) {
                 p->setBrush(Ui::level(q));

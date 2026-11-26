@@ -8,6 +8,12 @@
 #include <QFont>
 #include <QPalette>
 
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+#include <cstring>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 namespace {
 /** The dark theme for the standard controls too (dialogs, menus, tooltips), in the app's colours. */
 void darkTheme(QApplication &app) {
@@ -34,9 +40,37 @@ void darkTheme(QApplication &app) {
     f.setPixelSize(12);
     app.setFont(f);
 }
+
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+/**
+ * Typed in a terminal, it lets go of it: the prompt comes back at once and closing the terminal leaves the app running.
+ * Started from the menu (no terminal), with --foreground, or for the site's pictures (the script waits for it), it stays.
+ * Before QApplication: forking a process that already has threads is not safe.
+ */
+void detach(int argc, char *argv[]) {
+    if (!isatty(STDIN_FILENO) && !isatty(STDOUT_FILENO) && !isatty(STDERR_FILENO)) return;
+    if (qEnvironmentVariableIsSet("LEMURI_SHOT")) return;
+    for (int i = 1; i < argc; i++)
+        if (std::strcmp(argv[i], "--foreground") == 0) return;
+    pid_t pid = fork();
+    if (pid < 0) return;  // No fork: it simply runs attached.
+    if (pid > 0) _exit(0);
+    setsid();
+    int null = open("/dev/null", O_RDWR);
+    if (null >= 0) {
+        dup2(null, STDIN_FILENO);
+        dup2(null, STDOUT_FILENO);
+        dup2(null, STDERR_FILENO);
+        if (null > STDERR_FILENO) close(null);
+    }
+}
+#endif
 }  // namespace
 
 int main(int argc, char *argv[]) {
+#if defined(Q_OS_UNIX) && !defined(Q_OS_MACOS)
+    detach(argc, argv);
+#endif
     // On XWayland: on Wayland a window cannot place itself, and ghost mode docks to the sides.
     if (qgetenv("XDG_SESSION_TYPE") == "wayland" && !qEnvironmentVariableIsSet("QT_QPA_PLATFORM")) qputenv("QT_QPA_PLATFORM", "xcb");
     QApplication app(argc, argv);

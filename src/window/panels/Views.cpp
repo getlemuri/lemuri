@@ -304,7 +304,7 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
         QRectF r(4, 4, 34, 34);
-        p.setPen(QPen(Theme::border, 4));
+        p.setPen(QPen(Theme::track, 4));
         p.drawEllipse(r);
         p.setPen(QPen(toneColour(tone(score)), 4, Qt::SolidLine, Qt::RoundCap));
         p.drawArc(r, 90 * 16, int(-360 * 16 * std::clamp(score, 0.0, 1.0)));
@@ -686,7 +686,7 @@ QWidget *HostSummaryView::securityCard(const QString &prefix, const QString &ico
     QColor c = toneColour(t);
     auto *card = new QFrame;
     card->setObjectName("card");
-    card->setStyleSheet(Theme::css(QString("#card { background: @bg; border: 1px solid @border; border-top: 3px solid %1; border-radius: 6px; }").arg(c.name())));
+    card->setStyleSheet(Theme::css(QString("#card { background: @veil; border: 1px solid @border; border-top: 3px solid %1; border-radius: 6px; }").arg(c.name())));
     auto *col = new QVBoxLayout(card);
     col->setContentsMargins(12, 10, 12, 12);
     col->setSpacing(10);
@@ -875,9 +875,10 @@ protected:
         QRect in = rect().marginsRemoved(layout()->contentsMargins());
         cover->setGeometry(in);
         bar->adjustSize();
-        // Left of the terminal's 12 px scroll bar.
-        bar->move(in.right() + 1 - 12 - bar->width(), in.top());
+        // At the top right corner, over the terminal's scroll bar, which starts just under it.
+        bar->move(in.right() + 1 - bar->width(), in.top());
         bar->raise();
+        if (auto *t = qobject_cast<TerminalView *>(view)) t->setScrollTop(bar->height());
     }
 
 private:
@@ -898,7 +899,7 @@ ConsoleView::ConsoleView(Model *model, Actions *actions, QWidget *extra, QWidget
 
 void ConsoleView::build(QWidget *extra) {
     setAttribute(Qt::WA_StyledBackground, !ghost);
-    setStyleSheet(Theme::css(ghost ? "" : "ConsoleView { background: @bg; }"));
+    setStyleSheet(Theme::css(ghost ? "" : "ConsoleView { background: transparent; }"));
     auto *col = new QVBoxLayout(this);
     col->setContentsMargins(0, 0, 0, 0);
     col->setSpacing(0);
@@ -1089,10 +1090,10 @@ ActivityLog::ActivityLog(Model *model, QWidget *parent) : QWidget(parent), model
     head->setFixedHeight(28);
     head->setObjectName("logHead");
     head->setAttribute(Qt::WA_StyledBackground);
-    head->setStyleSheet(Theme::css("#logHead { background: @headPanel; border-top-left-radius: 5px; border-top-right-radius: 5px; }"
+    head->setStyleSheet(Theme::css("#logHead { background: @veilHead; border-top-left-radius: 5px; border-top-right-radius: 5px; }"
                         "#logHead QPushButton { border: none; border-radius: 0; background: transparent; color: @faint;"
                         " min-height: 28px; max-height: 28px; padding: 0 12px; border-right: 1px solid @border; }"
-                        "#logHead QPushButton:checked { background: @bg; color: @text; font-weight: bold; }"));
+                        "#logHead QPushButton:checked { background: @veilDeep; color: @text; font-weight: bold; }"));
     auto *row = new QHBoxLayout(head);
     row->setContentsMargins(6, 0, 4, 0);
     row->setSpacing(0);

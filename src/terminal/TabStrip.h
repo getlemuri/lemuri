@@ -29,6 +29,8 @@ public:
     void setState(int i, State s);
 
     QSize sizeHint() const override { return {200, 23}; }
+    /** No tab, close button or "+" at `pos`: the bare strip (in ghost mode it moves the window). */
+    bool emptyAt(const QPoint &pos) const;
     /** Ghost mode: no background, the active tab a light veil. */
     bool ghost = false;
 

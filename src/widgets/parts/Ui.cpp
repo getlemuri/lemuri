@@ -3,6 +3,7 @@
 #include "app/tools/Texts.h"
 #include "widgets/parts/Chrome.h"
 #include "widgets/look/Icons.h"
+#include "widgets/look/Backdrop.h"
 #include "widgets/look/Theme.h"
 
 #include <QAction>
@@ -63,7 +64,7 @@ QPushButton[kind="danger"] { color: @dangerText; }
 QPushButton[kind="destroy"] { background: @criticalFill; border-color: @criticalFillHover; color: white; }
 QPushButton[kind="destroy"]:hover { background: @criticalFillHover; }
 QPushButton[kind="destroy"]:focus { border-color: white; }
-QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit { background: @bg; border: 1px solid @edge; border-radius: 3px;
+QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit { background: @veilDeep; border: 1px solid @edge; border-radius: 3px;
     padding: 2px 6px; selection-background-color: @textSelection; selection-color: white; }
 QLineEdit, QSpinBox, QComboBox { min-height: 20px; }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus { border-color: @accent; }
@@ -79,23 +80,30 @@ QMenu::item:selected { background: @menuSelected; color: white; }
 QMenu::item:disabled { color: @disabled; }
 QMenu::icon { padding-left: 8px; }
 QMenu::separator { height: 1px; background: @edge; margin: 4px 0; }
-QTableWidget, QTableView { background: @bg; border: 1px solid @border; gridline-color: @border; outline: none;
+QTableWidget, QTableView { background: @veilDeep; border: 1px solid @border; gridline-color: @border; outline: none;
     selection-background-color: @rowSelected; selection-color: @text; }
 QTableView::item { border-bottom: 1px solid @border; padding: 0 8px; }
 QTableView::item:hover { background: @on; }
 QTableView::item:selected { background: @rowSelected; }
-QHeaderView::section { background: @headPanel; color: @text; font-weight: bold; border: none;
+QHeaderView::section { background: @veilHead; color: @text; font-weight: bold; border: none;
     border-right: 1px solid @border; border-bottom: 1px solid @border; height: 26px; padding: 0 4px; }
-QScrollBar:vertical { width: 12px; background: @scrollTrack; border-left: 1px solid @scrollEdge; margin: 0; }
+QScrollArea { background: transparent; border: none; }
+QScrollArea > QWidget#qt_scrollarea_viewport, QScrollArea > QWidget > QWidget { background: transparent; }
+)") + scrollBars();
+    return sheet;
+}
+
+QString Ui::scrollBars() {
+    static const QString sheet = Theme::css(R"(
+QScrollBar:vertical { width: 12px; background: transparent; border: none; margin: 0; }
 QScrollBar::handle:vertical { min-height: 24px; margin: 2px 2px 2px 1px; border-radius: 4px; border: 1px solid @handleEdge;
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 @handleTop, stop:1 @handleBottom); }
-QScrollBar:horizontal { height: 12px; background: @scrollTrack; border-top: 1px solid @scrollEdge; margin: 0; }
+QScrollBar:horizontal { height: 12px; background: transparent; border: none; margin: 0; }
 QScrollBar::handle:horizontal { min-width: 24px; margin: 1px 2px 2px 2px; border-radius: 4px; border: 1px solid @handleEdge;
     background: @handle; }
 QScrollBar::handle:hover { border-color: @handleEdgeLit; }
 QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: none; }
-QScrollArea { background: transparent; border: none; }
 )");
     return sheet;
 }
@@ -169,8 +177,8 @@ QLabel *Ui::code(const QString &text) {
 QWidget *Ui::panel(const QString &title, QWidget *body, QWidget *headExtra) {
     auto *p = new QFrame;
     p->setObjectName("panel");
-    p->setStyleSheet(Theme::css("#panel { border: 1px solid @border; background: @bg; }"
-                     "#panelHead { background: @headPanel; border-bottom: 1px solid @border; }"));
+    p->setStyleSheet(Theme::css("#panel { border: 1px solid @border; background: @veil; }"
+                     "#panelHead { background: @veilHead; border-bottom: 1px solid @border; }"));
     auto *col = new QVBoxLayout(p);
     col->setContentsMargins(1, 1, 1, 1);
     col->setSpacing(0);
@@ -197,7 +205,7 @@ QWidget *Ui::bar(const QList<QWidget *> &left, const QList<QWidget *> &right) {
     auto *w = new QWidget;
     w->setObjectName("toolbar");
     w->setAttribute(Qt::WA_StyledBackground);
-    w->setStyleSheet(Theme::css("#toolbar { background: @headPanel; border: 1px solid @border; }"));
+    w->setStyleSheet(Theme::css("#toolbar { background: @veilHead; border: 1px solid @border; }"));
     auto *row = new QHBoxLayout(w);
     row->setContentsMargins(4, 4, 4, 4);
     row->setSpacing(4);
@@ -338,7 +346,7 @@ void UsageBar::paintEvent(QPaintEvent *) {
     p.setRenderHint(QPainter::Antialiasing);
     double y = (height() - 8) / 2.0;
     p.setPen(Qt::NoPen);
-    p.setBrush(Theme::border);
+    p.setBrush(Theme::track);
     p.drawRoundedRect(QRectF(0, y, track, 8), 4, 4);
     if (q > 0) {
         p.setBrush(Ui::level(q));
@@ -371,7 +379,7 @@ void Gauge::paintEvent(QPaintEvent *) {
     p.drawText(QRectF(0, 4, width(), 18), Qt::AlignCenter, title);
     QPointF c(width() / 2.0, 26 + 46);
     double r = 38;
-    p.setPen(QPen(Theme::border, 9));
+    p.setPen(QPen(Theme::track, 9));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(c, r, r);
     double q = std::clamp(value.value_or(0), 0.0, 1.0);
@@ -441,7 +449,7 @@ FramedDialog::FramedDialog(QWidget *parent, const QString &title) : QDialog(pare
     foot = new QWidget;
     foot->setObjectName("dialogFoot");
     foot->setAttribute(Qt::WA_StyledBackground);
-    foot->setStyleSheet(Theme::css("#dialogFoot { background: @border; border-top: 1px solid @edge; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }"));
+    foot->setStyleSheet(Theme::css("#dialogFoot { background: @veilHead; border-top: 1px solid @edge; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }"));
     auto *r = new QHBoxLayout(foot);
     r->setContentsMargins(10, 8, 10, 8);
     r->setSpacing(8);
@@ -511,11 +519,8 @@ void FramedDialog::paintEvent(QPaintEvent *) {
     QRectF r = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
     QPainterPath shape;
     shape.addRoundedRect(r, 8, 8);
-    p.fillPath(shape, Theme::control);
-    // The title bar: the grey of the main window's frame.
-    QPainterPath top;
-    top.addRoundedRect(QRectF(r.left(), r.top(), r.width(), 44), 8, 8);
-    p.fillPath(top.intersected(QPainterPath([&] { QPainterPath x; x.addRect(r.left(), r.top(), r.width(), 36); return x; }())), Theme::activityBg);
+    // The main window's backdrop, waves and all; the title bar sits on it with nothing of its own.
+    Backdrop::paint(p, shape, r);
     p.setPen(QPen(Theme::edge, 1));
     p.drawPath(shape);
 }

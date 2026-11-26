@@ -12,8 +12,13 @@ What changes for users, version by version. The format follows [Keep a Changelog
   are asked about, and refused if the disk has no room.
 - An eye in every password field shows what is typed.
 - The drop-down lists have their arrow.
+- At the top right of every terminal, a green terminal icon and the name of its server (of the shell, for this computer).
+- The main window and the dialogs have a dark shaded backdrop, from near black at the top left to a dark slate green at the bottom right, crossed by soft waves; panels let it show through, the terminals stay black.
 
 ### Changed
+- The commands over a terminal reach its right edge, over the scroll bar, which starts just under them.
+- In ghost mode the host tree has the same scroll bar as the rest of the app.
+- Over each terminal, an X closes that pane (the whole tab when it is the only one) where the bin removing the server used to be; the server is still removed from the tree.
 - The reachability check is every 5 or 15 minutes (every minute is gone), skips hosts with a connection already open,
   and tries at most 16 hosts at a time.
 - The background readings never use keys that want a touch (FIDO, `sk-`), nor an ssh-agent holding one.

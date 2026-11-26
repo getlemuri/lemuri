@@ -10,6 +10,7 @@
 #include "terminal/TerminalView.h"
 #include "widgets/parts/Chrome.h"
 #include "widgets/look/Icons.h"
+#include "widgets/look/Backdrop.h"
 #include "widgets/look/Theme.h"
 #include "widgets/parts/Ui.h"
 #include "window/main/Actions.h"
@@ -132,7 +133,7 @@ void MainWindow::layOut() {
     horizontal->setStretchFactor(1, 1);
     horizontal->setSizes({370, 1030});
     vertical->addWidget(horizontal);
-    auto *logPanel = new Panel(Theme::surface);
+    auto *logPanel = new Panel(Theme::veil);
     auto *lp = new QVBoxLayout(logPanel);
     lp->setContentsMargins(0, 0, 0, 0);
     log = new ActivityLog(model);
@@ -290,7 +291,7 @@ QWidget *MainWindow::activityBar() {
 }
 
 QWidget *MainWindow::hostColumn() {
-    auto *panel = new Panel(Theme::side);
+    auto *panel = new Panel(Theme::veil);
     column = panel;
     panel->setMinimumWidth(220);
     auto *col = new QVBoxLayout(panel);
@@ -308,7 +309,7 @@ QWidget *MainWindow::hostColumn() {
     auto *search = new QWidget;
     search->setObjectName("hostSearch");
     search->setAttribute(Qt::WA_StyledBackground);
-    search->setStyleSheet(Theme::css("#hostSearch { border: 1px solid @border; border-radius: 3px; background: @bg; }"));
+    search->setStyleSheet(Theme::css("#hostSearch { border: 1px solid @border; border-radius: 3px; background: @veilDeep; }"));
     auto *sr = new QHBoxLayout(search);
     sr->setContentsMargins(8, 2, 8, 2);
     sr->setSpacing(6);
@@ -352,14 +353,14 @@ QWidget *MainWindow::hostColumn() {
 }
 
 QWidget *MainWindow::centralArea() {
-    auto *panel = new Panel(Theme::surface);
+    auto *panel = new Panel(Theme::veil);
     auto *col = new QVBoxLayout(panel);
     col->setContentsMargins(0, 0, 0, 0);
     col->setSpacing(0);
     areaHead = new QWidget;
     areaHead->setObjectName("areaHead");
     areaHead->setAttribute(Qt::WA_StyledBackground);
-    areaHead->setStyleSheet(Theme::css("#areaHead { background: @headPanel; border-bottom: 1px solid @border; }"));
+    areaHead->setStyleSheet(Theme::css("#areaHead { background: @veilHead; border-bottom: 1px solid @border; }"));
     areaHead->setMinimumHeight(38);
     auto *row = new QHBoxLayout(areaHead);
     row->setContentsMargins(14, 4, 12, 4);
@@ -826,9 +827,10 @@ void MainWindow::paintEvent(QPaintEvent *) {
         p.setBrush(QColor(0, 0, 0, 10 + 4 * (frame - i)));
         p.drawRoundedRect(inner.adjusted(-i, -i + 2, i, i + 2), 10 + i, 10 + i);
     }
-    p.setBrush(Theme::activityBg);
     double r = frame ? 10 : 0;
-    p.drawRoundedRect(inner, r, r);
+    QPainterPath shape;
+    shape.addRoundedRect(inner, r, r);
+    Backdrop::paint(p, shape, inner);
 }
 
 void MainWindow::changeEvent(QEvent *e) {

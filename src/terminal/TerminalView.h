@@ -29,6 +29,8 @@ public:
     bool typesCommandsOn() const { return typesCommands; }
     /** Ghost mode: no background of its own, the window behind (black and see-through) gives it. */
     void setGhost(bool on);
+    /** The scroll bar starts this many pixels down: the commands over the terminal sit above it. */
+    void setScrollTop(int px);
     ~TerminalView() override;
 
     void write(const QString &text);
@@ -130,6 +132,7 @@ private:
     Point selStart, selEnd;
     bool altScreen = false;
     bool ghost = false;
+    int scrollTop = 0;
     /** While the hidden command runs: what arrives is kept until the mark, then the echo before it is dropped. */
     bool hiding = false;
     QString hidden, reply;

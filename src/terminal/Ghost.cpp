@@ -3,8 +3,10 @@
 #include "app/launch/Instance.h"
 #include "app/core/Model.h"
 #include "app/tools/Texts.h"
+#include "terminal/TabStrip.h"
 #include "terminal/TerminalView.h"
 #include "widgets/parts/Chrome.h"
+#include "widgets/parts/Ui.h"
 #include "widgets/look/Icons.h"
 #include "widgets/look/Theme.h"
 #include "window/main/Actions.h"
@@ -27,7 +29,10 @@
 #include <QWindow>
 
 namespace {
-constexpr int HOLD_MS = 450, EDGE = 6;
+constexpr int HOLD_MS = 300, EDGE = 6;
+// Bare areas (the left column, the row of the tabs, the strips above the tree and beside the Terminal tab): as the
+// normal window's title bar, a press there moves the window at once and a double click maximizes or restores it.
+constexpr char GRIP[] = "ghostGrip";
 constexpr double MIN_OPACITY = 0.15, MAX_OPACITY = 0.95;
 const QStringList SIDES{"left", "top", "bottom", "right"};
 
@@ -55,7 +60,7 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     setAttribute(Qt::WA_TranslucentBackground);
     setStyleSheet(Theme::css(QString("QSplitter::handle { background: rgba(255,255,255,0.10); }"
                           "QSlider::groove:horizontal { height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; }"
-                          "QSlider::handle:horizontal { width: 12px; margin: -5px 0; border-radius: 6px; background: @text; }")));
+                          "QSlider::handle:horizontal { width: 12px; margin: -5px 0; border-radius: 6px; background: @text; }")) + Ui::scrollBars());
     hold.setSingleShot(true);
     hold.setInterval(HOLD_MS);
     connect(&hold, &QTimer::timeout, this, [this] {
@@ -72,11 +77,13 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
 
     // On the left: the app icon, the Hosts button (opens and closes the tree) and the ghost button, lit: it ends the mode.
     auto *column = new QWidget;
+    column->setObjectName(GRIP);
     column->setFixedWidth(44);
     auto *cc = new QVBoxLayout(column);
     cc->setContentsMargins(0, 6, 0, 4);
     cc->setSpacing(0);
     auto *logo = new QLabel;
+    logo->setObjectName(GRIP);
     QPixmap pm(":/logo.png");
     qreal ratio = devicePixelRatioF();
     pm = pm.scaled(QSize(26, 26) * ratio, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -109,6 +116,7 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     // The tree (with its close icon above it) and, on its right, the terminal with the Terminal tab and the local shell.
     tree = new HostTree(model, actions);
     treeColumn = new QWidget;
+    treeColumn->setObjectName(GRIP);
     auto *tc = new QVBoxLayout(treeColumn);
     tc->setContentsMargins(0, 0, 0, 0);
     tc->setSpacing(0);
@@ -125,7 +133,9 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     tc->addWidget(tree, 1);
 
     console = new ConsoleView(model, actions, controls());
+    console->setObjectName(GRIP);
     auto *upper = new QWidget;
+    upper->setObjectName(GRIP);
     auto *uc = new QVBoxLayout(upper);
     uc->setContentsMargins(0, 0, 0, 0);
     uc->setSpacing(0);
@@ -182,11 +192,13 @@ GhostWindow::~GhostWindow() {
 
 QWidget *GhostWindow::controls() {
     auto *w = new QWidget;
+    w->setObjectName(GRIP);
     auto *r = new QHBoxLayout(w);
     r->setContentsMargins(0, 0, 0, 0);
     r->setSpacing(2);
     // A sun and a small slider: only the background changes, the text of the terminal stays readable.
     auto *sun = new QLabel;
+    sun->setObjectName(GRIP);
     sun->setPixmap(Icons::pixmap("sun", 13, Theme::ghostControl, 2, devicePixelRatioF()));
     sun->setToolTip(T("ghost.opacity"));
     r->addWidget(sun);
@@ -350,40 +362,79 @@ bool GhostWindow::eventFilter(QObject *o, QEvent *e) {
     auto *w = qobject_cast<QWidget *>(o);
     if (!w || w->window() != this) return false;
     auto t = e->type();
-    if (t != QEvent::MouseButtonPress && t != QEvent::MouseMove && t != QEvent::MouseButtonRelease) return false;
+    if (t != QEvent::MouseButtonPress && t != QEvent::MouseButtonDblClick && t != QEvent::MouseMove && t != QEvent::MouseButtonRelease)
+        return false;
     auto *m = static_cast<QMouseEvent *>(e);
-    QPoint at = mapFromGlobal(m->globalPosition().toPoint());
+    QPoint global = m->globalPosition().toPoint();
+    QPoint at = mapFromGlobal(global);
     // Docked: the edge facing the screen resizes the band.
     Qt::Edges edge = maximized ? Qt::Edges() : innerEdge();
     bool onEdge = edge && ((edge == Qt::TopEdge && at.y() <= EDGE) || (edge == Qt::BottomEdge && at.y() >= height() - EDGE)
                            || (edge == Qt::LeftEdge && at.x() <= EDGE) || (edge == Qt::RightEdge && at.x() >= width() - EDGE));
+    auto *strip = qobject_cast<TabStrip *>(w);
+    bool grip = w->objectName() == QLatin1String(GRIP) || (strip && strip->emptyAt(m->position().toPoint()));
+    bool stuck = !docked.isEmpty() || maximized;
     if (t == QEvent::MouseMove && !(m->buttons() & Qt::LeftButton)) {
         if (onEdge) setCursor(edge & (Qt::LeftEdge | Qt::RightEdge) ? Qt::SizeHorCursor : Qt::SizeVerCursor);
         else unsetCursor();
         return false;
+    }
+    if (t == QEvent::MouseButtonDblClick && m->button() == Qt::LeftButton && grip && !onEdge) {
+        pressed = unstickOnDrag = false;
+        hold.stop();
+        toggleMaximized();
+        return true;
     }
     if (t == QEvent::MouseButtonPress && m->button() == Qt::LeftButton) {
         if (onEdge && windowHandle()) {
             windowHandle()->startSystemResize(edge);
             return true;
         }
+        if (grip && windowHandle()) {
+            // Floating: it moves at once. Docked or maximized: once dragged, it comes loose (as a maximized window does).
+            if (stuck) {
+                unstickOnDrag = true;
+                pressedAt = global;
+            } else {
+                windowHandle()->startSystemMove();
+            }
+            return true;
+        }
         // Docked or maximized it stays where it is; the slider, the separators and scroll bars keep their press.
-        if (!docked.isEmpty() || maximized || qobject_cast<QSlider *>(w) || qobject_cast<QSplitterHandle *>(w) || qobject_cast<QScrollBar *>(w))
+        if (stuck || qobject_cast<QSlider *>(w) || qobject_cast<QSplitterHandle *>(w) || qobject_cast<QScrollBar *>(w))
             return false;
         pressed = true;
-        pressedAt = m->globalPosition().toPoint();
+        pressedAt = global;
         hold.start();
+    } else if (t == QEvent::MouseMove && unstickOnDrag) {
+        if ((global - pressedAt).manhattanLength() > 5) {
+            unstickOnDrag = false;
+            unstick(global, at);
+            if (windowHandle()) windowHandle()->startSystemMove();
+        }
+        return true;
     } else if (t == QEvent::MouseMove && pressed) {
         // It moved before the hold ended: an ordinary drag (a selection, a host dragged in the tree).
-        if ((m->globalPosition().toPoint() - pressedAt).manhattanLength() > 5) {
+        if ((global - pressedAt).manhattanLength() > 5) {
             pressed = false;
             hold.stop();
         }
     } else if (t == QEvent::MouseButtonRelease) {
-        pressed = false;
+        pressed = unstickOnDrag = false;
         hold.stop();
     }
     return false;
+}
+
+/** Docked or maximized, dragged: floating again at its free size, with the same point of it under the mouse. */
+void GhostWindow::unstick(const QPoint &global, const QPoint &at) {
+    double fx = width() > 0 ? double(at.x()) / width() : 0.5;
+    if (maximized) toggleMaximized();
+    else dock(docked);
+    QRect g = geometry();
+    g.moveTo(global.x() - int(fx * g.width()), global.y() - std::min(at.y(), g.height() / 2));
+    setGeometry(g);
+    floating = g;
 }
 
 void GhostWindow::keyPressEvent(QKeyEvent *e) {

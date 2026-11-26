@@ -16,6 +16,7 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFontMetrics>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QHeaderView>
@@ -29,6 +30,7 @@
 #include <QRegularExpression>
 #include <QSpinBox>
 #include <QTableWidget>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <memory>
 
@@ -68,6 +70,27 @@ IconButton *terminalAction(const QString &icon, const QString &tip, bool danger,
     b->hoverBackground = QColor(255, 255, 255, 36);
     QObject::connect(b, &QAbstractButton::clicked, b, [act] { act(); });
     return b;
+}
+/** Widest the server's name gets in the badge, in pixels. */
+constexpr int BADGE_WIDTH = 180;
+/** Whose terminal this is, before its commands: a green terminal icon and the server's name (the shell's for this computer). */
+QWidget *hostBadge(const QString &name) {
+    auto *w = new QWidget;
+    w->setToolTip(name);
+    auto *row = new QHBoxLayout(w);
+    row->setContentsMargins(2, 0, 6, 0);
+    row->setSpacing(4);
+    auto *icon = new QLabel;
+    icon->setPixmap(Icons::pixmap("terminal", 13, Theme::ok, 2, w->devicePixelRatioF()));
+    // A long name is cut with an ellipsis, so it does not push the commands away; the tooltip keeps it whole.
+    QFont font("DejaVu Sans Mono");
+    font.setPixelSize(12);
+    auto *text = new QLabel(QFontMetrics(font).elidedText(name, Qt::ElideRight, BADGE_WIDTH));
+    text->setFont(font);
+    text->setStyleSheet(Theme::css("color: @actionIcon;"));
+    row->addWidget(icon);
+    row->addWidget(text);
+    return w;
 }
 }  // namespace
 
@@ -662,6 +685,7 @@ QList<QWidget *> Actions::terminalButtons(Session *s) {
     const Host *h = model->host(s->hostId);
     bool local = s->hostId == Host::LOCAL;
     QString id = s->hostId;
+    out << hostBadge(h ? h->name : s->title);
     if (!local && h) out << terminalAction("summary", T("console.summaryOf", h->name), false, [this, id] { model->select(Position::HostItem, id); });
     Session *tab = s->tab();
     if (tab->panes().size() > 1) {
@@ -681,11 +705,14 @@ QList<QWidget *> Actions::terminalButtons(Session *s) {
         IconButton *power = terminalAction("power", T("hosts.disconnect") + " " + h->name, false, [this, id] { model->disconnectHost(id); });
         power->setEnabled(model->connected(id) > 0);
         out << power;
-        IconButton *trash = terminalAction("trash", model->connected(id) > 0 ? T("hosts.remove.closeFirst") : T("common.remove") + " " + h->name,
-                                           true, [this, id] { removeHost(id); });
-        trash->setEnabled(model->connected(id) == 0);
-        out << trash;
     }
+    // Last, on every terminal: an X that closes this pane only (the whole tab when it is the only one). After the
+    // click, not during it: closing the pane throws away the bar this button sits in.
+    out << terminalAction("close", T("terminal.closePane"), false, [this, s] {
+        QTimer::singleShot(0, model, [m = model, s] {
+            if (m->sessions().contains(s)) m->closePane(s);
+        });
+    });
     return out;
 }
 

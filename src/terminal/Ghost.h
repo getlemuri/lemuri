@@ -19,8 +19,8 @@ class TerminalView;
 /**
  * Ghost mode: the main window goes away and a borderless window takes its place,
  * black and see-through like a desktop widget, with the session tabs, the host tree, the terminal and the status
- * bar. Press and hold anywhere to move it; it can float free, fill the screen or stick to a side (then it stays on
- * top and its inner edge can be dragged). F11 hides it; the tray icon brings it back or ends the mode, which also
+ * bar. Press and hold anywhere to move it, or just drag its bare areas (the left column above all); it can float
+ * free, fill the screen or stick to a side (then it stays on top and its inner edge can be dragged). F11 hides it; the tray icon brings it back or ends the mode, which also
  * ends by itself when the last session closes.
  */
 class GhostWindow : public QWidget {
@@ -78,4 +78,7 @@ private:
     QTimer hold;
     QPoint pressedAt;
     bool pressed = false;
+    /** Pressed on a bare area while docked or maximized: the first drag sets it free. */
+    bool unstickOnDrag = false;
+    void unstick(const QPoint &global, const QPoint &at);
 };

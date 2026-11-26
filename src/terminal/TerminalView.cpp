@@ -328,14 +328,7 @@ QRectF TerminalView::thumb() const {
 }
 
 void TerminalView::paintScrollBar(QPainter &p) {
-    // As the host tree's: a line on its left, a rounded thumb with an edge.
-    QRect bar(width() - SCROLL_BAR, 0, SCROLL_BAR, height());
-    QLinearGradient g(bar.topLeft(), bar.topRight());
-    g.setColorAt(0, Theme::headPanel);
-    g.setColorAt(0.5, Theme::scrollTrack);
-    g.setColorAt(1, Theme::headPanel);
-    p.fillRect(bar, g);
-    p.fillRect(QRect(bar.left(), 0, 1, height()), Theme::scrollEdge);
+    // No track: just a rounded thumb with an edge, over the terminal's own background.
     QRectF t = thumb().adjusted(2, 2, -2, -2);
     QLinearGradient tg(t.topLeft(), t.topRight());
     bool lit = dragging || thumb().contains(mapFromGlobal(QCursor::pos()));
@@ -348,7 +341,7 @@ void TerminalView::paintScrollBar(QPainter &p) {
 }
 
 QRectF TerminalView::scrollTrack() const {
-    return QRectF(width() - SCROLL_BAR + 1, 0, SCROLL_BAR - 1, height());
+    return QRectF(width() - SCROLL_BAR + 1, scrollTop, SCROLL_BAR - 1, height() - scrollTop);
 }
 
 void TerminalView::scrollTo(double y) {
@@ -464,7 +457,7 @@ void TerminalView::mousePressEvent(QMouseEvent *e) {
         return;
     }
     if (e->button() != Qt::LeftButton) return;
-    if (e->pos().x() >= width() - SCROLL_BAR) {
+    if (e->pos().x() >= width() - SCROLL_BAR && e->pos().y() >= scrollTop) {
         QRectF t = thumb();
         dragging = true;
         dragOffset = t.contains(e->pos()) ? e->pos().y() - t.top() : t.height() / 2;
@@ -753,6 +746,12 @@ void TerminalView::dropEvent(QDropEvent *e) {
     e->acceptProposedAction();
     // After the drop: the confirmation must not open during the drag.
     QTimer::singleShot(0, this, [this, paths] { emit filesDropped(paths); });
+}
+
+void TerminalView::setScrollTop(int px) {
+    if (scrollTop == px) return;
+    scrollTop = px;
+    update();
 }
 
 void TerminalView::setGhost(bool on) {

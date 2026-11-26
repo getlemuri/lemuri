@@ -97,7 +97,6 @@ void TabStrip::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     if (!ghost) {
-        p.fillRect(rect(), Theme::side);
         // The line under the row, which the active tab stands on.
         p.fillRect(QRect(0, height() - 1, width(), 1), Theme::border);
     }
@@ -155,6 +154,15 @@ void TabStrip::mouseMoveEvent(QMouseEvent *e) {
 void TabStrip::leaveEvent(QEvent *) {
     mouse = {-1, -1};
     update();
+}
+
+bool TabStrip::emptyAt(const QPoint &pos) const {
+    QRectF plus;
+    QList<Place> places = layoutTabs(&plus);
+    if (plus.contains(pos)) return false;
+    for (const Place &pl : places)
+        if (pl.tab.contains(pos)) return false;
+    return true;
 }
 
 void TabStrip::mousePressEvent(QMouseEvent *e) {

@@ -10,6 +10,19 @@
  * name them as @name and go through css(); code uses them directly. The splash screen's drawing keeps its own.
  */
 namespace Theme {
+// The backdrop of the main window and the dialogs (see Backdrop): a diagonal shade from near black (top left) to a
+// dark slate green (bottom right), and the waves across it, lit along their crests.
+inline const QColor backdropFrom("#0c0e0d");
+inline const QColor backdropMiddle("#151a18");
+inline const QColor backdropTo("#22302b");
+inline const QColor backdropWave("#4a7a6a");
+inline const QColor backdropCrest("#8fc9b5");
+// See-through surfaces over the backdrop: the panels, their heads, the fields and tables inside them.
+inline const QColor veil(255, 255, 255, 6);
+inline const QColor veilHead(255, 255, 255, 10);
+inline const QColor veilDeep(0, 0, 0, 60);
+/** The empty part of a meter (gauge ring, usage bar): light enough to show over the backdrop. */
+inline const QColor track(255, 255, 255, 22);
 // Surfaces and lines
 inline const QColor bg("#1e1e1e");
 inline const QColor surface("#1e1e1e");
@@ -97,8 +110,6 @@ inline const QColor syncedBorder("#e2a33d");
 inline const QColor ghostControl("#b0b0b0");
 inline const QColor ghostAccent("#7cc4ff");
 // Scroll bars
-inline const QColor scrollTrack("#2b2b2c");
-inline const QColor scrollEdge("#525252");
 inline const QColor handle("#2a2a2c");
 inline const QColor handleTop("#303032");
 inline const QColor handleBottom("#242426");
@@ -112,7 +123,7 @@ inline constexpr int RADIUS = 5;
 /** A style sheet with its @names replaced by the colours above. */
 inline QString css(QString sheet) {
     static const QHash<QString, QColor> named{
-        {"bg", bg}, {"headPanel", headPanel}, {"control", control}, {"controlHover", controlHover}, {"border", border},
+        {"bg", bg}, {"veil", veil}, {"veilHead", veilHead}, {"veilDeep", veilDeep}, {"headPanel", headPanel}, {"control", control}, {"controlHover", controlHover}, {"border", border},
         {"edge", edge}, {"on", on}, {"black", black}, {"tip", tip}, {"tipText", tipText}, {"text", text}, {"faint", faint},
         {"disabled", disabled}, {"topText", topText}, {"topFaint", topFaint}, {"accent", accent}, {"accentDark", accentDark},
         {"accentOff", accentOff}, {"accentOffText", accentOffText}, {"textSelection", textSelection},
@@ -122,7 +133,7 @@ inline QString css(QString sheet) {
         {"warnBack", warnBack}, {"errorBack", errorBack}, {"errorText", errorText}, {"infoBack", infoBack},
         {"infoText", infoText}, {"terminalActions", terminalActions}, {"actionIcon", actionIcon},
         {"actionHover", actionHover}, {"sync", sync}, {"syncedBorder", syncedBorder}, {"ghostControl", ghostControl},
-        {"ghostAccent", ghostAccent}, {"scrollTrack", scrollTrack}, {"scrollEdge", scrollEdge}, {"handle", handle},
+        {"ghostAccent", ghostAccent}, {"handle", handle},
         {"handleTop", handleTop}, {"handleBottom", handleBottom}, {"handleLitTop", handleLitTop},
         {"handleLitBottom", handleLitBottom}, {"handleEdge", handleEdge}, {"handleEdgeLit", handleEdgeLit},
         {"sessionsIcon", sessionsIcon}, {"teamIcon", teamIcon}, {"updateIcon", updateIcon}, {"vaultIcon", vaultIcon}};
@@ -133,7 +144,9 @@ inline QString css(QString sheet) {
         QRegularExpressionMatch m = it.next();
         auto c = named.constFind(m.captured(1));
         out += sheet.mid(last, m.capturedStart() - last);
-        out += c != named.constEnd() ? c->name() : m.captured(0);
+        if (c == named.constEnd()) out += m.captured(0);
+        else if (c->alpha() < 255) out += QString("rgba(%1,%2,%3,%4)").arg(c->red()).arg(c->green()).arg(c->blue()).arg(c->alpha());
+        else out += c->name();
         last = m.capturedEnd();
     }
     return out + sheet.mid(last);

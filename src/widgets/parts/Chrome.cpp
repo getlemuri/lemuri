@@ -47,8 +47,8 @@ void IconButton::paintEvent(QPaintEvent *) {
         QString n = QString::number(badge);
         double w = std::max(18.0, QFontMetricsF(f).horizontalAdvance(n) + 10);
         QRectF disc(width() - w - 4, height() - 22, w, 18);
-        // A ring of the colour of the bar sets the number apart from the icon under it.
-        p.setPen(QPen(Theme::activityBg, 2));
+        // A ring of the colour of the backdrop sets the number apart from the icon under it.
+        p.setPen(QPen(Theme::backdropFrom, 2));
         p.setBrush(Theme::badge);
         p.drawRoundedRect(disc, 9, 9);
         p.setFont(f);
@@ -123,11 +123,6 @@ void TitleBar::setUpdate(const QString &tip) {
 bool TitleBar::eventFilter(QObject *o, QEvent *e) {
     if (o == window && e->type() == QEvent::WindowStateChange) maximize->setIconName(window->isMaximized() ? "restore" : "maximize");
     return false;
-}
-
-void TitleBar::paintEvent(QPaintEvent *) {
-    QPainter p(this);
-    p.fillRect(rect(), Theme::activityBg);
 }
 
 void TitleBar::mousePressEvent(QMouseEvent *e) {

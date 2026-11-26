@@ -55,6 +55,7 @@ add_library(lemuri-ui STATIC
     src/app/launch/Startup.cpp
     src/app/tools/Texts.cpp
     src/widgets/parts/Chrome.cpp
+    src/widgets/look/Backdrop.cpp
     src/widgets/look/Icons.cpp
     src/widgets/look/Style.cpp
     src/widgets/parts/Ui.cpp

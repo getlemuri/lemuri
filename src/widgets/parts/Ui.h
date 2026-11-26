@@ -21,6 +21,8 @@ class QVBoxLayout;
 namespace Ui {
 /** The style sheet of the standard controls: buttons, fields, tables, menus, scroll bars, tooltips. */
 QString styleSheet();
+/** The scroll bars of the whole app (a rounded thumb, no track), for windows that do not take styleSheet(). */
+QString scrollBars();
 
 QPushButton *button(const QString &text, const QString &icon, std::function<void()> action = nullptr);
 QPushButton *primary(const QString &text, const QString &icon, std::function<void()> action = nullptr);
