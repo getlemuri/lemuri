@@ -209,6 +209,8 @@ int TerminalView::onPopLine(int columns, VTermScreenCell *cells, void *self) {
         }
     }
     t->scrollback.pop_back();
+    // A taller screen takes lines back from the scrollback: the view must not stay scrolled past its new top.
+    t->scrolled = std::min(t->scrolled, int(t->scrollback.size()));
     return 1;
 }
 
@@ -221,8 +223,8 @@ void TerminalView::onOutput(const char *s, size_t len, void *self) {
 VTermScreenCell TerminalView::cellAt(int line, int col) const {
     int sb = int(scrollback.size());
     if (line < sb) {
-        const Line &l = scrollback[size_t(line)];
-        if (col < int(l.size())) return l[size_t(col)];
+        // A line before the first one (never expected) reads as blank instead of outside the scrollback.
+        if (line >= 0 && col < int(scrollback[size_t(line)].size())) return scrollback[size_t(line)][size_t(col)];
         VTermScreenCell empty{};
         empty.width = 1;
         vterm_color_rgb(&empty.fg, FOREGROUND.red(), FOREGROUND.green(), FOREGROUND.blue());

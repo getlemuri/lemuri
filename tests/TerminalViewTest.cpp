@@ -175,6 +175,22 @@ private slots:
         for (const auto &s : sent) all += s[0].toByteArray();
         QCOMPARE(all, QByteArray("\x03\x1b[Aa\r"));
     }
+
+    // Scrolled all the way back, then made taller: the screen takes lines back from the scrollback, and the view
+    // must still start at a line that exists (it used to read before the first one and crash while painting).
+    void aTallerTerminalScrolledBackStillPaints() {
+        QStringList lines;
+        for (int i = 0; i < 200; i++) lines << QString("line %1").arg(i);
+        std::unique_ptr<TerminalView> t(with(lines));
+        QVERIFY(t->scrollback.size() > 10);
+        t->scrolled = int(t->scrollback.size());
+        t->resize(800, 1600);
+        QResizeEvent grow(t->size(), QSize(800, 400));
+        QCoreApplication::sendEvent(t.get(), &grow);
+        QVERIFY(t->firstShownLine() >= 0);
+        QVERIFY(t->scrolled <= int(t->scrollback.size()));
+        QVERIFY(!t->grab().isNull());
+    }
 };
 
 QTEST_MAIN(TerminalViewTest)
