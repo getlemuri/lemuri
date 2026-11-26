@@ -1,3 +1,11 @@
+lemuri (0.1.1-1) unstable; urgency=medium
+
+  * A shaded backdrop with waves in the main window and the dialogs.
+  * Over each terminal: the server's name, and an X that closes the pane.
+  * Lemuri in the GNOME dock, an eye in password fields, ghost mode fixes.
+
+ -- Lemuri contributors <noreply@getlemuri.github.io>  Thu, 26 Nov 2026 12:00:00 +0000
+
 lemuri (0.1.0-1) unstable; urgency=medium
 
   * The first release.

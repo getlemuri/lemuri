@@ -4,6 +4,8 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-26
+
 ### Added
 - Lemuri in the GNOME dock: asked once at the first start, and a choice in *Settings → Appearance*.
 - `debian/`: a package for a PPA or a distribution, in `/usr` and updated by apt (`-DLEMURI_SELF_UPDATE=OFF`), with
