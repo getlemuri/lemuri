@@ -36,6 +36,17 @@ constexpr char GRIP[] = "ghostGrip";
 constexpr double MIN_OPACITY = 0.15, MAX_OPACITY = 0.95;
 const QStringList SIDES{"left", "top", "bottom", "right"};
 
+/**
+ * Mutter takes an undecorated window exactly as big as a monitor for a fullscreen one and then holds it there: no
+ * resizing, no docking, no moving to another screen. It happens where the usable area is the whole monitor (a second
+ * screen without the top bar or the dock): one pixel less keeps it an ordinary window.
+ */
+QRect notMonitorSized(QRect r) {
+    for (QScreen *s : QGuiApplication::screens())
+        if (r == s->geometry()) r.setHeight(r.height() - 1);
+    return r;
+}
+
 IconButton *control(const QString &icon, const QString &tip) {
     auto *b = new IconButton(icon, 13, QSize(22, 20), tip);
     b->colour = Theme::ghostControl;
@@ -240,7 +251,8 @@ QWidget *GhostWindow::controls() {
 }
 
 void GhostWindow::start(const QRect &from) {
-    floating = from;
+    // From a normal window maximized on such a screen it would start stuck there.
+    floating = notMonitorSized(from);
     model->request(this, "prefs.get", {{"node", "ui"}}, [this](const QJsonValue &v) {
         double a = v.toObject()["ghostOpacity"].toString("0.55").toDouble();
         QSignalBlocker b(opacity);
@@ -248,7 +260,7 @@ void GhostWindow::start(const QRect &from) {
         opacity->setValue(int(alpha * 100));
         update();
     });
-    setGeometry(from);
+    setGeometry(floating);
     show();
     raise();
     activateWindow();
@@ -340,7 +352,7 @@ void GhostWindow::place() {
         else if (docked == "top") r = QRect(v.left(), v.top(), v.width(), h);
         else r = QRect(v.left(), v.bottom() + 1 - h, v.width(), h);
     }
-    setGeometry(r);
+    setGeometry(notMonitorSized(r));
 }
 
 void GhostWindow::resizeEvent(QResizeEvent *e) {
