@@ -18,4 +18,6 @@ namespace Shots {
 QString file();
 /** Arms the timers for one picture of `window`. */
 void take(MainWindow *window, Model *model, Backend *backend, const QString &file);
+/** One action of LEMURI_SHOT_DO (see Shots.cpp), also a step of a film's script. */
+void act(MainWindow *window, Model *model, Backend *backend, const QString &action);
 }  // namespace Shots

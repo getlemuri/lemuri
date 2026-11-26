@@ -6,12 +6,20 @@
 #include "dialogs/Team.h"
 #include "terminal/TerminalView.h"
 #include "widgets/parts/Chrome.h"
+#include "widgets/look/Backdrop.h"
+#include "widgets/look/Theme.h"
 #include "app/tools/Texts.h"
 #include "window/main/Actions.h"
 #include "window/main/MainWindow.h"
 #include "window/main/Splash.h"
 
 #include <QApplication>
+#include <QDialog>
+#include <QElapsedTimer>
+#include <QFile>
+#include <QKeyEvent>
+#include <QRandomGenerator>
+#include <cstdio>
 #include <QScreen>
 #include <QCheckBox>
 #include <QContextMenuEvent>
@@ -76,8 +84,10 @@ void menuOn(Model *model, const QString &hostId, const QString &text) {
     QApplication::postEvent(s->view, new QContextMenuEvent(QContextMenuEvent::Mouse, p, global));
 }
 
+}  // namespace
+
 /** One action of LEMURI_SHOT_DO. */
-void act(MainWindow *window, Model *model, Backend *backend, const QString &action) {
+void Shots::act(MainWindow *window, Model *model, Backend *backend, const QString &action) {
     QString a = action.section(':', 0, 0), arg = action.section(':', 1);
     Actions *actions = window->commands();
     if (a == "edit") actions->editHost(arg);
@@ -153,12 +163,13 @@ void act(MainWindow *window, Model *model, Backend *backend, const QString &acti
     }
 }
 
+namespace {
 /** Shows the node and, a moment later, does the actions (separated by ";", 800 ms apart). */
 void stage(MainWindow *window, Model *model, Backend *backend, const QString &node, const QString &actions) {
     show(window, model, node);
     QStringList list = actions.split(';', Qt::SkipEmptyParts);
     for (int i = 0; i < list.size(); i++)
-        QTimer::singleShot(300 + 800 * i, window, [=] { act(window, model, backend, list[i]); });
+        QTimer::singleShot(300 + 800 * i, window, [=] { Shots::act(window, model, backend, list[i]); });
 }
 
 /** The splash, else the ghost window if it is in view, else the menu over the window, else the dialog in front, else the window. */
@@ -186,6 +197,211 @@ void save(MainWindow *window, const QString &file) {
     if (qEnvironmentVariableIsSet("LEMURI_SHOT_SCREEN") && shown->screen()) shown->screen()->grabWindow(shown->winId()).save(file);
     else shown->grab().save(file);
 }
+
+/**
+ * A film of the app, for the website (LEMURI_FILM=script): the script's actions at their times, and a frame every
+ * 40 ms written raw (BGRA, LEMURI_FILM_SIZE) to the standard output, for ffmpeg. Frames are counted from the clock:
+ * one that comes late is repeated, so the film keeps the time of the script.
+ */
+class Film : public QObject {
+public:
+    Film(MainWindow *window, Model *model, Backend *backend) : window(window), model(model), backend(backend) {
+        QStringList size = qEnvironmentVariable("LEMURI_FILM_SIZE", "1920x1080").split('x');
+        canvas = QSize(size[0].toInt(), size[1].toInt());
+        desktop = QImage(qEnvironmentVariable("LEMURI_FILM_DESKTOP")).scaled(canvas, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        QFile f(qEnvironmentVariable("LEMURI_FILM"));
+        if (f.open(QIODevice::ReadOnly))
+            for (const QString &line : QString::fromUtf8(f.readAll()).split('\n')) {
+                QString l = line.trimmed();
+                if (l.isEmpty() || l.startsWith('#')) continue;
+                double at = l.section(' ', 0, 0).toDouble();
+                QString action = l.section(' ', 1).trimmed();
+                if (action == "end") end = qint64(at * 1000);
+                else QTimer::singleShot(int(at * 1000), this, [this, action] { act(action); });
+            }
+        frames.setTimerType(Qt::PreciseTimer);
+        connect(&frames, &QTimer::timeout, this, &Film::frame);
+        frames.start(FRAME_MS / 2);
+        clock.start();
+    }
+
+private:
+    static constexpr int FRAME_MS = 40;
+
+    void act(const QString &action) {
+        QString a = action.section(':', 0, 0), arg = action.section(':', 1);
+        if (a == "caption") {
+            previous = caption;
+            previousAt = clock.elapsed();
+            caption = arg;
+            captionAt = clock.elapsed();
+        } else if (a == "fade") {
+            fadeOut = arg == "out";
+            fadeAt = clock.elapsed();
+        } else if (a == "key") {
+            type(arg);
+        } else if (a == "close") {
+            if (QWidget *popup = QApplication::activePopupWidget()) popup->close();
+            else if (auto *d = qobject_cast<QDialog *>(QApplication::activeModalWidget())) d->reject();
+        } else if (a == "transfer") {
+            backend->request("demo.transfer");
+        } else if (a == "splash") {
+            splash = new Splash([] {});
+        } else if (a == "sync") {
+            if (Session *s = model->showOrOpen(arg)) model->setSynced(s->tab(), true);
+        } else if (a == "title") {
+            title = arg;
+            titleAt = clock.elapsed();
+        } else if (a == "unghost") {
+            window->leaveGhost();
+        } else {
+            Shots::act(window, model, backend, action);
+        }
+    }
+
+    /** Keys typed into the terminal in front, a person's pace; "\n" is Enter. */
+    void type(const QString &text) {
+        TerminalView *view = qobject_cast<TerminalView *>(QApplication::focusWidget());
+        for (QWidget *top : QApplication::topLevelWidgets()) {
+            if (view || !top->isVisible()) continue;
+            for (TerminalView *t : top->findChildren<TerminalView *>())
+                if (t->isVisible()) {
+                    view = t;
+                    break;
+                }
+        }
+        if (!view) return;
+        QPointer<TerminalView> to = view;
+        QString keys = QString(text).replace("\\n", "\n");
+        int at = 0;
+        for (QChar c : keys) {
+            at += c == '\n' ? 260 : 55 + int(QRandomGenerator::global()->bounded(45));
+            QTimer::singleShot(at, this, [to, c] {
+                if (!to) return;
+                int key = c == '\n' ? int(Qt::Key_Return) : int(c.toUpper().unicode());
+                QString t = c == '\n' ? QString("\r") : QString(c);
+                QKeyEvent press(QEvent::KeyPress, key, Qt::NoModifier, t);
+                QApplication::sendEvent(to, &press);
+                QKeyEvent release(QEvent::KeyRelease, key, Qt::NoModifier, t);
+                QApplication::sendEvent(to, &release);
+            });
+        }
+    }
+
+    void frame() {
+        qint64 now = clock.elapsed();
+        if (end && now >= end) {
+            frames.stop();
+            std::fflush(stdout);
+            QApplication::exit(0);
+            return;
+        }
+        qint64 due = now / FRAME_MS + 1;
+        if (due <= written) return;
+        QImage img = compose(now);
+        while (written < due) {
+            std::fwrite(img.constBits(), 1, size_t(img.sizeInBytes()), stdout);
+            written++;
+        }
+    }
+
+    /** What a screen would show: the window with its dialog or menu, or the desktop with the splash or the ghost. */
+    QImage compose(qint64 now) {
+        QImage img(canvas, QImage::Format_ARGB32_Premultiplied);
+        QPainter p(&img);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        p.setRenderHint(QPainter::Antialiasing);
+        QWidget *ghost = window->ghostWindow();
+        double scale = window->devicePixelRatioF();
+        p.scale(scale, scale);
+        if ((splash && splash->isVisible()) || (ghost && ghost->isVisible())) {
+            p.save();
+            p.resetTransform();
+            if (desktop.isNull()) p.fillRect(img.rect(), Qt::black);
+            else p.drawImage(0, 0, desktop);
+            p.restore();
+            QWidget *top = splash && splash->isVisible() ? splash.data() : ghost;
+            p.drawPixmap(top->geometry().topLeft(), top->grab());
+        } else {
+            QPoint origin = window->mapToGlobal(window->contentsRect().topLeft());
+            p.fillRect(QRectF(QPointF(0, 0), QSizeF(canvas) / scale), Qt::black);
+            p.drawPixmap(-window->contentsRect().topLeft(), window->grab());
+            if (QWidget *modal = QApplication::activeModalWidget(); modal && modal != window)
+                p.drawPixmap(modal->mapToGlobal(QPoint(0, 0)) - origin, modal->grab());
+            if (QWidget *popup = QApplication::activePopupWidget()) p.drawPixmap(popup->mapToGlobal(QPoint(0, 0)) - origin, popup->grab());
+        }
+        p.resetTransform();
+        drawCaption(p, previous, 1.0 - std::min(1.0, (now - previousAt) / 300.0));
+        drawCaption(p, caption, std::min(1.0, (now - captionAt) / 300.0));
+        double dark = std::clamp((now - fadeAt) / 600.0, 0.0, 1.0);
+        if (!fadeOut) dark = 1 - dark;
+        if (dark > 0) p.fillRect(img.rect(), QColor(0, 0, 0, int(255 * dark)));
+        if (!title.isEmpty()) drawTitle(p, std::min(1.0, (now - titleAt) / 600.0));
+        return img;
+    }
+
+    /** The last card: the backdrop, the logo and "first line|second line", over everything. */
+    void drawTitle(QPainter &p, double alpha) {
+        QRectF area(QPointF(0, 0), QSizeF(canvas));
+        p.setOpacity(alpha);
+        QPainterPath all;
+        all.addRect(area);
+        Backdrop::paint(p, all, area);
+        double h = canvas.height();
+        QImage logo(":/logo.png");
+        QRectF at(0, 0, h * 0.30, h * 0.30);
+        at.moveCenter(QPointF(canvas.width() / 2.0, h * 0.36));
+        p.drawImage(at, logo);
+        QFont big("Inter");
+        big.setPixelSize(int(h / 13));
+        big.setWeight(QFont::Bold);
+        p.setFont(big);
+        p.setPen(QColor("#e8f2ee"));
+        p.drawText(QRectF(0, h * 0.54, canvas.width(), h * 0.11), Qt::AlignCenter, title.section('|', 0, 0));
+        QFont small("Inter");
+        small.setPixelSize(int(h / 30));
+        p.setFont(small);
+        p.setPen(Theme::backdropCrest);
+        p.drawText(QRectF(0, h * 0.66, canvas.width(), h * 0.06), Qt::AlignCenter, title.section('|', 1, 1));
+        p.setPen(QColor("#9fb3ab"));
+        p.drawText(QRectF(0, h * 0.72, canvas.width(), h * 0.06), Qt::AlignCenter, title.section('|', 2, 2));
+        p.setOpacity(1);
+    }
+
+    /** A caption in a dark pill at the foot of the picture, fading in and out. */
+    void drawCaption(QPainter &p, const QString &text, double alpha) {
+        if (text.isEmpty() || alpha <= 0) return;
+        QFont f("Inter");
+        f.setPixelSize(canvas.height() / 36);
+        f.setWeight(QFont::DemiBold);
+        p.setFont(f);
+        QRect r = p.fontMetrics().boundingRect(text);
+        int padX = canvas.height() / 34, padY = canvas.height() / 70;
+        QRectF pill(0, 0, r.width() + 2 * padX, r.height() + 2 * padY);
+        pill.moveCenter(QPointF(canvas.width() / 2.0, canvas.height() - canvas.height() / 9.0));
+        p.setOpacity(alpha);
+        p.setPen(QPen(Theme::backdropCrest, 2));
+        p.setBrush(QColor(8, 12, 11, 225));
+        p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2);
+        p.setPen(QColor("#e8f2ee"));
+        p.drawText(pill, Qt::AlignCenter, text);
+        p.setOpacity(1);
+    }
+
+    MainWindow *window;
+    Model *model;
+    Backend *backend;
+    QSize canvas;
+    QImage desktop;
+    QTimer frames;
+    QElapsedTimer clock;
+    qint64 written = 0, end = 0;
+    QString caption, previous, title;
+    qint64 titleAt = 0;
+    qint64 captionAt = 0, previousAt = 0, fadeAt = -100000;
+    bool fadeOut = false;
+    QPointer<Splash> splash;
+};
 }  // namespace
 
 QString Shots::file() {
@@ -193,6 +409,14 @@ QString Shots::file() {
 }
 
 void Shots::take(MainWindow *window, Model *model, Backend *backend, const QString &file) {
+    if (qEnvironmentVariableIsSet("LEMURI_FILM")) {
+        QStringList size = qEnvironmentVariable("LEMURI_FILM_SIZE", "1920x1080").split('x');
+        QSize inside = QSize(size[0].toInt(), size[1].toInt()) / window->devicePixelRatioF();
+        window->resize(window->size() - window->contentsRect().size() + inside);
+        window->move(-window->contentsRect().topLeft());
+        new Film(window, model, backend);
+        return;
+    }
     int ms = qEnvironmentVariableIntValue("LEMURI_SHOT_MS") ? qEnvironmentVariableIntValue("LEMURI_SHOT_MS") : 5000;
     // LEMURI_SHOT_SIZE=1830x1024: the inside of the window, without its shadow.
     QStringList size = qEnvironmentVariable("LEMURI_SHOT_SIZE").split('x');
