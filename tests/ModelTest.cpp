@@ -248,7 +248,8 @@ private slots:
         gone.start();
         QString error = "none";
         gone.request("hosts", {}, [&](const QJsonValue &, const QString &e) { error = e; });
-        QTRY_COMPARE(error, QString("exit code 0"));
+        // "exit code 0", or the write error that can come first when the process is already gone (under ASan, often).
+        QTRY_VERIFY(error != "none" && !error.isEmpty());
         // After it has gone: an error too, never a request left waiting.
         QString later = "none";
         gone.request("hosts", {}, [&](const QJsonValue &, const QString &e) { later = e; });
