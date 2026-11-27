@@ -92,8 +92,13 @@ TerminalView::TerminalView(QWidget *parent) : QWidget(parent) {
     VTermColor fg, bg;
     vterm_color_rgb(&fg, FOREGROUND.red(), FOREGROUND.green(), FOREGROUND.blue());
     vterm_color_rgb(&bg, BACKGROUND.red(), BACKGROUND.green(), BACKGROUND.blue());
-    vterm_screen_set_default_colors(screen, &fg, &bg);
     VTermState *state = vterm_obtain_state(vt);
+#if VTERM_VERSION_MAJOR > 0 || VTERM_VERSION_MINOR >= 2
+    vterm_screen_set_default_colors(screen, &fg, &bg);
+#else
+    // libvterm 0.1 (Debian 12): the screen takes its default colours from the state.
+    vterm_state_set_default_colors(state, &fg, &bg);
+#endif
     for (int i = 0; i < 16; i++) {
         VTermColor c;
         const QColor &q = Theme::terminalPalette[i];
@@ -184,7 +189,11 @@ int TerminalView::onProp(VTermProp prop, VTermValue *value, void *self) {
     auto *t = static_cast<TerminalView *>(self);
     if (prop == VTERM_PROP_CURSORVISIBLE) t->cursorShown = value->boolean;
     else if (prop == VTERM_PROP_ALTSCREEN) t->altScreen = value->boolean;
+#if VTERM_VERSION_MAJOR > 0 || VTERM_VERSION_MINOR >= 2
     else if (prop == VTERM_PROP_TITLE) t->setWindowTitle(QString::fromUtf8(value->string.str, int(value->string.len)));
+#else
+    else if (prop == VTERM_PROP_TITLE) t->setWindowTitle(QString::fromUtf8(value->string));
+#endif
     return 1;
 }
 

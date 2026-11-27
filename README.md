@@ -72,6 +72,7 @@ Screenshots by hand: `LEMURI_SHOT=file.png QT_QPA_PLATFORM=offscreen build/lemur
     packaging/linux/build.sh      # dist/lemuri_<version>_<arch>.deb and .tar.gz, in /opt/lemuri, updating itself
     dpkg-buildpackage -b -us -uc  # ../lemuri_<version>-1_<arch>.deb from debian/, in /usr, updated by apt
     packaging/ppa.sh -k KEY -p ppa:al-redai/lemuri -u   # signed source packages of the tag, uploaded to the PPA
+    packaging/obs.sh -u                                 # the source package of the tag, committed to OBS (Debian)
     packaging/mac/build.sh        # on a Mac: dist/Lemuri-<version>-mac-<arch>.zip (never built yet)
 
 The package of `debian/` is the one for a PPA or a distribution: it is built with `-DLEMURI_SELF_UPDATE=OFF`, so the
@@ -87,6 +88,17 @@ and `-b` also builds the binary package here as a check. Users install it with:
 
     sudo add-apt-repository ppa:al-redai/lemuri
     sudo apt install lemuri
+
+For Debian, `packaging/obs.sh` commits one source package of the tag (`0.1.4-1~obs1`) to the openSUSE Build Service
+project `home:alredai:lemuri`, which builds it for Debian 12 and 13, amd64 and arm64, and publishes a signed apt
+repository for each (`osc` must be logged in; no OpenPGP key of ours is needed). Users of Debian 13 (for 12, replace
+`Debian_13` with `Debian_12`):
+
+    curl -fsSL https://download.opensuse.org/repositories/home:alredai:lemuri/Debian_13/Release.key \
+      | gpg --dearmor | sudo tee /etc/apt/keyrings/lemuri.gpg >/dev/null
+    echo "deb [signed-by=/etc/apt/keyrings/lemuri.gpg] https://download.opensuse.org/repositories/home:/alredai:/lemuri/Debian_13/ /" \
+      | sudo tee /etc/apt/sources.list.d/lemuri.list
+    sudo apt update && sudo apt install lemuri
 
 Both contain the app and its backend, nothing else. The Linux package uses the distribution's Qt,
 libvterm, libssh, libargon2 and OpenSSL, so it installs wherever Qt is at least the version it was built against;

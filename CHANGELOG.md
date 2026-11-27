@@ -4,6 +4,15 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-27
+
+### Added
+- Packages for Debian 12 and 13 (amd64 and arm64), built by the openSUSE Build Service and updated by apt; the PPA for
+  Ubuntu 24.04, 26.04 and 26.10.
+
+### Fixed
+- Lemuri builds with libvterm 0.1, the one in Debian 12.
+
 ## [0.1.3] - 2026-11-27
 
 ### Added
