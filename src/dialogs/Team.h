@@ -28,20 +28,39 @@ void addAddress(Model *model, QWidget *parent);
 void waitForLink(Model *model, QWidget *parent);
 }  // namespace TeamDialogs
 
-/** The Team page: this user's key, the hosts received, the contacts and the PCs of the local network. */
+/**
+ * The Team page: this user's key, the hosts received, the contacts and the PCs of the local network.
+ * While the vault is locked it shows only a sign-in with the master password (or, with no vault yet, the choice of
+ * one); the rest appears once it is open.
+ */
 class TeamView : public QWidget {
     Q_OBJECT
 public:
     TeamView(Model *model, Actions *actions, QWidget *parent = nullptr);
 
+protected:
+    void resizeEvent(class QResizeEvent *) override;
+
 private:
     void fill();
+    QWidget *signIn();
+    void unlock();
 
     Model *model;
     Actions *actions;
+    class QStackedWidget *stack;
+    QWidget *content;
+    // The sign-in
+    QWidget *login;
+    QLabel *loginTitle, *loginText, *loginNote, *loginError;
+    class QLineEdit *password, *again;
+    class QPushButton *loginButton;
+    bool asking = false;
+
     QLabel *stateChip, *message, *fingerprint, *incomingTitle, *lanMessage, *firewall, *peerWarnings;
-    QWidget *openVault;
     class QCheckBox *lanOn;
     class QPushButton *byAddress, *waitLink;
     QTableWidget *incoming, *contacts, *nearby;
+    QWidget *incomingPanel;
+    class QBoxLayout *columns;
 };

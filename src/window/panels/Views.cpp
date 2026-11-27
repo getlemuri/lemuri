@@ -3,6 +3,7 @@
 #include "app/core/Backend.h"
 #include "app/core/Model.h"
 #include "app/tools/Texts.h"
+#include "terminal/FilesView.h"
 #include "terminal/TabStrip.h"
 #include "terminal/TerminalView.h"
 #include "widgets/parts/Chrome.h"
@@ -853,7 +854,10 @@ private:
     bool uncovered = false;
 };
 
-/** A slot: the terminal filling it, the commands at its top right and the cover over it; an amber edge when synced. */
+/**
+ * A slot: a band across its top (as Terminator's title bars: the host, what the shell says it is doing, the
+ * commands on the right), the terminal right under it, and the cover over the terminal; an amber edge when synced.
+ */
 class Slot : public QWidget {
 public:
     Slot(QWidget *view, QWidget *bar, Connecting *cover, bool synced, bool ghost) : view(view), bar(bar), cover(cover) {
@@ -864,21 +868,22 @@ public:
         int pad = synced ? 4 : 0;
         auto *l = new QVBoxLayout(this);
         l->setContentsMargins(pad, pad, pad, pad);
-        l->addWidget(view);
-        view->setStyleSheet(Theme::css("border: none;"));
-        bar->setParent(this);
+        l->setSpacing(0);
+        l->addWidget(bar);
+        l->addWidget(view, 1);
+        // The files view keeps its own sheet.
+        if (qobject_cast<TerminalView *>(view)) view->setStyleSheet(Theme::css("border: none;"));
         cover->setParent(this);
     }
 
 protected:
     void resizeEvent(QResizeEvent *) override {
+        // Over the terminal only: the band stays usable while it connects.
         QRect in = rect().marginsRemoved(layout()->contentsMargins());
+        in.setTop(in.top() + bar->sizeHint().height());
         cover->setGeometry(in);
-        bar->adjustSize();
-        // At the top right corner, over the terminal's scroll bar, which starts just under it.
-        bar->move(in.right() + 1 - bar->width(), in.top());
-        bar->raise();
-        if (auto *t = qobject_cast<TerminalView *>(view)) t->setScrollTop(bar->height());
+        cover->raise();
+        if (auto *t = qobject_cast<TerminalView *>(view)) t->setScrollTop(0);
     }
 
 private:
@@ -924,6 +929,8 @@ void ConsoleView::build(QWidget *extra) {
         if (ghost) shown = shownTabs[i];
         this->model->showSession(shownTabs[i]);
     });
+    connect(strip, &TabStrip::tabClicked, this, &ConsoleView::terminalsWanted);
+    connect(strip, &TabStrip::plusClicked, this, &ConsoleView::terminalsWanted);
     connect(strip, &TabStrip::closeRequested, this, [this](int i) {
         if (i >= 0 && i < shownTabs.size()) this->model->closeSession(shownTabs[i]);
     });
@@ -935,6 +942,14 @@ void ConsoleView::build(QWidget *extra) {
     connect(model, &Model::sessionChanged, this, &ConsoleView::refreshStrip);
     if (ghost) connect(model, &Model::positionChanged, this, &ConsoleView::rebuild);
     rebuild();
+}
+
+void ConsoleView::setPage(QWidget *p) {
+    if (page && page != p) page->hide();
+    page = p;
+    if (p && layout()->indexOf(p) < 0) static_cast<QVBoxLayout *>(layout())->addWidget(p, 1);
+    if (p) p->show();
+    area->setVisible(!p);
 }
 
 /** Ghost mode: the active tab of the host chosen in the tree, otherwise the one shown, otherwise the last one opened. */
@@ -954,11 +969,17 @@ ConsoleView::~ConsoleView() {
 /** The terminals belong to their sessions: taken out before the containers they sit in are thrown away. */
 void ConsoleView::release() {
     for (Session *s : model->sessions())
+    {
         if (s->view && s->view->parentWidget() && this->isAncestorOf(s->view)) {
             s->view->hide();
             s->view->setGhost(false);
             s->view->setParent(nullptr);
         }
+        if (s->files && s->files->parentWidget() && this->isAncestorOf(s->files)) {
+            s->files->hide();
+            s->files->setParent(nullptr);
+        }
+    }
 }
 
 void ConsoleView::refreshStrip() {
@@ -1050,16 +1071,44 @@ QWidget *ConsoleView::slot(Session *s, bool synced) {
     auto *bar = new QWidget;
     bar->setObjectName("terminalActions");
     bar->setAttribute(Qt::WA_StyledBackground);
-    bar->setStyleSheet(Theme::css("#terminalActions { background: @terminalActions; }"));
+    // No edge at its foot: it fades into the terminal's black (in ghost mode, into the see-through).
+    bar->setStyleSheet(Theme::css(ghost ? "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0)); }"
+                                        : "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @terminalActions, stop:0.45 @terminalActions, stop:1 @black); }"));
     auto *row = new QHBoxLayout(bar);
     row->setContentsMargins(6, 2, 6, 2);
     row->setSpacing(2);
+    // The host on the left, the commands on the right and, in the middle of the band, what the shell calls itself
+    // (user@host: folder): the two sides stretch alike, so the title stays at the centre of the terminal.
     QList<QWidget *> buttons = actions->terminalButtons(s);
-    for (QWidget *b : buttons) row->addWidget(b);
-    if (buttons.isEmpty()) bar->setFixedSize(0, 0);
+    auto *left = new QWidget, *right = new QWidget;
+    auto *ll = new QHBoxLayout(left), *rl = new QHBoxLayout(right);
+    for (QBoxLayout *l : {ll, rl}) {
+        l->setContentsMargins(0, 0, 0, 0);
+        l->setSpacing(2);
+    }
+    if (!buttons.isEmpty() && s->hostId != Host::LOCAL) ll->addWidget(buttons.takeFirst());
+    ll->addStretch(1);
+    rl->addStretch(1);
+    for (QWidget *b : buttons) rl->addWidget(b);
+    auto *title = new QLabel(s->view->windowTitle());
+    title->setStyleSheet(Theme::css("color: @faint; font-size: 11px; padding: 0 8px;"));
+    title->setAlignment(Qt::AlignCenter);
+    title->setMinimumWidth(0);
+    connect(s->view, &QWidget::windowTitleChanged, title, &QLabel::setText);
+    row->addWidget(left, 1);
+    row->addWidget(title);
+    row->addWidget(right, 1);
     auto *cover = new Connecting(model, s, nullptr);
-    s->view->show();
-    auto *sl = new Slot(s->view, bar, cover, synced, ghost);
+    // The files of this computer and of the server, in place of the terminal; see-through too in ghost mode.
+    QWidget *content = s->view;
+    if (s->showFiles && s->hostId != Host::LOCAL) {
+        if (!s->files) s->files = new FilesView(model, s);
+        static_cast<FilesView *>(s->files.data())->setGhost(ghost);
+        content = s->files;
+        s->view->hide();
+    }
+    content->show();
+    auto *sl = new Slot(content, bar, cover, synced, ghost);
     // A menu and file drops, once per terminal: the view outlives the console.
     if (!s->view->property("wired").toBool()) {
         s->view->setProperty("wired", true);

@@ -2,12 +2,18 @@
 
 #include "widgets/look/Theme.h"
 
+#include <QMenu>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleFactory>
 #include <QStyleOption>
 
 Style::Style() : QProxyStyle(QStyleFactory::create("Fusion")) {}
+
+void Style::polish(QWidget *widget) {
+    QProxyStyle::polish(widget);
+    if (qobject_cast<QMenu *>(widget)) widget->setAttribute(Qt::WA_TranslucentBackground);
+}
 
 void Style::drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const {
     if (element != PE_IndicatorCheckBox && element != PE_IndicatorRadioButton) {

@@ -281,6 +281,26 @@ def run(core, home, port, served, work):
             check(f.read() == "hello from the server\n", "the downloaded file is here, whole")
         check(core.call("sftp.locate", session=s, shell="/", listed=None, name="hello.txt")["path"] == "/hello.txt",
               "a name listed by ls is found")
+        listed = core.call("sftp.list", session=s, path="")
+        names = {e["name"]: e for e in listed["entries"]}
+        check(listed["path"] == "/" and "hello.txt" in names and not names["hello.txt"]["dir"]
+              and names["hello.txt"]["size"] == len("hello from the server\n") and names["hello.txt"]["mtime"] > 0,
+              "the file view lists the home folder, with sizes and dates")
+        core.call("sftp.mkdir", session=s, path="/box")
+        core.call("sftp.mkdir", session=s, path="/box/inner")
+        with open(os.path.join(served, "box", "inner", "deep.txt"), "w") as f:
+            f.write("deep\n")
+        os.symlink(os.path.join(served, "hello.txt"), os.path.join(served, "box", "link"))
+        check(core.call("sftp.list", session=s, path="/box/inner")["entries"][0]["name"] == "deep.txt", "a new folder, listed")
+        core.call("sftp.rename", session=s, **{"from": "/box/inner", "to": "/box/moved"})
+        check(os.path.isdir(os.path.join(served, "box", "moved")), "a folder renamed")
+        refused = core.fails("sftp.rename", session=s, **{"from": "/box/moved", "to": "/box/link"})
+        check(refused is not None and os.path.islink(os.path.join(served, "box", "link")), "renaming onto a name already there is refused")
+        check(core.fails("sftp.remove", session=s, paths=["/"]) is not None and os.path.isdir(served), "the root is never deleted")
+        check(core.fails("sftp.remove", session=s, paths=["box"]) is not None, "a path that is not absolute is refused")
+        core.call("sftp.remove", session=s, paths=["/box"])
+        check(not os.path.exists(os.path.join(served, "box")) and os.path.isfile(os.path.join(served, "hello.txt")),
+              "a folder deleted with what is inside, the file a link pointed to kept")
         core.call("session.close", session=s)
         core.state(s, "CLOSED")
         check(True, "session closed")

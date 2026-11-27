@@ -176,6 +176,7 @@ void TabStrip::mousePressEvent(QMouseEvent *e) {
             active = i;
             update();
             emit currentChanged(i);
+            emit tabClicked(i);
             return;
         }
     }

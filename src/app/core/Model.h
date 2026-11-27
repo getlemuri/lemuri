@@ -6,6 +6,7 @@
 #include <QList>
 #include <QObject>
 #include <QPointer>
+#include <QWidget>
 #include <QStringList>
 #include <functional>
 #include <memory>
@@ -81,6 +82,9 @@ public:
     QPointer<TerminalView> view;
     /** Closed by the app (tab closed, disconnect): its end is not an "exit" typed in the shell. */
     bool stopped = false;
+    /** The files of this computer and of the server, shown in place of the terminal (see FilesView). */
+    bool showFiles = false;
+    QPointer<QWidget> files;
 
     Session *owner() const { return own; }
     Session *tab() { return own ? own : this; }
@@ -110,6 +114,12 @@ struct Position {
     QString key;   // folder path or host id
     QString item;  // "" (the node's page) or "console"
     bool operator==(const Position &o) const { return kind == o.kind && key == o.key && item == o.item; }
+};
+
+/** Servers opened together, split in a tab (see Model::openSplit): a name and the servers in their order. */
+struct LaunchGroup {
+    QString name;
+    QStringList hosts;
 };
 
 /** A transfer in progress or just ended, from the backend's "transfer" events. */
@@ -203,6 +213,12 @@ public:
     Session *openLocal();
     Session *openSession(const QString &hostId);
     Session *showOrOpen(const QString &hostId);
+    /**
+     * These servers in new tabs, PER_TAB to a tab, split as a grid: two side by side; three with the first on the
+     * left and the other two one above the other on the right; four two by two. The first tab comes into view.
+     */
+    void openSplit(const QStringList &hostIds);
+    static constexpr int PER_TAB = 4;
     void showSession(Session *part);
     Session *split(Session *target, bool sideBySide, const QString &hostId = {});
     void closePane(Session *s);
@@ -210,11 +226,20 @@ public:
     Session *retry(Session *failed);
     void disconnectHost(const QString &hostId);
     void setSynced(Session *tab, bool on);
+    /** The file view in place of the terminal of `s`, or the terminal again. */
+    void setShowFiles(Session *s, bool on);
     QList<Session *> tabs() const;
 
     /** The "terminalCommands" setting, applied to every terminal (see TerminalView::setTypesCommands). */
     bool typesCommands() const { return typing; }
     void setTypesCommands(bool on);
+    /** The servers last started, the latest first (at most RECENT_HOSTS), still in the list; kept in the "ui" prefs. */
+    QStringList recentHosts() const;
+    void setRecentHosts(const QStringList &ids);
+    static constexpr int RECENT_HOSTS = 5;
+    /** The launch groups, kept in the "ui" prefs; set without saving when read from them. */
+    const QList<LaunchGroup> &launchGroups() const { return d.launches; }
+    void setLaunchGroups(const QList<LaunchGroup> &groups, bool save = true);
 
     /** A request to the backend; errors without a reply go to a warning. */
     void request(const QString &op, const QJsonObject &params = {}, std::function<void(const QJsonValue &)> ok = nullptr,
@@ -278,6 +303,8 @@ private:
         Position position;
         QList<Session *> sessions;
         QHash<QString, Session *> active;
+        QStringList recent;
+        QList<LaunchGroup> launches;
     } d;
     Host local;
     int counter = 0;

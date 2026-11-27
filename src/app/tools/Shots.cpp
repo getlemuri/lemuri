@@ -24,10 +24,10 @@
 #include <QCheckBox>
 #include <QContextMenuEvent>
 #include <QJsonArray>
+#include <QMenu>
 #include <QLineEdit>
 #include <QPainter>
 #include <QPointer>
-#include <QTime>
 #include <QTimer>
 
 namespace {
@@ -101,6 +101,30 @@ void Shots::act(MainWindow *window, Model *model, Backend *backend, const QStrin
     else if (a == "export") BackupDialogs::exportAll(model, actions, window);
     else if (a == "sessions") sessions(model, arg);
     else if (a == "show") show(window, model, arg);
+    else if (a == "group") model->openSplit(arg.split('+'));
+    else if (a == "groups") {
+        // Two made-up launch groups, for the menu of the recent servers.
+        model->setLaunchGroups({{"Deploy web", {"h4", "h5", "h3"}}, {"Fleet EU", {"h3", "h4", "h5", "h6"}}}, false);
+    }
+    else if (a == "launch") {
+        // The dialog of a new launch group, with two servers ticked as if chosen.
+        model->setLaunchGroups({{"Deploy", {"h4", "h5", "h3"}}}, false);
+        QTimer::singleShot(0, window, [actions] { actions->editLaunch(0); });
+    }
+    else if (a == "recent") {
+        // The menu of Ctrl+Shift+O, open over the window.
+        QMenu *menu = actions->recentMenu();
+        menu->adjustSize();
+        menu->popup(window->mapToGlobal(QPoint((window->width() - menu->width()) / 2, window->height() / 4)));
+    }
+    else if (a == "files") {
+        // The file view in place of the first server terminal.
+        for (Session *s : model->sessions())
+            if (s->hostId != Host::LOCAL) {
+                model->setShowFiles(s, true);
+                break;
+            }
+    }
     else if (a == "check" || a == "type") {
         // In the dialog in front: tick the check box whose text starts with `arg`, or type `arg` in its lines.
         QWidget *front = QApplication::activeModalWidget();
@@ -144,6 +168,11 @@ void Shots::act(MainWindow *window, Model *model, Backend *backend, const QStrin
             window->enterGhost();
             if (QWidget *ghost = window->ghostWindow()) ghost->setGeometry(where);
         });
+    } else if (a == "tree") {
+        // The ghost's Hosts button, as if clicked: the tree starts closed.
+        if (QWidget *ghost = window->ghostWindow())
+            for (IconButton *b : ghost->findChildren<IconButton *>())
+                if (b->toolTip() == T("activity.hosts")) b->click();
     } else if (a == "dock") {
         // The ghost's anchor button for that side, as if clicked.
         if (QWidget *ghost = window->ghostWindow())

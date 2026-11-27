@@ -42,6 +42,8 @@ private:
     void sftp(const QJsonObject &m, const Reply &r, std::function<QJsonValue(Sftp &)> work);
     void existing(const QJsonObject &m, const Reply &r);
     void locate(const QJsonObject &m, const Reply &r);
+    void list(const QJsonObject &m, const Reply &r);
+    void removeRemote(const QJsonObject &m, const Reply &r);
     void check(const QJsonObject &m, const Reply &r);
     QJsonObject upload(const QJsonObject &m);
     QJsonObject download(const QJsonObject &m);

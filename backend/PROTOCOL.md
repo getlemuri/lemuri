@@ -107,6 +107,10 @@ Tabs, splits and the local shell that replaces an SSH shell ended with `exit` ar
 | `sftp.locate` | `session, shell (its folder), listed (ls argument or null), name` | `path, name` |
 | `sftp.upload` | `session, folder, files, known (the names the user agreed to overwrite)` | `transfer` |
 | `sftp.download` | `session, path, into (local folder), replace` | `transfer` |
+| `sftp.list` | `session, path ("" is the home folder)` | `path` (absolute), `entries [{name, dir, link, size, mtime (seconds)}]`: links not followed, but a link to a folder has `dir` |
+| `sftp.mkdir` | `session, path` | `true` |
+| `sftp.rename` | `session, from, to` | `true`; refused if `to` is already there |
+| `sftp.remove` | `session, paths [absolute]` | `true`: files, links (never what they point to) and folders with what is inside; `/` and relative paths refused |
 | `fs.check` | `session, shell (its folder), listed (ls argument or null), name` | `path, typed (the name quoted for the shell), kind: UNTYPABLE (a \\ or ! in it: not typed), FOLDER, TEXT, BINARY, LARGE or OTHER` (the double click on a name; local shells too) |
 | `transfer.cancel` | `transfer` | |
 

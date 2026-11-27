@@ -24,10 +24,12 @@
 #include <QJsonObject>
 #include <QLabel>
 #include <QLineEdit>
+#include <QTreeWidget>
 #include <QMap>
 #include <QMenu>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QShortcut>
 #include <QSpinBox>
 #include <QTableWidget>
 #include <QTimer>
@@ -591,11 +593,151 @@ QMenu *Actions::hostMenu(const QString &id) {
     return m;
 }
 
+QMenu *Actions::recentMenu() {
+    auto *m = new QMenu(window);
+    // The heading, as a line that cannot be chosen (the style draws sections without their text).
+    m->addAction(Icons::icon("history", 13, Theme::faint), T("recent.title") + "   Ctrl+Shift+O")->setEnabled(false);
+    m->addSeparator();
+    QStringList ids = model->recentHosts();
+    for (int i = 0; i < ids.size(); i++) {
+        const Host *h = model->host(ids[i]);
+        QString id = ids[i], name = h->name;
+        // The number is the key; after the tab, the destination on the right.
+        item(m, "&" + QString::number(i + 1) + "  " + name.replace('&', "&&") + "\t" + h->destination(), "server",
+             [this, id] { model->showOrOpen(id); });
+    }
+    if (ids.isEmpty()) m->addAction(T("recent.none"))->setEnabled(false);
+
+    // The launch groups: each opens its servers split in a tab.
+    m->addSeparator();
+    m->addAction(Icons::icon("grid", 13, Theme::faint), T("launch.title"))->setEnabled(false);
+    m->addSeparator();
+    const QList<LaunchGroup> &groups = model->launchGroups();
+    for (const LaunchGroup &g : groups) {
+        QStringList hosts = g.hosts;
+        QString name = g.name;
+        item(m, name.replace('&', "&&") + "\t" + T("launch.count", QString::number(hosts.size())), "grid",
+             [this, hosts] { model->openSplit(hosts); });
+    }
+    item(m, T("launch.new"), "plus", [this] { editLaunch(-1); });
+    if (!groups.isEmpty()) {
+        QMenu *edit = m->addMenu(Icons::icon("edit", 13, Theme::text), T("launch.edit"));
+        QMenu *drop = m->addMenu(Icons::icon("trash", 13, Theme::text), T("launch.delete"));
+        for (int i = 0; i < groups.size(); i++) {
+            QString name = groups[i].name;
+            name.replace('&', "&&");
+            edit->addAction(name, this, [this, i] { editLaunch(i); });
+            drop->addAction(name, this, [this, i] { deleteLaunch(i); });
+        }
+    }
+    return m;
+}
+
+void Actions::editLaunch(int index) {
+    QList<LaunchGroup> groups = model->launchGroups();
+    if (index >= groups.size()) return;
+    LaunchGroup g = index < 0 ? LaunchGroup{} : groups[index];
+    FramedDialog d(window, T(index < 0 ? "launch.dialog.new" : "launch.dialog.edit"));
+    d.body()->addWidget(new QLabel(T("launch.name")));
+    auto *name = new QLineEdit(g.name);
+    name->setMinimumWidth(420);
+    d.body()->addWidget(name);
+    d.body()->addWidget(new QLabel(T("launch.hosts")));
+    // The servers of the group first, in their order and ticked; then the others. Dragged, they change order.
+    // In columns: name, folder, destination.
+    auto *list = new QTreeWidget;
+    list->setColumnCount(3);
+    list->setHeaderLabels({T("launch.col.name"), T("launch.col.folder"), T("launch.col.address")});
+    list->setRootIsDecorated(false);
+    list->setUniformRowHeights(true);
+    list->setDragDropMode(QAbstractItemView::InternalMove);
+    list->setSelectionMode(QAbstractItemView::SingleSelection);
+    list->invisibleRootItem()->setFlags(list->invisibleRootItem()->flags() | Qt::ItemIsDropEnabled);
+    list->header()->setStretchLastSection(false);
+    list->header()->setSectionResizeMode(2, QHeaderView::Stretch);
+    list->setStyleSheet("QTreeWidget::item { padding: 4px 0; }");
+    list->setMinimumSize(640, 300);
+    auto add = [list](const Host &h, bool on) {
+        auto *i = new QTreeWidgetItem(list, {h.name, h.group.isEmpty() ? T("tree.datacenter") : h.group, h.destination()});
+        i->setIcon(0, Icons::icon("server", 14, Theme::ok));
+        i->setData(0, Qt::UserRole, h.id);
+        i->setFlags((i->flags() | Qt::ItemIsUserCheckable | Qt::ItemIsDragEnabled) & ~Qt::ItemIsDropEnabled);
+        i->setCheckState(0, on ? Qt::Checked : Qt::Unchecked);
+    };
+    for (const QString &id : g.hosts)
+        if (const Host *h = model->host(id)) add(*h, true);
+    for (const Host &h : model->hosts())
+        if (h.id != Host::LOCAL && !g.hosts.contains(h.id)) add(h, false);
+    // Each column as wide as its longest text, plus some air.
+    for (int c = 0; c < 2; c++) {
+        list->resizeColumnToContents(c);
+        list->setColumnWidth(c, list->columnWidth(c) + 36);
+    }
+    d.body()->addWidget(list);
+    auto *error = new QLabel;
+    error->setStyleSheet(Theme::css("color: @warn;"));
+    d.body()->addWidget(error);
+    QPushButton *ok = d.buttons(T("launch.save"));
+    auto chosen = [list] {
+        QStringList ids;
+        for (int i = 0; i < list->topLevelItemCount(); i++)
+            if (list->topLevelItem(i)->checkState(0) == Qt::Checked) ids << list->topLevelItem(i)->data(0, Qt::UserRole).toString();
+        return ids;
+    };
+    auto refresh = [&] {
+        QString why = name->text().trimmed().isEmpty() ? T("launch.noName") : chosen().isEmpty() ? T("launch.noHosts") : QString();
+        error->setText(why);
+        ok->setEnabled(why.isEmpty());
+    };
+    QObject::connect(name, &QLineEdit::textChanged, &d, refresh);
+    QObject::connect(list, &QTreeWidget::itemChanged, &d, refresh);
+    refresh();
+    name->setFocus();
+    if (d.exec() != QDialog::Accepted) return;
+    g.name = name->text().trimmed();
+    g.hosts = chosen();
+    if (index < 0) groups << g;
+    else groups[index] = g;
+    model->setLaunchGroups(groups);
+}
+
+void Actions::deleteLaunch(int index) {
+    QList<LaunchGroup> groups = model->launchGroups();
+    if (index < 0 || index >= groups.size()) return;
+    if (!Ui::confirm(window, T("launch.delete"), T("launch.deleteAsk", groups[index].name), T("launch.delete"), true)) return;
+    groups.removeAt(index);
+    model->setLaunchGroups(groups);
+}
+
+void Actions::recentShortcut(QWidget *on) {
+    auto *key = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O), on);
+    key->setContext(Qt::WindowShortcut);
+    QObject::connect(key, &QShortcut::activated, on, [this, on] {
+        // Not over a dialog: its window, not the terminal, has the keyboard.
+        if (QApplication::activeModalWidget()) return;
+        QMenu *menu = recentMenu();
+        menu->adjustSize();
+        menu->exec(on->mapToGlobal(QPoint((on->width() - menu->width()) / 2, on->height() / 4)));
+        menu->deleteLater();
+    });
+}
+
+void Actions::recentBeside(QWidget *button) {
+    QMenu *menu = recentMenu();
+    menu->exec(button->mapToGlobal(QPoint(button->width(), 0)));
+    menu->deleteLater();
+}
+
 QMenu *Actions::folderMenu(const QString &path) {
     auto *m = new QMenu(window);
     item(m, T("hosts.addHere"), "plus", [this, path] { newHost(path); });
     item(m, T("folders.newSub"), "folder", [this, path] { newFolder(path); });
     item(m, T("sshImport.menu"), "download", [this, path] { sshImport(path); });
+    // Its servers (those of its subfolders too), PER_TAB to a tab, split as a grid.
+    QStringList ids;
+    for (const Host &h : model->hosts())
+        if (inside(h.group, path)) ids << h.id;
+    item(m, T("folders.openSplit"), "grid", [this, ids] { model->openSplit(ids); })->setEnabled(!ids.isEmpty());
     m->addSeparator();
     item(m, T("folders.renameMenu"), "edit", [this, path] { renameFolder(path); });
     item(m, T("common.moveTo"), "right", [this, path] { moveFolder(path); });
@@ -685,8 +827,16 @@ QList<QWidget *> Actions::terminalButtons(Session *s) {
     const Host *h = model->host(s->hostId);
     bool local = s->hostId == Host::LOCAL;
     QString id = s->hostId;
-    out << hostBadge(h ? h->name : s->title);
+    // The host's name first; not on a shell of this computer, where the title in the middle says enough.
+    if (!local) out << hostBadge(h ? h->name : s->title);
     if (!local && h) out << terminalAction("summary", T("console.summaryOf", h->name), false, [this, id] { model->select(Position::HostItem, id); });
+    // The files of this computer and of the server in place of the terminal; the same button brings the terminal back.
+    if (!local && h)
+        out << terminalAction(s->showFiles ? "terminal" : "folder", T(s->showFiles ? "files.back" : "files.show"), false, [this, s] {
+            QTimer::singleShot(0, model, [m = model, s] {
+                if (m->sessions().contains(s)) m->setShowFiles(s, !s->showFiles);
+            });
+        });
     Session *tab = s->tab();
     if (tab->panes().size() > 1) {
         IconButton *sync = terminalAction("sync", T(tab->synced ? "console.sync.off" : "console.sync.on"), false,

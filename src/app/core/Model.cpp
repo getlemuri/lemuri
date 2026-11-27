@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QPointer>
 #include <QTimer>
 
@@ -353,6 +354,13 @@ Session *Model::create(const QString &hostId, Session *owner, std::function<void
         if (!s->backend.isEmpty()) d.backend->request("session.resize", {{"session", s->backend}, {"cols", cols}, {"rows", rows}});
     });
     s->own = owner;
+    // A server started anew goes first among the recent ones (the local shell is not a server).
+    if (hostId != Host::LOCAL) {
+        d.recent.removeAll(hostId);
+        d.recent.prepend(hostId);
+        d.recent = d.recent.mid(0, RECENT_HOSTS);
+        request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"recentHosts", d.recent.join(',')}}}});
+    }
     if (!owner) {
         d.sessions.insert(at < 0 ? d.sessions.size() : std::min<qsizetype>(at, d.sessions.size()), s);
         d.active.insert(hostId, s);
@@ -436,6 +444,25 @@ Session *Model::showOrOpen(const QString &hostId) {
     if (!s) return openSession(hostId);
     showSession(s);
     return s;
+}
+
+void Model::openSplit(const QStringList &hostIds) {
+    QStringList ids;
+    for (const QString &id : hostIds)
+        if (host(id)) ids << id;
+    Session *first = nullptr;
+    for (int at = 0; at < ids.size(); at += PER_TAB) {
+        QStringList part = ids.mid(at, PER_TAB);
+        Session *a = openSession(part[0]);
+        if (!a) continue;
+        if (!first) first = a;
+        if (part.size() < 2) continue;
+        Session *b = split(a, true, part[1]);
+        // Three: the right half divided; four: both halves.
+        if (part.size() == 4) split(a, false, part[2]);
+        if (part.size() >= 3) split(b, false, part.last());
+    }
+    if (first) showSession(first);
 }
 
 void Model::showSession(Session *part) {
@@ -566,6 +593,11 @@ void Model::setSynced(Session *tab, bool on) {
     emit sessionsChanged();
 }
 
+void Model::setShowFiles(Session *s, bool on) {
+    s->showFiles = on;
+    emit sessionsChanged();
+}
+
 void Model::stop(Session *s) {
     if (s->alive()) s->stopped = true;
     if (!s->backend.isEmpty()) d.backend->request("session.close", {{"session", s->backend}});
@@ -586,6 +618,7 @@ void Model::drop(Session *s) {
 
 void Model::dispose(Session *s) {
     delete s->view.data();
+    delete s->files.data();
     delete s;
 }
 
@@ -615,6 +648,25 @@ void Model::clearEndedTasks() {
     d.tasks.erase(std::remove_if(d.tasks.begin(), d.tasks.end(), [](const Task &t) { return t.outcome != Task::Outcome::Running; }),
                   d.tasks.end());
     emit tasksChanged();
+}
+
+QStringList Model::recentHosts() const {
+    QStringList out;
+    for (const QString &id : d.recent)
+        if (host(id)) out << id;
+    return out.mid(0, RECENT_HOSTS);
+}
+
+void Model::setRecentHosts(const QStringList &ids) {
+    d.recent = ids.mid(0, RECENT_HOSTS);
+}
+
+void Model::setLaunchGroups(const QList<LaunchGroup> &groups, bool save) {
+    d.launches = groups;
+    if (!save) return;
+    QJsonArray all;
+    for (const LaunchGroup &g : groups) all.append(QJsonObject{{"name", g.name}, {"hosts", QJsonArray::fromStringList(g.hosts)}});
+    request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"launchGroups", QString::fromUtf8(QJsonDocument(all).toJson(QJsonDocument::Compact))}}}});
 }
 
 void Model::setTypesCommands(bool on) {

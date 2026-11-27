@@ -36,6 +36,8 @@ public:
 
 signals:
     void currentChanged(int i);
+    /** A tab pressed with the mouse, even the current one. */
+    void tabClicked(int i);
     void closeRequested(int i);
     void plusClicked();
 

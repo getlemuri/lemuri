@@ -330,16 +330,17 @@ QRectF TerminalView::thumb() const {
 }
 
 void TerminalView::paintScrollBar(QPainter &p) {
-    // No track: just a rounded thumb with an edge, over the terminal's own background.
-    QRectF t = thumb().adjusted(2, 2, -2, -2);
-    QLinearGradient tg(t.topLeft(), t.topRight());
-    bool lit = dragging || thumb().contains(mapFromGlobal(QCursor::pos()));
-    tg.setColorAt(0, lit ? Theme::handleLitTop : Theme::handleTop);
-    tg.setColorAt(1, lit ? Theme::handleLitBottom : Theme::handleBottom);
+    // Part of the terminal: nothing while there is nothing to scroll back to; otherwise a thin, faint line at the
+    // right edge, wider and brighter under the mouse or while dragged.
+    if (scrollback.empty()) return;
+    QRectF whole = thumb();
+    bool lit = dragging || whole.contains(mapFromGlobal(QCursor::pos()));
+    double w = lit ? 7 : 3;
+    QRectF t(whole.right() - 2 - w, whole.top() + 2, w, whole.height() - 4);
     p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(lit ? Theme::handleEdgeLit : Theme::handleEdge);
-    p.setBrush(tg);
-    p.drawRoundedRect(t, 4, 4);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(255, 255, 255, lit ? 80 : 34));
+    p.drawRoundedRect(t, w / 2, w / 2);
 }
 
 QRectF TerminalView::scrollTrack() const {

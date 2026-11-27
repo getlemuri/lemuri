@@ -10,4 +10,7 @@ class Style : public QProxyStyle {
 public:
     Style();
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
+    /** Menus see-through outside their rounded corners. */
+    void polish(QWidget *widget) override;
+    using QProxyStyle::polish;
 };

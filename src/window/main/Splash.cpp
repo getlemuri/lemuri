@@ -106,7 +106,7 @@ Splash::Splash(std::function<void()> after) : after(std::move(after)) {
     int px = int(std::lround(LOGO * dpr));
     logo = QImage(":/logo.png").scaled(px, px, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     logo.setDevicePixelRatio(1);
-    glow = withGlow(logo, QColor("#4fb3ff"), 36 * dpr, int(24 * dpr));
+    glow = withGlow(logo, QColor("#3fbf8a"), 36 * dpr, int(24 * dpr));
     glow.setDevicePixelRatio(dpr);
 
     QRandomGenerator random(7);
@@ -182,8 +182,8 @@ void Splash::paintEvent(QPaintEvent *) {
     // The centre lights up when the vortex sucks in.
     double light = smooth((t - 0.6) / 0.6) * (1 - 0.6 * smooth((t - 1.8) / 0.6));
     QRadialGradient centre(c, c, 90);
-    centre.setColorAt(0, colour("#bfe6ff", 0.85 * light));
-    centre.setColorAt(1, colour("#4fb3ff", 0));
+    centre.setColorAt(0, colour("#c8f0dc", 0.85 * light));
+    centre.setColorAt(1, colour("#3fbf8a", 0));
     g.setPen(Qt::NoPen);
     g.setBrush(centre);
     g.drawEllipse(QRectF(c - 90, c - 90, 180, 180));
@@ -204,7 +204,7 @@ void Splash::arms(QPainter &g, double c, double rotation, double shrink, double 
             double a = phase - s * 4.2;
             QPointF p(c + std::cos(a) * r, c + std::sin(a) * r);
             if (i > 1) {
-                g.setPen(QPen(colour("#7fd3ff", alpha * 0.55 * (1 - s) + 0.04 * alpha), 1 + 5 * (1 - s), Qt::SolidLine, Qt::RoundCap));
+                g.setPen(QPen(colour("#7fdcb0", alpha * 0.55 * (1 - s) + 0.04 * alpha), 1 + 5 * (1 - s), Qt::SolidLine, Qt::RoundCap));
                 g.drawLine(prev, p);
             }
             prev = p;
@@ -222,7 +222,7 @@ void Splash::drops(QPainter &g, double c, double t, double shrink, double alpha)
         double rr = r * shrink;
         double x = c + std::cos(a) * rr, y = c + std::sin(a) * rr;
         double dim = 1 + 2.2 * (r / 210);
-        g.setBrush(colour("#bfe6ff", alpha * (0.25 + 0.55 * (1 - r / 210))));
+        g.setBrush(colour("#c8f0dc", alpha * (0.25 + 0.55 * (1 - r / 210))));
         g.drawEllipse(QRectF(x - dim / 2, y - dim / 2, dim, dim));
     }
 }
@@ -235,7 +235,7 @@ void Splash::waves(QPainter &g, double c, double t) {
         if (s <= 0 || s >= 1) continue;
         double r = 40 + 170 * s;
         // Faster than they grow: out where the disc fades they would draw its edge again.
-        g.setPen(QPen(colour("#7fd3ff", 0.5 * (1 - s) * (1 - s)), 2 * (1 - s) + 0.5));
+        g.setPen(QPen(colour("#7fdcb0", 0.5 * (1 - s) * (1 - s)), 2 * (1 - s) + 0.5));
         g.drawEllipse(QRectF(c - r, c - r, r * 2, r * 2));
     }
 }
@@ -277,7 +277,7 @@ void Splash::caption(QPainter &g, double c, double t) {
     QFont small = font();
     small.setPixelSize(12);
     g.setFont(small);
-    g.setPen(QColor("#9fd2f5"));
+    g.setPen(QColor("#a8e6c8"));
     // Before the texts have ever come from the backend there is no tagline: only the name.
     QString tagline = T("app.tagline");
     if (!tagline.startsWith('!')) g.drawText(QRectF(0, c + 140 + 16 * (1 - s) - 12, SIDE, 24), Qt::AlignCenter, tagline);

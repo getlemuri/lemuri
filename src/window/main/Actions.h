@@ -46,11 +46,24 @@ public:
     QMenu *hostMenu(const QString &id);
     QMenu *folderMenu(const QString &path);
     QMenu *datacenterMenu();
+    /**
+     * The servers last started (Ctrl+Shift+O), numbered: 1 to 5 on the keyboard opens one (or shows its terminal);
+     * then the launch groups, each opening its servers split in a tab, and the commands to make, edit, delete them.
+     */
+    QMenu *recentMenu();
+    /** Ctrl+Shift+O on `window`: recentMenu over it. A shortcut works only while its window is visible, so each window
+     *  (the normal one and the ghost) has its own. */
+    void recentShortcut(QWidget *window);
+    /** A launch group made (index -1) or changed: its name and its servers, ticked and in order. */
+    void editLaunch(int index);
+    void deleteLaunch(int index);
+    /** recentMenu beside a button of the left column (on its right, from its top). */
+    void recentBeside(QWidget *button);
     /** Right click on a terminal: copy, paste, split, upload, close the pane. */
     QMenu *terminalMenu(Session *s);
     /** Disconnect, Edit, Move, Send, Remove: the head of the host page. */
     QList<QWidget *> hostButtons(const QString &id);
-    /** The icons against the top right corner of a terminal. */
+    /** The band over a terminal: the host's name (not on a local shell), then the commands for its right end. */
     QList<QWidget *> terminalButtons(Session *s);
 
     /** Uploads into the folder the shell of `s` is in; `files` empty: chosen from the computer. */

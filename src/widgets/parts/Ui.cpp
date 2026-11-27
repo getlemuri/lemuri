@@ -74,12 +74,6 @@ QComboBox::down-arrow { image: url(:/chevron-down.png); width: 12px; height: 12p
 QComboBox::down-arrow:disabled { image: url(:/chevron-down-off.png); }
 QComboBox QAbstractItemView { background: @control; border: 1px solid @edge; selection-background-color: @rowSelected; }
 QCheckBox, QRadioButton { spacing: 6px; }
-QMenu { background: @control; border: 1px solid @edge; padding: 4px 0; }
-QMenu::item { padding: 5px 22px 5px 10px; }
-QMenu::item:selected { background: @menuSelected; color: white; }
-QMenu::item:disabled { color: @disabled; }
-QMenu::icon { padding-left: 8px; }
-QMenu::separator { height: 1px; background: @edge; margin: 4px 0; }
 QTableWidget, QTableView { background: @veilDeep; border: 1px solid @border; gridline-color: @border; outline: none;
     selection-background-color: @rowSelected; selection-color: @text; }
 QTableView::item { border-bottom: 1px solid @border; padding: 0 8px; }
@@ -89,7 +83,22 @@ QHeaderView::section { background: @veilHead; color: @text; font-weight: bold; b
     border-right: 1px solid @border; border-bottom: 1px solid @border; height: 26px; padding: 0 4px; }
 QScrollArea { background: transparent; border: none; }
 QScrollArea > QWidget#qt_scrollarea_viewport, QScrollArea > QWidget > QWidget { background: transparent; }
-)") + scrollBars();
+)") + menus() + scrollBars();
+    return sheet;
+}
+
+QString Ui::menus() {
+    // The backdrop's shade, rounded corners (the menu is see-through outside them: see Style::polish), each item a
+    // rounded patch under the mouse.
+    static const QString sheet = Theme::css(R"(
+QMenu { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 @backdropMiddle, stop:1 @backdropTo);
+    border: 1px solid @edge; border-radius: 7px; padding: 5px 0; }
+QMenu::item { padding: 5px 22px 5px 10px; margin: 0 5px; border-radius: 4px; }
+QMenu::item:selected { background: rgba(255,255,255,0.10); color: white; }
+QMenu::item:disabled { color: @disabled; background: transparent; }
+QMenu::icon { padding-left: 8px; }
+QMenu::separator { height: 1px; background: rgba(255,255,255,0.10); margin: 4px 10px; }
+)");
     return sheet;
 }
 

@@ -18,6 +18,8 @@ public:
     struct Attrs {
         bool exists = false, dir = false, link = false, regular = false;
         qint64 size = 0;
+        /** Last change, in seconds since 1970 (0 when the server does not say). */
+        qint64 mtime = 0;
     };
     struct Entry {
         QString name;
@@ -29,12 +31,16 @@ public:
     explicit Sftp(std::shared_ptr<SshConnection> c);
     ~Sftp();
     QString home();
+    /** The absolute path the server gives for `path` ("." is the home folder). */
+    QString canonical(const QString &path);
     Attrs stat(const QString &path);
     Attrs lstat(const QString &path);
     QList<Entry> list(const QString &path);
     void mkdir(const QString &path);
     void rename(const QString &from, const QString &to);
     void remove(const QString &path);
+    /** An empty folder. */
+    void rmdir(const QString &path);
     /** The first `n` bytes of a file. */
     QByteArray head(const QString &path, int n);
     void upload(const QString &local, const QString &remote, const Progress &progress);

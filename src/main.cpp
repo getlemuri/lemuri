@@ -3,6 +3,7 @@
 #include "app/launch/Startup.h"
 #include "widgets/look/Style.h"
 #include "widgets/look/Theme.h"
+#include "widgets/parts/Ui.h"
 
 #include <QApplication>
 #include <QFont>
@@ -79,6 +80,7 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("lemuri");
     app.setDesktopFileName("lemuri");
     darkTheme(app);
+    app.setStyleSheet(Ui::menus());
 
     // "lemuri --toggle" (a global shortcut, F11 for example) or a second start: the running copy does it.
     // Pictures without a screen run beside the real app and keep to themselves.

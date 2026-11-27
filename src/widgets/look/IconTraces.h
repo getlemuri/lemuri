@@ -67,6 +67,10 @@ inline const QHash<QString, QString> &iconTraces() {
         {"group", "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"},
         {"send", "M22 2L11 13M22 2l-7 20-4-9-9-4z"},
         {"shield", "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"},
+        {"home", "M3 11l9-8 9 8M5 9.5V20h5v-6h4v6h5V9.5"},
+        {"history", "M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3.5 2"},
+        {"file", "M6 2h8l5 5v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM14 2v5h5"},
+        {"monitor", "M3 4h18v12H3zM8 20h8M12 16v4"},
     };
     return traces;
 }

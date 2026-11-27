@@ -21,11 +21,14 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QElapsedTimer>
+#include <QFrame>
 #include <QPointer>
+#include <QResizeEvent>
 #include <QTimer>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QStackedWidget>
 #include <QTableWidget>
 #include <QVBoxLayout>
 #include <memory>
@@ -570,95 +573,215 @@ TeamView::TeamView(Model *model, Actions *actions, QWidget *parent) : QWidget(pa
     col->setContentsMargins(8, 8, 8, 8);
     col->setSpacing(8);
     scroll->setWidget(page);
-    outer->addWidget(scroll);
+    stack = new QStackedWidget;
+    login = signIn();
+    stack->addWidget(login);
+    content = scroll;
+    stack->addWidget(content);
+    outer->addWidget(stack);
 
-    // ── You ──
+    // ── You: the state, the fingerprint, and the two things done by hand ──
     auto *you = new QWidget;
     auto *yc = new QVBoxLayout(you);
     yc->setContentsMargins(0, 0, 0, 0);
+    yc->setSpacing(6);
     auto *head = new QHBoxLayout;
+    head->setSpacing(10);
     stateChip = Ui::chip("warn", "");
     head->addWidget(stateChip);
-    message = wrapped("");
-    head->addWidget(message, 1);
-    yc->addLayout(head);
-    fingerprint = Ui::faint("");
-    fingerprint->setWordWrap(true);
+    fingerprint = new QLabel;
+    fingerprint->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px; color: @faint;"));
     fingerprint->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    yc->addWidget(fingerprint);
-    openVault = Ui::primary(T("team.openVault"), "ok", [actions] { actions->unlockVault(); });
-    yc->addWidget(openVault, 0, Qt::AlignLeft);
+    fingerprint->setWordWrap(true);
+    fingerprint->setToolTip(T("team.yourFingerprint.tip"));
+    head->addWidget(fingerprint, 1);
+    QPushButton *myKey = Ui::button(T("team.btn.myKey"), "right", [this] { TeamDialogs::myKey(this->model, this->actions, this); });
+    myKey->setToolTip(T("mykey.title"));
+    head->addWidget(myKey);
+    QPushButton *paste = Ui::primary(T("team.btn.paste"), "inbox", [this] { TeamDialogs::paste(this->model, this->actions, this); });
+    paste->setToolTip(T("paste.note"));
+    head->addWidget(paste);
+    yc->addLayout(head);
+    message = warnLabel();
+    yc->addWidget(message);
     yc->addWidget(note(T("team.howItWorks")));
     col->addWidget(Ui::panel(T("team.yourKey"), you));
 
-    // ── Incoming ──
-    auto *in = new QWidget;
-    auto *ic = new QVBoxLayout(in);
-    ic->setContentsMargins(0, 0, 0, 0);
-    incoming = table({T("team.col.from"), T("team.col.fingerprint"), T("common.host"), T("host.address"), T("auth.password"),
-                      T("team.col.message"), T("team.col.received"), ""});
-    QList<int> iw{150, 310, 140, 190, 80, 180, 140, 230};
-    widths(incoming, iw);
-    ic->addWidget(incoming);
-    auto *pr = new QHBoxLayout;
-    pr->addWidget(Ui::primary(T("paste.button"), "inbox", [this] { TeamDialogs::paste(this->model, this->actions, this); }));
-    pr->addWidget(Ui::faint(T("paste.note")));
-    pr->addStretch(1);
-    ic->addLayout(pr);
-    auto *incomingPanel = Ui::panel(T("team.incoming", 0), in);
+    // ── Incoming: only while something waits for an answer ──
+    incoming = table({T("team.col.from"), T("common.host"), T("host.address"), T("auth.password"), T("team.col.received"), ""});
+    widths(incoming, {150, 170, 210, 100, 140, 220});
+    incomingPanel = Ui::panel(T("team.incoming", 0), incoming);
     incomingTitle = incomingPanel->findChildren<QLabel *>().first();
     col->addWidget(incomingPanel);
 
-    // ── Contacts ──
+    // ── Contacts and the local network, side by side when there is room ──
+    columns = new QBoxLayout(QBoxLayout::LeftToRight);
+    columns->setSpacing(8);
+    col->addLayout(columns);
+
     auto *cb = new QWidget;
     auto *cc = new QVBoxLayout(cb);
     cc->setContentsMargins(0, 0, 0, 0);
-    contacts = table({T("common.status"), T("host.name"), T("team.col.fingerprint"), ""});
-    QList<int> cw{130, 220, 310, 120};
-    widths(contacts, cw);
+    contacts = table({T("host.name"), T("team.col.via"), T("team.col.fingerprint"), ""});
+    widths(contacts, {130, 90, 360, 44});
+    // The fingerprint on one line, whole: the name takes what is left.
+    contacts->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+    contacts->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Fixed);
+    contacts->setColumnWidth(1, 90);
+    contacts->setColumnWidth(2, 360);
     cc->addWidget(contacts);
     auto *cr = new QHBoxLayout;
-    cr->addWidget(Ui::button(T("contact.title"), "plus", [this] { TeamDialogs::addContact(this->model, this->actions, this); }));
-    cr->addWidget(Ui::button(T("mykey.title"), "right", [this] { TeamDialogs::myKey(this->model, this->actions, this); }));
-    cr->addWidget(Ui::faint(T("contacts.note")));
+    QPushButton *add = Ui::button(T("team.btn.addContact"), "plus", [this] { TeamDialogs::addContact(this->model, this->actions, this); });
+    add->setToolTip(T("contacts.note"));
+    cr->addWidget(add);
     cr->addStretch(1);
     cc->addLayout(cr);
-    col->addWidget(Ui::panel(T("contacts.title"), cb));
+    cc->addStretch(1);
+    columns->addWidget(Ui::panel(T("contacts.title"), cb), 1);
 
-    // ── Local network ──
     auto *lb = new QWidget;
     auto *lc = new QVBoxLayout(lb);
     lc->setContentsMargins(0, 0, 0, 0);
-    auto *lr = new QHBoxLayout;
-    lanOn = new QCheckBox(T("lan.enable"));
-    connect(lanOn, &QCheckBox::clicked, this, [this](bool on) { this->model->request("lan.on", {{"on", on}}); });
-    lr->addWidget(lanOn);
-    lanMessage = wrapped("");
-    lr->addWidget(lanMessage, 1);
-    lc->addLayout(lr);
+    lanMessage = note("");
+    lc->addWidget(lanMessage);
     firewall = warnLabel();
     lc->addWidget(firewall);
-    nearby = table({T("common.status"), T("host.name"), T("host.address"), T("team.col.fingerprint"), ""});
-    QList<int> nw{130, 200, 130, 310, 120};
-    widths(nearby, nw);
+    nearby = table({T("common.status"), T("host.name"), T("host.address"), ""});
+    widths(nearby, {130, 170, 140, 120});
+    nearby->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    nearby->setColumnWidth(0, 130);
     lc->addWidget(nearby);
     peerWarnings = warnLabel();
     lc->addWidget(peerWarnings);
     auto *nr = new QHBoxLayout;
-    byAddress = Ui::button(T("lan.addByAddress"), "plus", [this] { TeamDialogs::addAddress(this->model, this); });
+    byAddress = Ui::button(T("team.btn.byAddress"), "plus", [this] { TeamDialogs::addAddress(this->model, this); });
+    byAddress->setToolTip(T("lan.trustNote"));
     nr->addWidget(byAddress);
-    waitLink = Ui::button(T("lan.wait.button"), "download", [this] { TeamDialogs::waitForLink(this->model, this); });
+    waitLink = Ui::button(T("team.btn.wait"), "download", [this] { TeamDialogs::waitForLink(this->model, this); });
+    waitLink->setToolTip(T("lan.trustNote"));
     nr->addWidget(waitLink);
-    nr->addWidget(Ui::faint(T("lan.trustNote")));
     nr->addStretch(1);
     lc->addLayout(nr);
-    col->addWidget(Ui::panel(T("lan.title"), lb, Ui::action("refresh", T("lan.refresh"), [this] { this->model->request("lan.refresh"); })));
+    lc->addStretch(1);
+    auto *lanHead = new QWidget;
+    auto *lh = new QHBoxLayout(lanHead);
+    lh->setContentsMargins(0, 0, 0, 0);
+    lh->setSpacing(8);
+    lanHead->setFixedHeight(18);
+    lanOn = new QCheckBox(T("team.lan.on"));
+    lanOn->setToolTip(T("lan.enable"));
+    connect(lanOn, &QCheckBox::clicked, this, [this](bool on) { this->model->request("lan.on", {{"on", on}}); });
+    lh->addWidget(lanOn);
+    lh->addWidget(Ui::action("refresh", T("lan.refresh"), [this] { this->model->request("lan.refresh"); }));
+    columns->addWidget(Ui::panel(T("lan.title"), lb, lanHead), 1);
     col->addStretch(1);
-
     connect(model, &Model::teamChanged, this, &TeamView::fill);
     connect(model, &Model::vaultChanged, this, &TeamView::fill);
     model->refreshTeam();
     fill();
+}
+
+/** Contacts and the local network side by side on a wide page, one under the other on a narrow one. */
+void TeamView::resizeEvent(QResizeEvent *e) {
+    QWidget::resizeEvent(e);
+    columns->setDirection(width() >= 1150 ? QBoxLayout::LeftToRight : QBoxLayout::TopToBottom);
+}
+
+/** The sign-in: a card in the middle of the page, with the master password and a single button. */
+QWidget *TeamView::signIn() {
+    auto *page = new QWidget;
+    auto *outer = new QVBoxLayout(page);
+    outer->addStretch(2);
+    auto *card = new QFrame;
+    card->setObjectName("signIn");
+    card->setStyleSheet(Theme::css("#signIn { border: 1px solid @border; border-radius: 10px; background: @veil; }"));
+    card->setFixedWidth(400);
+    auto *col = new QVBoxLayout(card);
+    col->setContentsMargins(32, 28, 32, 24);
+    col->setSpacing(10);
+
+    auto *icon = new QLabel;
+    icon->setPixmap(Icons::pixmap("lock", 44, Theme::vaultIcon, 1.6, devicePixelRatioF()));
+    icon->setAlignment(Qt::AlignCenter);
+    icon->setMinimumHeight(48);
+    col->addWidget(icon);
+    loginTitle = new QLabel;
+    loginTitle->setAlignment(Qt::AlignCenter);
+    loginTitle->setStyleSheet(Theme::css("font-size: 18px; font-weight: bold;"));
+    col->addWidget(loginTitle);
+    loginText = Ui::faint("");
+    loginText->setWordWrap(true);
+    loginText->setAlignment(Qt::AlignCenter);
+    col->addWidget(loginText);
+    col->addSpacing(6);
+
+    password = new QLineEdit;
+    password->setPlaceholderText(T("vault.master"));
+    Ui::revealable(password);
+    col->addWidget(password);
+    again = new QLineEdit;
+    again->setPlaceholderText(T("vault.repeat"));
+    Ui::revealable(again);
+    col->addWidget(again);
+    loginError = new QLabel;
+    loginError->setAlignment(Qt::AlignCenter);
+    loginError->setStyleSheet(Theme::css("color: @warn;"));
+    col->addWidget(loginError);
+    loginButton = Ui::primary("", "lock", [this] { unlock(); });
+    loginButton->setMinimumHeight(34);
+    col->addWidget(loginButton);
+    connect(password, &QLineEdit::returnPressed, this, [this] { again->isVisible() ? again->setFocus() : unlock(); });
+    connect(again, &QLineEdit::returnPressed, this, &TeamView::unlock);
+    loginNote = Ui::faint("");
+    loginNote->setWordWrap(true);
+    loginNote->setAlignment(Qt::AlignCenter);
+    col->addSpacing(4);
+    col->addWidget(loginNote);
+
+    outer->addWidget(card, 0, Qt::AlignHCenter);
+    outer->addStretch(3);
+    return page;
+}
+
+/** Opens (or creates) the vault with what was typed; a wrong password stays on the sign-in and says so. */
+void TeamView::unlock() {
+    if (asking) return;
+    bool create = !model->vaultExists();
+    if (password->text().isEmpty()) {
+        loginError->setText(T("vault.enterPassword"));
+        password->setFocus();
+        return;
+    }
+    if (create && again->text() != password->text()) {
+        loginError->setText(T("vault.mismatch"));
+        again->selectAll();
+        again->setFocus();
+        return;
+    }
+    asking = true;
+    loginButton->setEnabled(false);
+    loginError->clear();
+    QPointer<TeamView> self(this);
+    model->request(create ? "vault.create" : "vault.open", {{"password", password->text()}}, [self](const QJsonValue &v) {
+        if (!self) return;
+        self->asking = false;
+        self->loginButton->setEnabled(true);
+        QJsonObject r = v.toObject();
+        self->model->setVault(r["exists"].toBool(), r["open"].toBool());
+        if (self->model->vaultOpen()) {
+            self->model->refreshTeam();
+            self->fill();
+        } else {
+            self->loginError->setText(T("vault.wrong"));
+            self->password->selectAll();
+            self->password->setFocus();
+        }
+    }, [self](const QString &why) {
+        if (!self) return;
+        self->asking = false;
+        self->loginButton->setEnabled(true);
+        self->loginError->setText(why);
+    });
 }
 
 void TeamView::fill() {
@@ -666,24 +789,42 @@ void TeamView::fill() {
     QString tone = ok ? "ok" : "warn";
     stateChip->setText(T(ok ? "sharing.state.ready" : "sharing.state.vaultLocked"));
     stateChip->setStyleSheet(Ui::chipStyle(tone));
-    message->setText(model->teamMessage());
+    setWarn(message, ok ? QString() : model->teamMessage());
     fingerprint->setText(model->fingerprint().isEmpty() ? QString() : T("team.yourFingerprint", model->fingerprint()));
-    openVault->setVisible(!ok);
+
+    // Locked: only the sign-in. The vault may already be open while the backend is still reading the keys: then the
+    // page shows, with its state, instead of asking again.
+    bool locked = !ok && !model->vaultOpen();
+    if (locked) {
+        bool create = !model->vaultExists();
+        loginTitle->setText(T(create ? "team.login.create.title" : "team.login.title"));
+        loginText->setText(T(create ? "team.login.create.text" : "team.login.text"));
+        loginNote->setText(T(create ? "vault.create.note" : "vault.unlock.note"));
+        loginButton->setText(T(create ? "vault.create.button" : "vault.unlock.button"));
+        again->setVisible(create);
+    } else {
+        password->clear();
+        again->clear();
+        loginError->clear();
+    }
+    stack->setCurrentWidget(locked ? login : content);
 
     // Incoming
-    incomingTitle->setText(T("team.incoming", int(model->deliveryList().size())));
-    incoming->setRowCount(int(model->deliveryList().size()));
-    for (int r = 0; r < model->deliveryList().size(); r++) {
-        QJsonObject i = model->deliveryList()[r].toObject();
+    const QJsonArray &arrived = model->deliveryList();
+    incomingPanel->setVisible(!arrived.isEmpty());
+    incomingTitle->setText(T("team.incoming", int(arrived.size())));
+    incoming->setRowCount(int(arrived.size()));
+    for (int r = 0; r < arrived.size(); r++) {
+        QJsonObject i = arrived[r].toObject();
         QJsonObject p = i["content"].toObject();
         put(incoming, r, 0, i["from"].toString());
-        put(incoming, r, 1, i["fingerprint"].toString(), true);
-        put(incoming, r, 2, p.isEmpty() ? "?" : p["name"].toString());
-        put(incoming, r, 3, p.isEmpty() ? i["error"].toString() : p["user"].toString() + "@" + p["address"].toString() + ":" + QString::number(p["port"].toInt()), true);
+        incoming->item(r, 0)->setToolTip(T("team.col.fingerprint") + ": " + i["fingerprint"].toString());
+        put(incoming, r, 1, p.isEmpty() ? "?" : p["name"].toString());
+        if (!p["message"].toString().isEmpty()) incoming->item(r, 1)->setToolTip(T("team.col.message") + ": " + p["message"].toString());
+        put(incoming, r, 2, p.isEmpty() ? i["error"].toString() : p["user"].toString() + "@" + p["address"].toString() + ":" + QString::number(p["port"].toInt()), true);
         if (!p.isEmpty())
-            putWidget(incoming, r, 4, p["hasPassword"].toBool() ? Ui::chip("info", T("team.password.included")) : Ui::chip("neutral", T("team.password.no")));
-        put(incoming, r, 5, p["message"].toString());
-        put(incoming, r, 6, Ui::dateTime(qint64(i["when"].toDouble())));
+            putWidget(incoming, r, 3, p["hasPassword"].toBool() ? Ui::chip("info", T("team.password.included")) : Ui::chip("neutral", T("team.password.no")));
+        put(incoming, r, 4, Ui::dateTime(qint64(i["when"].toDouble())));
         auto *buttons = new QWidget;
         auto *b = new QHBoxLayout(buttons);
         b->setContentsMargins(0, 0, 0, 0);
@@ -694,14 +835,7 @@ void TeamView::fill() {
         b->addWidget(Ui::button(T("team.reject"), "close", [this, i] {
             if (Ui::confirm(this, T("team.reject"), T("team.reject.ask", i["from"].toString()), T("team.reject"), true)) TeamDialogs::reject(model, this, i);
         }));
-        putWidget(incoming, r, 7, buttons);
-    }
-    if (model->deliveryList().isEmpty()) {
-        incoming->setRowCount(1);
-        put(incoming, 0, 0, "");
-        auto *none = new QTableWidgetItem(T("team.incoming.none"));
-        none->setForeground(Theme::faint);
-        incoming->setItem(0, 2, none);
+        putWidget(incoming, r, 5, buttons);
     }
     fit(incoming, 5);
 
@@ -709,11 +843,11 @@ void TeamView::fill() {
     contacts->setRowCount(int(model->contacts().size()));
     for (int r = 0; r < model->contacts().size(); r++) {
         QJsonObject c = model->contacts()[r].toObject();
-        putWidget(contacts, r, 0, c["nearby"].toBool() ? Ui::chip("ok", T("contacts.nearby")) : Ui::chip("neutral", T("contacts.byText")));
-        put(contacts, r, 1, c["name"].toString());
+        put(contacts, r, 0, c["name"].toString());
+        putWidget(contacts, r, 1, c["nearby"].toBool() ? Ui::chip("ok", T("contacts.nearby")) : Ui::chip("neutral", T("contacts.byText")));
         put(contacts, r, 2, c["fingerprint"].toString(), true);
         QString key = c["key"].toString(), name = c["name"].toString();
-        putWidget(contacts, r, 3, Ui::button(T("common.remove"), "trash", [this, key, name] {
+        putWidget(contacts, r, 3, Ui::action("trash", T("contacts.remove"), [this, key, name] {
             if (!Ui::confirm(this, T("contacts.remove"), T("contacts.remove.ask", name), T("common.remove"), true)) return;
             model->request("lan.forget", {{"key", key}}, nullptr, [this](const QString &why) { Ui::warning(this, T("contacts.remove"), why); });
         }));
@@ -723,16 +857,22 @@ void TeamView::fill() {
         auto *none = new QTableWidgetItem(T("contacts.none"));
         none->setForeground(Theme::faint);
         none->setTextAlignment(Qt::AlignCenter);
-        contacts->setItem(0, 1, none);
+        contacts->setItem(0, 0, none);
+        contacts->setSpan(0, 0, 1, 3);
+    } else {
+        contacts->clearSpans();
     }
     fit(contacts, 8);
 
-    // Local network
+    // Local network: its message only when something is wrong (on and off are the check box)
     lanOn->setChecked(model->lanOn());
+    bool lanActive = model->lanState() == Model::LanState::Active;
+    lanOn->setToolTip(lanActive ? model->lanMessage() : T("lan.enable"));
     lanMessage->setText(model->lanMessage());
+    lanMessage->setVisible(model->lanState() == Model::LanState::Error || model->lanState() == Model::LanState::VaultLocked);
     setWarn(firewall, model->firewall());
-    byAddress->setEnabled(model->lanState() == Model::LanState::Active);
-    waitLink->setEnabled(model->lanState() == Model::LanState::Active);
+    byAddress->setEnabled(lanActive);
+    waitLink->setEnabled(lanActive);
     nearby->setRowCount(int(model->peers().size()));
     QStringList warnings;
     for (int r = 0; r < model->peers().size(); r++) {
@@ -748,23 +888,25 @@ void TeamView::fill() {
         }
         putWidget(nearby, r, 0, chip);
         put(nearby, r, 1, p["trustedName"].isString() ? p["trustedName"].toString() : p["who"].toString());
+        nearby->item(r, 1)->setToolTip(T("team.col.fingerprint") + ": " + p["fingerprint"].toString());
         put(nearby, r, 2, p["address"].toString());
-        put(nearby, r, 3, p["fingerprint"].toString(), true);
         QString key = p["key"].toString(), who = p["who"].toString();
         if (trusted)
-            putWidget(nearby, r, 4, Ui::button(T("lan.unlink"), "plug-off", [this, key, who] {
+            putWidget(nearby, r, 3, Ui::button(T("lan.unlink"), "plug-off", [this, key, who] {
                 if (!Ui::confirm(this, T("lan.unlink"), T("lan.unlink.ask", who), T("lan.unlink"), true)) return;
                 model->request("lan.forget", {{"key", key}}, nullptr, [this](const QString &why) { Ui::warning(this, T("lan.unlink"), why); });
             }));
         else
-            putWidget(nearby, r, 4, Ui::primary(T("lan.link"), "plug", [this, p] { TeamDialogs::pair(model, this, p); }));
+            putWidget(nearby, r, 3, Ui::primary(T("lan.link"), "plug", [this, p] { TeamDialogs::pair(model, this, p); }));
     }
     if (model->peers().isEmpty()) {
         nearby->setRowCount(1);
         auto *none = new QTableWidgetItem(T("lan.none"));
         none->setForeground(Theme::faint);
-        nearby->setItem(0, 1, none);
-        nearby->setSpan(0, 1, 1, 3);
+        none->setTextAlignment(Qt::AlignCenter);
+        none->setToolTip(T("lan.none.tip"));
+        nearby->setItem(0, 0, none);
+        nearby->setSpan(0, 0, 1, 4);
     } else {
         nearby->clearSpans();
     }

@@ -109,6 +109,28 @@ private slots:
         QCOMPARE(parts(a), (QStringList{"h1:CONNECTED", "h1:CONNECTED", "h2:CONNECTED"}));
     }
 
+    /** The shape of a layout: "h1" for a terminal, "(a|b)" side by side, "(a/b)" one above the other. */
+    static QString shape(Pane *p) {
+        if (!p->divided()) return p->session()->hostId;
+        return "(" + shape(p->first()) + (p->sideBySide() ? "|" : "/") + shape(p->second()) + ")";
+    }
+
+    void serversOpenedTogetherFillTabsOfFourAsAGrid() {
+        // Seven names, one unknown: four in a grid, then two side by side; the first tab in view.
+        model->openSplit({"h1", "h2", "h1", "h2", "nope", "h2", "h1"});
+        QList<Session *> tabs = model->tabs();
+        QCOMPARE(tabs.size(), 2);
+        QCOMPARE(shape(tabs[0]->layout()), QString("((h1/h1)|(h2/h2))"));
+        QCOMPARE(shape(tabs[1]->layout()), QString("(h2|h1)"));
+        QCOMPARE(model->position().key, QString("h1"));
+        // Three: the first on the left, the others one above the other on the right.
+        model->openSplit({"h2", "h1", "h2"});
+        QCOMPARE(shape(model->tabs().last()->layout()), QString("(h2|(h1/h2))"));
+        // One alone: a tab without splits.
+        model->openSplit({"h1"});
+        QVERIFY(!model->tabs().last()->layout());
+    }
+
     void exitInAPartLeavesALocalShellInItsPlace() {
         Session *a = model->openSession("h1");
         Session *a2 = model->split(a, true);

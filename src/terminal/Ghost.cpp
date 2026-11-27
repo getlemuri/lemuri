@@ -3,6 +3,7 @@
 #include "app/launch/Instance.h"
 #include "app/core/Model.h"
 #include "app/tools/Texts.h"
+#include "dialogs/Team.h"
 #include "terminal/TabStrip.h"
 #include "terminal/TerminalView.h"
 #include "widgets/parts/Chrome.h"
@@ -114,13 +115,33 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
         return b;
     };
     hostsButton = activity("server", T("activity.hosts"));
-    hostsButton->setChecked(true);
     connect(hostsButton, &QAbstractButton::clicked, this, [this](bool on) { showTree(on); });
+    // The terminal, as in the normal window: lit while it is in view, it brings it back from the Team page.
+    terminalButton = activity("terminal", T("hosts.console"));
+    terminalButton->setChecked(true);
+    connect(terminalButton, &QAbstractButton::clicked, this, [this] { showTeam(false); });
+    // Sharing: under the tabs, in place of the terminal, with the count of the hosts received; clicked again or on a
+    // tab, the terminal is back.
+    teamButton = activity("share", T("team.title"));
+    teamButton->badge = model->deliveries();
+    connect(teamButton, &QAbstractButton::clicked, this, [this](bool on) {
+        if (on) this->model->select(Position::Team);
+        else showTeam(false);
+    });
+    connect(model, &Model::teamChanged, this, [this] {
+        teamButton->badge = this->model->deliveries();
+        teamButton->update();
+    });
     IconButton *ghost = activity("ghost", T("tray.ghostOff"));
     ghost->setChecked(true);
     ghost->colour = Theme::ghostAccent;
     ghost->hoverColour = Theme::ghostAccent;
     connect(ghost, &QAbstractButton::clicked, this, &GhostWindow::leave);
+    IconButton *recent = activity("history", T("recent.tip"));
+    connect(recent, &QAbstractButton::clicked, this, [this, recent] {
+        recent->setChecked(false);
+        this->actions->recentBeside(recent);
+    });
     cc->addStretch(1);
     middle->addWidget(column);
 
@@ -142,9 +163,12 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     treeHead->addWidget(hide);
     tc->addLayout(treeHead);
     tc->addWidget(tree, 1);
+    // Closed at first: the Hosts button opens it.
+    treeColumn->hide();
 
     console = new ConsoleView(model, actions, controls());
     console->setObjectName(GRIP);
+    connect(console, &ConsoleView::terminalsWanted, this, [this] { showTeam(false); });
     auto *upper = new QWidget;
     upper->setObjectName(GRIP);
     auto *uc = new QVBoxLayout(upper);
@@ -184,10 +208,18 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
         shellTab->setChecked(false);
         showShell(false);
     });
+    // The sharing page when chosen (here or in the status bar), the terminal again when a host is.
+    connect(model, &Model::positionChanged, this, [this] {
+        Position::Kind k = this->model->position().kind;
+        if (k == Position::Team) showTeam(true);
+        else if (k == Position::HostItem) showTeam(false);
+    });
+    if (model->position().kind == Position::Team) showTeam(true);
     // No sessions left: back to the normal window.
     connect(model, &Model::sessionsChanged, this, [this] {
         if (this->model->sessions().isEmpty()) emit leave();
     });
+    actions->recentShortcut(this);
     qApp->installEventFilter(this);
 }
 
@@ -279,6 +311,20 @@ void GhostWindow::paintEvent(QPaintEvent *) {
 
 void GhostWindow::showTree(bool show) {
     treeColumn->setVisible(show);
+}
+
+void GhostWindow::showTeam(bool show) {
+    if (show && !teamPage) {
+        // Made the first time; it has not the main window's sheet, so it brings it along.
+        teamPage = new QWidget;
+        teamPage->setStyleSheet(Ui::styleSheet());
+        auto *l = new QVBoxLayout(teamPage);
+        l->setContentsMargins(12, 8, 12, 8);
+        l->addWidget(new TeamView(model, actions));
+    }
+    console->setPage(show ? teamPage : nullptr);
+    teamButton->setChecked(show);
+    terminalButton->setChecked(!show);
 }
 
 /** The local shell of the bottom panel, under the terminal; given back to the panel when it goes. */

@@ -123,7 +123,7 @@ inline constexpr int RADIUS = 5;
 /** A style sheet with its @names replaced by the colours above. */
 inline QString css(QString sheet) {
     static const QHash<QString, QColor> named{
-        {"bg", bg}, {"veil", veil}, {"veilHead", veilHead}, {"veilDeep", veilDeep}, {"headPanel", headPanel}, {"control", control}, {"controlHover", controlHover}, {"border", border},
+        {"bg", bg}, {"backdropMiddle", backdropMiddle}, {"backdropTo", backdropTo}, {"veil", veil}, {"veilHead", veilHead}, {"veilDeep", veilDeep}, {"headPanel", headPanel}, {"control", control}, {"controlHover", controlHover}, {"border", border},
         {"edge", edge}, {"on", on}, {"black", black}, {"tip", tip}, {"tipText", tipText}, {"text", text}, {"faint", faint},
         {"disabled", disabled}, {"topText", topText}, {"topFaint", topFaint}, {"accent", accent}, {"accentDark", accentDark},
         {"accentOff", accentOff}, {"accentOffText", accentOffText}, {"textSelection", textSelection},

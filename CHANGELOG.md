@@ -4,6 +4,38 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-27
+
+### Added
+- Over every server terminal, next to the gauge, a folder: the terminal gives way to the files of this computer (left)
+  and of the server (right), in the folder the shell is in. A double click or a drag copies files across; new folder,
+  rename and delete on both sides (here, to the trash). The same button, now a terminal, brings the terminal back.
+- Ghost mode has the files view too, see-through like the terminal, and the Team page: a *Team* button in its left
+  column (or *Team* in the status bar) shows it under the tabs; the button again, the *Terminal* one now beside it, or a
+  tab brings the terminal back.
+- *Recent servers*, a clock under the ghost in the left column (or **Ctrl+Shift+O**, over the terminals and in ghost
+  mode too): the last 5 servers started, numbered; a
+  number (or a click) opens it, or shows its terminal if it is already open. The list survives a restart.
+
+- Several servers at once, split in a tab: four to a tab as a grid (two side by side; three with one on the left and
+  two on the right; four two by two), more in more tabs. *Open all, split* on a folder opens its servers; *launch
+  groups*, in the menu of the clock button (or Ctrl+Shift+O), are named lists of servers in their order, from any
+  folder, made and changed there.
+
+### Changed
+- The app icon and the splash screen take the app's dark slate green in place of the blue.
+- Every terminal has a band across its top, fading into it, as Terminator's title bars: the host on the left, what
+  the shell says it is doing (user@host: folder) in the middle, the gauge and the commands on the right; the shell
+  starts right under it instead of under the commands.
+- The scroll bar of the terminals is a thin faint line, shown only with lines to scroll back to; wider under the mouse.
+- The menus have slightly rounded corners and the backdrop's dark green shade.
+- The host tree starts closed (the *Hosts* button opens it): the normal window reopens it only if it was open last
+  time; the ghost window always starts without it.
+- With the vault locked, the Team page shows only a sign-in with the master password (choosing one, when there is no
+  vault yet); the contacts, the hosts received and the local network appear once it is open.
+- The Team page is simpler: the key in one line with *Send my key* and *Paste a host*, the incoming hosts only when
+  there are some, contacts and local network side by side on a wide window, shorter texts (the details in the tooltips).
+
 ## [0.1.2] - 2026-11-27
 
 ### Fixed

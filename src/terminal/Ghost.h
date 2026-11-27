@@ -19,7 +19,7 @@ class TerminalView;
 /**
  * Ghost mode: the main window goes away and a borderless window takes its place,
  * black and see-through like a desktop widget, with the session tabs, the host tree, the terminal and the status
- * bar. Press and hold anywhere to move it, or just drag its bare areas (the left column above all); it can float
+ * bar, and the sharing page in place of the terminal. Press and hold anywhere to move it, or just drag its bare areas (the left column above all); it can float
  * free, fill the screen or stick to a side (then it stays on top and its inner edge can be dragged). F11 hides it; the tray icon brings it back or ends the mode, which also
  * ends by itself when the last session closes.
  */
@@ -51,6 +51,8 @@ private:
     QWidget *controls();
     void showTree(bool show);
     void showShell(bool show);
+    /** The sharing page under the tabs in place of the terminal, or the terminal again. */
+    void showTeam(bool show);
     void dock(const QString &side);
     void toggleMaximized();
     void place();
@@ -65,6 +67,8 @@ private:
     QWidget *treeColumn = nullptr;
     QSplitter *split = nullptr, *vertical = nullptr;
     ConsoleView *console = nullptr;
+    QWidget *teamPage = nullptr;
+    IconButton *teamButton = nullptr, *terminalButton = nullptr;
     IconButton *hostsButton = nullptr, *maximizeButton = nullptr, *shellTab = nullptr;
     QList<IconButton *> dockButtons;
     QSlider *opacity = nullptr;

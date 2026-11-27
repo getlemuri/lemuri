@@ -361,6 +361,24 @@ void Transfers::ops(Router &router) {
     router.later("sftp.home", [this](const QJsonObject &m, const Reply &r) { sftp(m, r, [](Sftp &c) { return c.home(); }); });
     router.later("sftp.existing", [this](const QJsonObject &m, const Reply &r) { existing(m, r); });
     router.later("sftp.locate", [this](const QJsonObject &m, const Reply &r) { locate(m, r); });
+    // The file view next to the terminal: a folder of the server, and what can be done in it.
+    router.later("sftp.list", [this](const QJsonObject &m, const Reply &r) { list(m, r); });
+    router.later("sftp.mkdir", [this](const QJsonObject &m, const Reply &r) {
+        QString path = Params::need(m, "path");
+        sftp(m, r, [path](Sftp &c) {
+            c.mkdir(path);
+            return QJsonValue(true);
+        });
+    });
+    router.later("sftp.rename", [this](const QJsonObject &m, const Reply &r) {
+        QString from = Params::need(m, "from"), to = Params::need(m, "to");
+        sftp(m, r, [from, to](Sftp &c) {
+            if (c.lstat(to).exists) throw Fail{I18n::t("files.exists", Sftp::lastName(to))};
+            c.rename(from, to);
+            return QJsonValue(true);
+        });
+    });
+    router.later("sftp.remove", [this](const QJsonObject &m, const Reply &r) { removeRemote(m, r); });
     router.later("fs.check", [this](const QJsonObject &m, const Reply &r) { check(m, r); });
     router.op("sftp.upload", [this](const QJsonObject &m) { return upload(m); });
     router.op("sftp.download", [this](const QJsonObject &m) { return download(m); });
@@ -395,6 +413,52 @@ void Transfers::existing(const QJsonObject &m, const Reply &r) {
             if (c.lstat(Sftp::join(folder, n)).exists) l << n;
         }
         return l;
+    });
+}
+
+/** A folder of the server ("" is the home folder): its absolute path and what is in it, links not followed. */
+void Transfers::list(const QJsonObject &m, const Reply &r) {
+    QString path = Params::str(m, "path");
+    sftp(m, r, [path](Sftp &c) {
+        QString at = c.canonical(path.isEmpty() ? "." : path);
+        QJsonArray entries;
+        for (const Sftp::Entry &e : c.list(at)) {
+            bool dir = e.attrs.dir;
+            // A link to a folder opens like a folder: one stat, only for links.
+            if (e.attrs.link) dir = c.stat(Sftp::join(at, e.name)).dir;
+            entries << QJsonObject{{"name", e.name}, {"dir", dir}, {"link", e.attrs.link},
+                                   {"size", double(e.attrs.size)}, {"mtime", double(e.attrs.mtime)}};
+        }
+        return QJsonObject{{"path", at}, {"entries", entries}};
+    });
+}
+
+namespace {
+/** Removes a file, a link (never what it points to) or a folder with everything inside. */
+void removeTree(Sftp &c, const QString &path, int depth) {
+    if (depth > MAX_DEPTH) throw Fail{I18n::t("files.tooDeep", path)};
+    Sftp::Attrs a = c.lstat(path);
+    if (!a.exists) return;
+    if (a.dir && !a.link) {
+        for (const Sftp::Entry &e : c.list(path)) removeTree(c, Sftp::join(path, e.name), depth + 1);
+        c.rmdir(path);
+    } else {
+        c.remove(path);
+    }
+}
+}  // namespace
+
+/** Deletes on the server what was chosen in the file view; never "/" nor a path that is not absolute. */
+void Transfers::removeRemote(const QJsonObject &m, const Reply &r) {
+    QStringList paths = Params::strings(m, "paths");
+    for (const QString &p : paths)
+        if (!p.startsWith('/') || QDir::cleanPath(p) == "/" || p.contains("/../") || p.endsWith("/..")) {
+            r.fail(I18n::t("files.badPath", p));
+            return;
+        }
+    sftp(m, r, [paths](Sftp &c) {
+        for (const QString &p : paths) removeTree(c, QDir::cleanPath(p), 0);
+        return QJsonValue(true);
     });
 }
 

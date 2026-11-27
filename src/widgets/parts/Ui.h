@@ -23,6 +23,8 @@ namespace Ui {
 QString styleSheet();
 /** The scroll bars of the whole app (a rounded thumb, no track), for windows that do not take styleSheet(). */
 QString scrollBars();
+/** The menus of the whole app, menus without a window of the app's included (set on the application). */
+QString menus();
 
 QPushButton *button(const QString &text, const QString &icon, std::function<void()> action = nullptr);
 QPushButton *primary(const QString &text, const QString &icon, std::function<void()> action = nullptr);

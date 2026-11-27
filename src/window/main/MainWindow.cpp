@@ -23,6 +23,7 @@
 #include <QSystemTrayIcon>
 #include <QHBoxLayout>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -95,6 +96,7 @@ MainWindow::MainWindow(Backend *backend, Model *model) : backend(backend), model
     actions = new Actions(model, this);
     layOut();
     trayIcon();
+    recentShortcut();
     follow();
     showNode();
     refreshStatus();
@@ -129,6 +131,7 @@ void MainWindow::layOut() {
     horizontal->setChildrenCollapsible(false);
     horizontal->setStyleSheet(Theme::css("QSplitter::handle { background: transparent; }"));
     horizontal->addWidget(hostColumn());
+    column->hide();
     horizontal->addWidget(centralArea());
     horizontal->setStretchFactor(1, 1);
     horizontal->setSizes({370, 1030});
@@ -154,6 +157,11 @@ void MainWindow::layOut() {
     statusWidget = statusBar();
     outer->addWidget(statusWidget);
 
+}
+
+/** Ctrl+Shift+O, over the terminals too: the servers last started, to open one (the ghost window has its own). */
+void MainWindow::recentShortcut() {
+    actions->recentShortcut(this);
 }
 
 /** The tray icon: with it the X only hides the window, and ghost mode has its way back. */
@@ -221,8 +229,17 @@ void MainWindow::follow() {
 
 
 void MainWindow::prefs(const QJsonObject &ui) {
-    column->setVisible(ui["hostColumn"].toString("true") != "false");
+    // Closed unless opened last time.
+    column->setVisible(ui["hostColumn"].toString() == "true");
     model->setTypesCommands(ui["terminalCommands"].toString() == "true");
+    model->setRecentHosts(ui["recentHosts"].toString().split(',', Qt::SkipEmptyParts));
+    QList<LaunchGroup> groups;
+    for (const QJsonValue &g : QJsonDocument::fromJson(ui["launchGroups"].toString().toUtf8()).array()) {
+        LaunchGroup x{g["name"].toString(), {}};
+        for (const QJsonValue &h : g["hosts"].toArray()) x.hosts << h.toString();
+        if (!x.name.isEmpty()) groups << x;
+    }
+    model->setLaunchGroups(groups, false);
     refreshActivity();
 }
 
@@ -278,6 +295,12 @@ QWidget *MainWindow::activityBar() {
     connect(ghostButton, &QAbstractButton::clicked, this, [this] {
         ghostButton->setChecked(false);
         enterGhost();
+    });
+    // The servers last started (as Ctrl+Shift+O).
+    IconButton *recent = activity("history", T("recent.tip"));
+    connect(recent, &QAbstractButton::clicked, this, [this, recent] {
+        recent->setChecked(false);
+        actions->recentBeside(recent);
     });
     col->addStretch(1);
     logButton = activity("list", T("activity.log"));

@@ -24,6 +24,7 @@ Sftp::Attrs attrs(sftp_attributes a) {
     r.link = a->type == SSH_FILEXFER_TYPE_SYMLINK;
     r.regular = a->type == SSH_FILEXFER_TYPE_REGULAR;
     r.size = qint64(a->size);
+    if (a->flags & SSH_FILEXFER_ATTR_ACMODTIME) r.mtime = qint64(a->mtime);
     return r;
 }
 
@@ -116,6 +117,14 @@ QString Sftp::home() {
     });
 }
 
+QString Sftp::canonical(const QString &path) {
+    return conn->withSession([&](ssh_session) {
+        Text p(sftp_canonicalize_path(sftp, path.toUtf8().constData()));
+        if (!p) fail(path);
+        return QString::fromUtf8(p.get());
+    });
+}
+
 Sftp::Attrs Sftp::stat(const QString &path) {
     return conn->withSession([&](ssh_session) {
         Attributes a(sftp_stat(sftp, path.toUtf8().constData()));
@@ -158,6 +167,12 @@ void Sftp::rename(const QString &from, const QString &to) {
 void Sftp::remove(const QString &path) {
     conn->withSession([&](ssh_session) {
         if (sftp_unlink(sftp, path.toUtf8().constData()) != SSH_OK) fail(path);
+    });
+}
+
+void Sftp::rmdir(const QString &path) {
+    conn->withSession([&](ssh_session) {
+        if (sftp_rmdir(sftp, path.toUtf8().constData()) != SSH_OK) fail(path);
     });
 }
 

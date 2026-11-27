@@ -53,6 +53,7 @@ protected:
 private:
     void layOut();
     void trayIcon();
+    void recentShortcut();
     void follow();
     QWidget *activityBar();
     QWidget *hostColumn();

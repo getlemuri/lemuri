@@ -114,6 +114,12 @@ public:
     ~ConsoleView() override;
     /** The tab in view, in ghost mode. */
     Session *shownTab() const { return shown; }
+    /** Ghost mode: a page in place of the terminals, under the tabs (null: the terminals again); it becomes a child of the console. */
+    void setPage(QWidget *page);
+
+signals:
+    /** A tab clicked or a new one asked for: the user wants the terminals. */
+    void terminalsWanted();
 
 private:
     void rebuild();
@@ -128,6 +134,7 @@ private:
     TabStrip *strip;
     QWidget *area;
     QVBoxLayout *areaLayout;
+    QPointer<QWidget> page;
     QList<Session *> shownTabs;
     QList<QPointer<QWidget>> views;
     bool ghost = false;
