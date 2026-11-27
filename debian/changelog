@@ -1,3 +1,11 @@
+lemuri (0.1.2-1) unstable; urgency=medium
+
+  * The new texts show at the first start after an update.
+  * No crash when a terminal scrolled back grows taller.
+  * Ghost mode no longer stuck when maximized on a screen without panels.
+
+ -- Lemuri contributors <noreply@getlemuri.github.io>  Fri, 27 Nov 2026 12:00:00 +0000
+
 lemuri (0.1.1-1) unstable; urgency=medium
 
   * A shaded backdrop with waves in the main window and the dialogs.

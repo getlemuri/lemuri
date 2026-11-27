@@ -4,8 +4,12 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-27
+
 ### Fixed
 - The first start after an update showed the new texts as `!key!` (the dock question), until the next start.
+- A terminal scrolled back could crash Lemuri when it grew taller.
+- Ghost mode stayed stuck when the window was maximized on a screen without panels.
 
 ## [0.1.1] - 2026-11-26
 
