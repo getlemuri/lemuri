@@ -71,12 +71,22 @@ Screenshots by hand: `LEMURI_SHOT=file.png QT_QPA_PLATFORM=offscreen build/lemur
 
     packaging/linux/build.sh      # dist/lemuri_<version>_<arch>.deb and .tar.gz, in /opt/lemuri, updating itself
     dpkg-buildpackage -b -us -uc  # ../lemuri_<version>-1_<arch>.deb from debian/, in /usr, updated by apt
+    packaging/ppa.sh -k KEY -p ppa:al-redai/lemuri -u   # signed source packages of the tag, uploaded to the PPA
     packaging/mac/build.sh        # on a Mac: dist/Lemuri-<version>-mac-<arch>.zip (never built yet)
 
 The package of `debian/` is the one for a PPA or a distribution: it is built with `-DLEMURI_SELF_UPDATE=OFF`, so the
 app only says when a new version is out (if asked, or if the daily check is turned on) and leaves installing it to
 the package manager; the backend goes in `libexec/lemuri`, with the menu entry, the icons and the AppStream data
 (`packaging/linux/`). The CI builds it and runs lintian on it.
+
+The PPA (`ppa:al-redai/lemuri`, built by Launchpad for the supported Ubuntu releases) gets it from
+`packaging/ppa.sh`: after the release's tag, it makes one source package per series from the tagged tree, with
+versions like `0.1.3-1~ppa1~noble1` (newer than the GitHub .deb, so apt replaces it), signs them with the uploader's
+OpenPGP key and uploads them with dput. `-n 2` uploads the same release again; with no key it only builds, unsigned,
+and `-b` also builds the binary package here as a check. Users install it with:
+
+    sudo add-apt-repository ppa:al-redai/lemuri
+    sudo apt install lemuri
 
 Both contain the app and its backend, nothing else. The Linux package uses the distribution's Qt,
 libvterm, libssh, libargon2 and OpenSSL, so it installs wherever Qt is at least the version it was built against;
