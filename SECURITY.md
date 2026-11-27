@@ -125,7 +125,6 @@ planned; until then, the system password before every update is the last check.
 installed by hand. After using the backup key, make a new backup key the same way.
 
 The tags of the releases are signed by the keys in `.github/release-signers`; the workflow refuses any other.
-Their fingerprints are also published on the website, so they can be checked away from this repository.
 
 ## Where to look
 
