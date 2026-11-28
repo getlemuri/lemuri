@@ -122,13 +122,16 @@ protected:
     void showEvent(QShowEvent *) override;
     void resizeEvent(QResizeEvent *) override;
 
-private:
+public:
     /**
      * A wrapped QLabel tells the layout its height for a width it guesses, and a top-level window does not ask
      * again at the real width: a text of two lines could get the height of one and a half, cut at the top and the
      * bottom. Each one gets its height for the width it has; the window grows to hold them. Until nothing changes.
+     * Done before it shows and on a resize; called again when a text changes while it is open.
      */
     void fitTexts();
+
+private:
     bool fitting = false;
 
 private:

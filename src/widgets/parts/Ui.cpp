@@ -65,7 +65,7 @@ QPushButton[kind="destroy"] { background: @criticalFill; border-color: @critical
 QPushButton[kind="destroy"]:hover { background: @criticalFillHover; }
 QPushButton[kind="destroy"]:focus { border-color: white; }
 QLineEdit, QSpinBox, QComboBox, QPlainTextEdit, QTextEdit { background: @veilDeep; border: 1px solid @edge; border-radius: 3px;
-    padding: 2px 6px; selection-background-color: @textSelection; selection-color: white; }
+    padding: 2px 6px; selection-background-color: @textSelection; selection-color: @text; }
 QLineEdit, QSpinBox, QComboBox { min-height: 20px; }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus { border-color: @accent; }
 QComboBox { padding-right: 20px; }
@@ -94,10 +94,10 @@ QString Ui::menus() {
 QMenu { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 @backdropMiddle, stop:1 @backdropTo);
     border: 1px solid @edge; border-radius: 7px; padding: 5px 0; }
 QMenu::item { padding: 5px 22px 5px 10px; margin: 0 5px; border-radius: 4px; }
-QMenu::item:selected { background: rgba(255,255,255,0.10); color: white; }
+QMenu::item:selected { background: @hoverSoft; color: @topText; }
 QMenu::item:disabled { color: @disabled; background: transparent; }
 QMenu::icon { padding-left: 8px; }
-QMenu::separator { height: 1px; background: rgba(255,255,255,0.10); margin: 4px 10px; }
+QMenu::separator { height: 1px; background: @hoverSoft; margin: 4px 10px; }
 )");
     return sheet;
 }
@@ -442,7 +442,7 @@ FramedDialog::FramedDialog(QWidget *parent, const QString &title) : QDialog(pare
     auto *close = new IconButton("close", 13, QSize(30, 26), T("window.close"));
     close->colour = Theme::topFaint;
     close->hoverColour = Theme::text;
-    close->hoverBackground = QColor(255, 255, 255, 26);
+    close->hoverBackground = Theme::hoverSoft;
     connect(close, &QAbstractButton::clicked, this, &QDialog::reject);
     // Same width on both sides, so the title stays in the middle.
     brand->setFixedWidth(std::max(brand->sizeHint().width(), 10));

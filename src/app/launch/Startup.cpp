@@ -7,6 +7,7 @@
 #include "window/main/MainWindow.h"
 #include "widgets/parts/Ui.h"
 #include "window/main/Splash.h"
+#include "widgets/look/Theme.h"
 
 #include <QApplication>
 #include <QDir>
@@ -93,6 +94,7 @@ void Startup::texts(const QJsonValue &all, const QString &language) {
     startWork();
     backend.request("prefs.get", {{"node", "ui"}}, [this](const QJsonValue &p, const QString &) {
         if (p.toObject()["splash"].isString()) Splash::remember(p.toObject()["splash"].toString() != "false");
+        if (p.toObject()["theme"].isString()) Theme::remember(p.toObject()["theme"].toString());
         if (window) window->prefs(p.toObject());
         if (shot.isEmpty() && p.toObject()["dockAsked"].toString() != "true") offerDock();
     });

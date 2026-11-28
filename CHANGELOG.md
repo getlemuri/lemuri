@@ -4,6 +4,20 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+- Themes, in Settings › Appearance: Lemuri (the dark one so far), Night blue, Graphite and Light. The terminal takes
+  the theme's colours too (on Light, a white terminal with darker ANSI colours). The choice takes effect at the next
+  start.
+
+### Changed
+- The update window shows each step with its mark (done, in progress, failed) and what it gave (the size, the key
+  that signed, the versions), and below, as in Synaptic, the output of apt as it comes. Long texts wrap instead of
+  being cut, and a failure says apt's own reason.
+
+### Fixed
+- The .deb from GitHub installs on Ubuntu 25.04 and later and on Debian 13, where some Qt libraries are named without
+  the t64 suffix: apt refused it there, and the update from an earlier version failed.
+
 ## [0.1.4] - 2026-11-27
 
 ### Added

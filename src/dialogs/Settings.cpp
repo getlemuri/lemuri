@@ -19,6 +19,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
+#include <QFontDatabase>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -26,13 +27,19 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QPainter>
 #include <QPlainTextEdit>
 #include <QPointer>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QStackedWidget>
 #include <QTableWidget>
+#include <QTextCursor>
+#include <QTimer>
+#include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <memory>
@@ -43,6 +50,103 @@ QLabel *note(const QString &text) {
     l->setWordWrap(true);
     return l;
 }
+
+/**
+ * A step of an update: its mark (to do, in progress, done, failed), its label and a detail below, both wrapped.
+ * The mark of the step in progress turns.
+ */
+class UpdateStep : public QWidget {
+public:
+    enum State { Todo, Now, Done, Failed };
+
+    explicit UpdateStep(const QString &label) {
+        auto *row = new QHBoxLayout(this);
+        row->setContentsMargins(0, 0, 0, 0);
+        row->setSpacing(10);
+        mark = new QLabel;
+        mark->setFixedSize(18, 18);
+        row->addWidget(mark, 0, Qt::AlignTop);
+        auto *texts = new QVBoxLayout;
+        texts->setSpacing(2);
+        title = new QLabel(label);
+        title->setWordWrap(true);
+        detail = Ui::faint("");
+        detail->setWordWrap(true);
+        detail->hide();
+        texts->addWidget(title);
+        texts->addWidget(detail);
+        row->addLayout(texts, 1);
+        spin = new QTimer(this);
+        spin->setInterval(60);
+        connect(spin, &QTimer::timeout, this, [this] {
+            angle = (angle + 30) % 360;
+            draw();
+        });
+        set(Todo, {}, {});
+    }
+
+    /** A new state; a label or a detail that is null stays as it is (an empty detail hides it). */
+    void set(State s, const QString &label, const QString &text) {
+        state = s;
+        if (!label.isNull()) title->setText(label);
+        if (!text.isNull()) {
+            detail->setText(text);
+            detail->setVisible(!text.isEmpty());
+        }
+        title->setStyleSheet(Theme::css(s == Todo ? "color: @faint;" : "color: @text;"));
+        detail->setStyleSheet(Theme::css(s == Failed ? "color: @errorText;" : "color: @faint;"));
+        if (s == Now) spin->start();
+        else spin->stop();
+        draw();
+    }
+
+private:
+    void draw() {
+        qreal ratio = devicePixelRatioF();
+        QPixmap px(QSize(18, 18) * ratio);
+        px.setDevicePixelRatio(ratio);
+        px.fill(Qt::transparent);
+        QPainter p(&px);
+        p.setRenderHint(QPainter::Antialiasing);
+        QRectF box(0, 0, 18, 18);
+        auto pen = [](const QColor &c, double width) {
+            QPen q(c, width);
+            q.setCapStyle(Qt::RoundCap);
+            q.setJoinStyle(Qt::RoundJoin);
+            return q;
+        };
+        if (state == Done || state == Failed) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(state == Done ? Theme::ok : Theme::critical);
+            p.drawEllipse(box);
+            p.setBrush(Qt::NoBrush);
+            if (state == Done) {
+                p.setPen(pen(Theme::okBack, 2));
+                p.drawPolyline(QPolygonF({QPointF(5, 9.2), QPointF(7.6, 11.8), QPointF(13, 6.4)}));
+            } else {
+                p.setPen(pen(Qt::white, 2));
+                p.drawLine(QPointF(6, 6), QPointF(12, 12));
+                p.drawLine(QPointF(12, 6), QPointF(6, 12));
+            }
+        } else if (state == Now) {
+            QRectF ring = box.adjusted(1.5, 1.5, -1.5, -1.5);
+            p.setPen(pen(Theme::accentOff, 2.5));
+            p.drawEllipse(ring);
+            p.setPen(pen(Theme::accent, 2.5));
+            p.drawArc(ring, (90 - angle) * 16, -90 * 16);
+        } else {
+            p.setPen(pen(Theme::disabled, 1.5));
+            p.drawEllipse(box.adjusted(1.5, 1.5, -1.5, -1.5));
+        }
+        p.end();
+        mark->setPixmap(px);
+    }
+
+    QLabel *mark, *title, *detail;
+    QTimer *spin;
+    State state = Todo;
+    int angle = 0;
+};
 
 QLabel *warnLabel() {
     auto *l = new QLabel;
@@ -285,28 +389,109 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
             else model->request("update.later");
             return;
         }
-        // The steps one under the other while git and Maven work; nothing to press until they end.
+        // The steps one under the other, each with its mark, and below what runs (apt above all), as it comes.
         auto *w = new FramedDialog(parent, T("update.installing", tag));
         w->setAttribute(Qt::WA_DeleteOnClose);
+        w->setMinimumWidth(600);
+        QPointer<FramedDialog> guard = w;
+        auto refit = [guard] {
+            QTimer::singleShot(0, guard, [guard] { if (guard) guard->fitTexts(); });
+        };
         QLabel *now = new QLabel(T("update.wait"));
+        now->setWordWrap(true);
+        now->setStyleSheet(Theme::css("font-size: 15px; font-weight: bold;"));
         w->body()->addWidget(now);
-        auto *steps = new QVBoxLayout;
-        w->body()->addLayout(steps);
+        auto *bar = new QProgressBar;
+        bar->setRange(0, 4 * 2);
+        bar->setValue(0);
+        bar->setTextVisible(false);
+        bar->setFixedHeight(6);
+        auto barColour = [bar](const char *c) {
+            bar->setStyleSheet(Theme::css(QString("QProgressBar { background: @control; border: none; border-radius: 3px; }"
+                                                  "QProgressBar::chunk { background: @%1; border-radius: 3px; }").arg(c)));
+        };
+        barColour("accent");
+        w->body()->addWidget(bar);
+
+        auto steps = std::make_shared<QList<UpdateStep *>>();
+        auto *list = new QVBoxLayout;
+        list->setSpacing(10);
+        for (const QString &label : {T("update.step.download", "lemuri " + r["version"].toString()), T("update.step.verify"),
+                                     T("update.step.install"), T("update.step.ready")}) {
+            auto *row = new UpdateStep(label);
+            steps->append(row);
+            list->addWidget(row);
+        }
+        w->body()->addLayout(list);
+
+        // The details, as in Synaptic: the lines of the download, the signature and apt in a terminal of their own.
+        auto *more = new QToolButton;
+        more->setText(T("update.details"));
+        more->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        more->setArrowType(Qt::DownArrow);
+        more->setCheckable(true);
+        more->setChecked(true);
+        more->setAutoRaise(true);
+        more->setStyleSheet(Theme::css("QToolButton { color: @topFaint; border: none; padding: 2px 0; }"));
+        w->body()->addWidget(more, 0, Qt::AlignLeft);
+        auto *log = new QPlainTextEdit;
+        log->setReadOnly(true);
+        log->setMaximumBlockCount(5000);
+        log->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+        log->setMinimumHeight(200);
+        QFont mono = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        mono.setPointSizeF(std::max(8.0, QFont().pointSizeF() - 1));
+        log->setFont(mono);
+        log->setStyleSheet(Theme::css("QPlainTextEdit { background: @terminalBg; color: @terminalFg; border: 1px solid @border;"
+                                      " border-radius: 6px; padding: 6px; }"));
+        w->body()->addWidget(log, 1);
+        QObject::connect(more, &QToolButton::toggled, w, [=](bool on) {
+            more->setArrowType(on ? Qt::DownArrow : Qt::RightArrow);
+            log->setVisible(on);
+            if (guard) guard->adjustSize();
+        });
+        auto line = [log](const QString &text, const QColor &colour = QColor()) {
+            QTextCharFormat f;
+            if (colour.isValid()) f.setForeground(colour);
+            QTextCursor c(log->document());
+            c.movePosition(QTextCursor::End);
+            if (!log->document()->isEmpty()) c.insertBlock();
+            c.insertText(text, f);
+            log->verticalScrollBar()->setValue(log->verticalScrollBar()->maximum());
+        };
+
         QLabel *wait = note(T("update.wait.note"));
         w->body()->addWidget(wait);
-        w->setMinimumWidth(560);
         QPushButton *close = w->addButton(T("common.close"));
         close->setEnabled(false);
         QObject::connect(close, &QPushButton::clicked, w, &QDialog::reject);
-        QPointer<FramedDialog> guard = w;
-        QMetaObject::Connection c = QObject::connect(model->backend(), &Backend::event, w, [guard, steps, now](const QString &e, const QJsonObject &m) {
-            if (e != "updateStep" || !guard) return;
-            steps->addWidget(new QLabel("• " + m["step"].toString()));
-            now->setText(m["step"].toString());
+
+        auto current = std::make_shared<int>(-1);
+        QMetaObject::Connection c = QObject::connect(model->backend(), &Backend::event, w,
+                                                     [=](const QString &e, const QJsonObject &m) {
+            if (!guard) return;
+            int i = m["index"].toInt(-1);
+            if (e == "updateStep" && i >= 0 && i < steps->size()) {
+                *current = i;
+                steps->at(i)->set(UpdateStep::Now, m["step"].toString(), m["detail"].toString());
+                now->setText(m["step"].toString());
+                bar->setValue(2 * i + 1);
+                refit();
+            } else if (e == "updateStepDone" && i >= 0 && i < steps->size()) {
+                steps->at(i)->set(UpdateStep::Done, {}, m["detail"].toString());
+                bar->setValue(2 * (i + 1));
+                refit();
+            } else if (e == "updateLog") {
+                QString l = m["line"].toString();
+                line(l, l.startsWith("$ ") ? Theme::infoText : l.startsWith("E: ") ? Theme::errorText : l.startsWith("W: ") ? Theme::warn : QColor());
+            }
         });
         model->request("update.install", {}, [=](const QJsonValue &) {
             if (!guard) return;
             QObject::disconnect(c);
+            steps->last()->set(UpdateStep::Done, {}, {});
+            bar->setValue(bar->maximum());
+            barColour("ok");
             now->setText(T("update.done", tag));
             wait->hide();
             // The backend starts the new copy once this one has ended (the installed package: /usr/bin/lemuri).
@@ -317,12 +502,18 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
                                [](const QString &) { QApplication::quit(); });
             });
             close->setEnabled(true);
+            refit();
         }, [=](const QString &why) {
             if (!guard) return;
             QObject::disconnect(c);
+            if (*current >= 0) steps->at(*current)->set(UpdateStep::Failed, {}, why);
+            barColour("failure");
             now->setText(T("update.failed"));
-            wait->setText(why);
+            wait->hide();
+            line(why, Theme::errorText);
+            more->setChecked(true);
             close->setEnabled(true);
+            refit();
         });
         w->open();
     });
@@ -372,7 +563,7 @@ QWidget *page(const QList<QWidget *> &groups) {
 namespace {
 /** The settings applied with OK or Apply (the vault, backup and update buttons act at once). */
 struct Choices {
-    QComboBox *language = nullptr, *probe = nullptr;
+    QComboBox *language = nullptr, *probe = nullptr, *theme = nullptr;
     QCheckBox *splash = nullptr, *types = nullptr, *lan = nullptr, *carrierGrade = nullptr, *automatic = nullptr;
     /** Only on GNOME with the installed app (Dock::available). */
     QCheckBox *dock = nullptr;
@@ -381,7 +572,7 @@ struct Choices {
 
     /** All of them in one string: Apply is on only if it differs from the one saved. */
     QString state() const {
-        return QString("%1|%2|%3|%4|%5|%6|%7").arg(language->currentIndex()).arg(probe->currentIndex()).arg(types->isChecked())
+        return QString("%1|%2|%3|%4|%5|%6|%7|%8").arg(theme->currentIndex()).arg(language->currentIndex()).arg(probe->currentIndex()).arg(types->isChecked())
                 .arg(lan->isChecked()).arg(automatic->isChecked()).arg(splash->isChecked()).arg(carrierGrade->isChecked()) + (dock && dock->isChecked() ? "|dock" : "");
     }
 };
@@ -391,8 +582,12 @@ struct Page {
     QWidget *body;
 };
 
-/** The language (the app has only the dark theme and its own frame) and the splash screen. */
+/** The theme, the language and the splash screen; the first two take effect at the next start. */
 QWidget *appearancePage(const QJsonObject &ui, Choices &c) {
+    c.theme = new QComboBox;
+    for (const Theme::Choice &t : Theme::choices()) c.theme->addItem(T(t.name), QString(t.id));
+    c.theme->setCurrentIndex(std::max(0, c.theme->findData(Theme::saved())));
+    auto *themeRow = line({new QLabel(T("settings.theme")), c.theme});
     c.language = new QComboBox;
     c.language->addItems({T("menu.language.auto"), "English", "Italiano"});
     c.language->setCurrentIndex(std::max(0, int(Choices::CODES.indexOf(ui["language"].toString("auto")))));
@@ -405,7 +600,8 @@ QWidget *appearancePage(const QJsonObject &ui, Choices &c) {
         c.dock->setChecked(Dock::pinned());
         window << c.dock << note(T("settings.dock.note"));
     }
-    return page({group(T("settings.language"), {languageRow, note(T("settings.afterRestart"))}), group(T("settings.window"), window)});
+    return page({group(T("settings.theme"), {themeRow, note(T("settings.afterRestart"))}),
+                 group(T("settings.language"), {languageRow, note(T("settings.afterRestart"))}), group(T("settings.window"), window)});
 }
 
 /** The vault's state, and its buttons, which act at once. */
@@ -589,6 +785,7 @@ void buttons(FramedDialog &d, Model *model, const Choices &c) {
     QPushButton *apply = d.addButton(T("settings.apply"));
     auto compare = [=] { apply->setEnabled(c.state() != *saved); };
     QObject::connect(c.language, &QComboBox::currentIndexChanged, &d, compare);
+    QObject::connect(c.theme, &QComboBox::currentIndexChanged, &d, compare);
     QObject::connect(c.probe, &QComboBox::currentIndexChanged, &d, compare);
     for (QCheckBox *box : {c.types, c.lan, c.automatic, c.splash, c.carrierGrade, c.dock})
         if (box) QObject::connect(box, &QCheckBox::toggled, &d, compare);
@@ -596,8 +793,10 @@ void buttons(FramedDialog &d, Model *model, const Choices &c) {
     auto save = [=] {
         model->request("prefs.put", {{"node", "ui"}, {"values", QJsonObject{{"language", Choices::CODES[c.language->currentIndex()]},
                                                                             {"terminalCommands", c.types->isChecked() ? "true" : "false"},
-                                                                            {"splash", c.splash->isChecked() ? "true" : "false"}}}});
+                                                                            {"splash", c.splash->isChecked() ? "true" : "false"},
+                                                                            {"theme", c.theme->currentData().toString()}}}});
         Splash::remember(c.splash->isChecked());
+        Theme::remember(c.theme->currentData().toString());
         model->setTypesCommands(c.types->isChecked());
         model->request("monitor.probeMinutes", {{"minutes", Choices::PROBE_MINUTES[c.probe->currentIndex()]}});
         if (c.lan->isChecked() != model->lanOn()) model->request("lan.on", {{"on", c.lan->isChecked()}});

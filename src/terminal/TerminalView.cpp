@@ -20,9 +20,10 @@ namespace {
 constexpr int MAX_SCROLLBACK = 5000;
 // Margins: 6 px on the left, 4 above, 2 below; then the 12 px scroll bar on the right.
 constexpr int PAD_X = 6, PAD_Y = 4, PAD_BOTTOM = 2, SCROLL_BAR = 12;
-const QColor BACKGROUND(0x00, 0x00, 0x00);
-const QColor FOREGROUND(0xd6, 0xdd, 0xe6);
-const QColor SELECTION(0x26, 0x4f, 0x78);
+// The theme's (see Theme::apply), read when used.
+const QColor &BACKGROUND = Theme::terminalBg;
+const QColor &FOREGROUND = Theme::terminalFg;
+const QColor &SELECTION = Theme::terminalSelection;
 const QString MARK = QStringLiteral("\x1b]777;lemuri\x07");
 const QString DIR = QStringLiteral("\x1b]777;lemuri-pwd;");
 // A prompt line ("user@host:~$ command"), an ls command, and the "cd x && " a double click types.
@@ -348,7 +349,9 @@ void TerminalView::paintScrollBar(QPainter &p) {
     QRectF t(whole.right() - 2 - w, whole.top() + 2, w, whole.height() - 4);
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(255, 255, 255, lit ? 80 : 34));
+    QColor thumb = FOREGROUND;
+    thumb.setAlpha(lit ? 80 : 34);
+    p.setBrush(thumb);
     p.drawRoundedRect(t, w / 2, w / 2);
 }
 

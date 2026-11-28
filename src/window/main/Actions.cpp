@@ -69,7 +69,7 @@ IconButton *terminalAction(const QString &icon, const QString &tip, bool danger,
     auto *b = new IconButton(icon, 13, QSize(20, 18), tip);
     b->colour = danger ? Theme::danger : Theme::actionIcon;
     b->hoverColour = danger ? Theme::danger : Theme::actionHover;
-    b->hoverBackground = QColor(255, 255, 255, 36);
+    b->hoverBackground = Theme::hover;
     QObject::connect(b, &QAbstractButton::clicked, b, [act] { act(); });
     return b;
 }

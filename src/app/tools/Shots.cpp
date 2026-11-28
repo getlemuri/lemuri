@@ -28,6 +28,7 @@
 #include <QLineEdit>
 #include <QPainter>
 #include <QPointer>
+#include <QPushButton>
 #include <QTimer>
 
 namespace {
@@ -98,6 +99,17 @@ void Shots::act(MainWindow *window, Model *model, Backend *backend, const QStrin
     else if (a == "import") actions->sshImport(arg);
     else if (a == "remove") actions->removeHost(arg);
     else if (a == "settings") SettingsDialog::open(model, actions, window);
+    // The update offered by a check (a backend with LEMURI_UPDATE_API, as in tests/update_test.py), then
+    // "click:<text>" presses a button of the dialog in front: the update's steps as they come.
+    else if (a == "update")
+        model->request("update.check", {}, [model, window](const QJsonValue &r) {
+            if (r.isObject()) UpdateDialogs::offer(model, window, r.toObject());
+        });
+    else if (a == "click") {
+        if (QWidget *front = QApplication::activeModalWidget())
+            for (QPushButton *b : front->findChildren<QPushButton *>())
+                if (b->text() == arg) b->click();
+    }
     else if (a == "export") BackupDialogs::exportAll(model, actions, window);
     else if (a == "sessions") sessions(model, arg);
     else if (a == "show") show(window, model, arg);

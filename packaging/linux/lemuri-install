@@ -31,4 +31,5 @@ installed=$(dpkg-query -W -f='${Version}' lemuri 2> /dev/null || true)
 [ -z "$installed" ] || dpkg --compare-versions "$version" gt "$installed" \
     || { echo "Lemuri $version is not newer than the installed $installed" >&2; exit 6; }
 
+echo "Signature by $principal: good. Installing Lemuri $version${installed:+ over $installed}."
 apt-get install -y "$work/lemuri.deb"

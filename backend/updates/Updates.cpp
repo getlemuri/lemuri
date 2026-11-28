@@ -10,7 +10,9 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDeadlineTimer>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
 #include <QJsonArray>
@@ -53,6 +55,54 @@ Run run(int seconds, const QStringList &command, const QString &input = QString(
     QString s = QString::fromUtf8(p.readAll());
     if (s.size() > 3000) s = s.right(3000);
     return {p.exitStatus() == QProcess::NormalExit ? p.exitCode() : -1, s};
+}
+
+/**
+ * The same, with each line of the output to `line` as it comes (stdout and stderr together, a carriage return
+ * ending a line too): what the user sees of apt while it works.
+ */
+Run runLive(int seconds, const QStringList &command, const std::function<void(const QString &)> &line) {
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.setStandardInputFile(QProcess::nullDevice());
+    p.start(command.first(), command.mid(1));
+    if (!p.waitForStarted(10'000)) return {-1, ""};
+    QDeadlineTimer deadline(qint64(seconds) * 1000);
+    QByteArray pending;
+    QString all;
+    auto take = [&](bool end) {
+        pending += p.readAll();
+        for (;;) {
+            qsizetype i = pending.indexOf('\n'), r = pending.indexOf('\r');
+            if (i < 0 || (r >= 0 && r < i)) i = r;
+            if (i < 0) break;
+            QString l = QString::fromUtf8(pending.left(i));
+            pending.remove(0, i + 1);
+            if (l.trimmed().isEmpty()) continue;
+            all += l + "\n";
+            line(l);
+        }
+        if (end && !pending.trimmed().isEmpty()) {
+            QString l = QString::fromUtf8(pending);
+            all += l + "\n";
+            line(l);
+            pending.clear();
+        }
+    };
+    while (p.state() != QProcess::NotRunning) {
+        if (deadline.hasExpired()) {
+            p.kill();
+            p.waitForFinished(2000);
+            return {-1, all.right(3000)};
+        }
+        if (p.waitForReadyRead(200)) take(false);
+    }
+    take(true);
+    return {p.exitStatus() == QProcess::NormalExit ? p.exitCode() : -1, all.right(3000)};
+}
+
+QString megabytes(qint64 bytes) {
+    return QString::number(double(bytes) / (1 << 20), 'f', 1) + " MB";
 }
 
 QString arch() {
@@ -234,7 +284,7 @@ QString PackageUpdater::signers() const {
     return all;
 }
 
-void PackageUpdater::install(const Release &r, const std::function<void(const QString &)> &progress) {
+void PackageUpdater::install(const Release &r, const InstallProgress &progress) {
     QString no = blocker();
     if (!no.isNull()) throw Fail{no};
     QString deb = packageName(r.version);
@@ -261,30 +311,48 @@ void PackageUpdater::install(const Release &r, const std::function<void(const QS
         QString dir;
         ~Clean() { QDir(dir).removeRecursively(); }
     } clean{dir};
-    progress(I18n::t("update.step.download", deb));
+    progress.step(InstallProgress::DOWNLOAD, I18n::t("update.step.download", deb), "");
     QString file = dir + "/" + deb, sig = file + ".sig";
+    QElapsedTimer took;
+    took.start();
+    progress.log("GET " + debUrl);
     download(sigUrl, sig, 64 << 10);
     download(debUrl, file, MAX_PACKAGE);
+    QString size = megabytes(QFileInfo(file).size()), seconds = QString::number(double(took.elapsed()) / 1000, 'f', 1);
+    progress.log(I18n::t("update.log.downloaded", deb, size));
+    progress.done(InstallProgress::DOWNLOAD, I18n::t("update.detail.downloaded", size, seconds));
 
-    progress(I18n::t("update.step.verify"));
-    verify(file, sig, signers());
+    progress.step(InstallProgress::VERIFY, I18n::t("update.step.verify"), "");
+    QString key = verify(file, sig, signers());
     Run fields = run(30, {"dpkg-deb", "--field", file, "Package", "Version"});
     if (fields.code != 0 || !fields.out.contains("Package: lemuri") || !fields.out.contains("Version: " + r.version))
         throw Fail{I18n::t("update.error.notLemuri", r.version)};
+    progress.log(I18n::t("update.log.signed", key));
+    progress.done(InstallProgress::VERIFY, I18n::t("update.detail.signed", key));
 
     // The package's helper checks it all again as root, on a copy no process of the user can change (see
     // packaging/linux/lemuri-install), then installs it.
-    progress(I18n::t("update.step.install"));
+    progress.step(InstallProgress::INSTALL, I18n::t("update.step.install"), I18n::t("update.detail.password"));
     QString install = testHook("LEMURI_UPDATE_INSTALL");
     QStringList c = install.isEmpty() ? QStringList{"pkexec", HOME + "/bin/lemuri-install"} : install.split(' ', Qt::SkipEmptyParts);
     c << file << sig << r.version;
-    Run done = run(1800, c);
+    progress.log("$ " + c.join(' '));
+    Run done = runLive(1800, c, progress.log);
     // pkexec: 126 when the user closes the password window, 127 when it is not authorised.
     if (done.code == 126 || done.code == 127) throw Fail(I18n::t("update.error.cancelled"));
     if (done.code == 3) throw Fail(I18n::t("update.error.badSignature"));
     if (done.code == 4) throw Fail(I18n::t("update.error.notLemuri", r.version));
     if (done.code == 6) throw Fail(I18n::t("update.error.notNewer", r.version));
-    if (done.code != 0) throw Fail(I18n::t("update.error.apt", done.out));
+    if (done.code != 0) {
+        // The whole output is in the details already: the error says apt's own reason, its last "E:" line.
+        QString reason;
+        for (const QString &l : done.out.split('\n'))
+            if (l.startsWith("E: ")) reason = l.mid(3).trimmed();
+        // "Unable to satisfy dependencies. Reached two conflicting decisions:": what follows the colon is in the details.
+        if (reason.endsWith(':') && reason.lastIndexOf(". ") > 0) reason = reason.left(reason.lastIndexOf(". ") + 1);
+        throw Fail(I18n::t("update.error.apt", reason.isEmpty() ? I18n::t("update.error.code", done.code) : reason));
+    }
+    progress.done(InstallProgress::INSTALL, current() + " → " + r.version);
 }
 
 void PackageUpdater::download(const QString &url, const QString &to, qint64 max) const {
@@ -307,7 +375,7 @@ void PackageUpdater::download(const QString &url, const QString &to, qint64 max)
     QFile::setPermissions(to, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
 }
 
-void PackageUpdater::verify(const QString &file, const QString &sig, const QString &signers) {
+QString PackageUpdater::verify(const QString &file, const QString &sig, const QString &signers) {
     QTemporaryFile allowed(QDir::tempPath() + "/lemuri-signers-XXXXXX");
     if (!allowed.open()) throw Fail{allowed.errorString()};
     allowed.write(signers.toUtf8());
@@ -319,6 +387,7 @@ void PackageUpdater::verify(const QString &file, const QString &sig, const QStri
     Run ok = run(30, {"ssh-keygen", "-Y", "verify", "-f", allowed.fileName(), "-I", principal, "-n", "file", "-s", sig}, file);
     if (ok.code != 0)
         throw Fail{I18n::t("update.error.badSignature")};
+    return principal;
 }
 
 void PackageUpdater::restartAfterExit() const {
@@ -404,13 +473,21 @@ void Updates::check(const Reply &r) {
     });
 }
 
-/** The steps go out as "updateStep" events; the answer comes when it is installed. */
+/** The steps go out as "updateStep" and "updateStepDone" events, apt's lines as "updateLog"; the answer comes when it is installed. */
 void Updates::install(const Reply &r) {
     if (!available) throw Fail{"No update available"};
     Release release = *available;
     loop.work([this, r, release] {
         try {
-            service.install(release, [this](const QString &step) { events.event("updateStep", {{"step", step}}); });
+            InstallProgress p;
+            p.step = [this](InstallProgress::Step i, const QString &label, const QString &detail) {
+                events.event("updateStep", {{"index", int(i)}, {"step", label}, {"detail", detail}});
+            };
+            p.done = [this](InstallProgress::Step i, const QString &detail) {
+                events.event("updateStepDone", {{"index", int(i)}, {"detail", detail}});
+            };
+            p.log = [this](const QString &line) { events.event("updateLog", {{"line", line}}); };
+            service.install(release, p);
             r.ok();
         } catch (const Fail &f) {
             r.fail(f.why);

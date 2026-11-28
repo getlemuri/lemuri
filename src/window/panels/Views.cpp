@@ -765,7 +765,7 @@ class Connecting : public QWidget {
 public:
     Connecting(Model *model, Session *s, QWidget *parent) : QWidget(parent), model(model), s(s) {
         setAttribute(Qt::WA_StyledBackground);
-        setStyleSheet(Theme::css("background: @black;"));
+        setStyleSheet(Theme::css("background: @terminalBg;"));
         auto *col = new QVBoxLayout(this);
         col->setAlignment(Qt::AlignCenter);
         col->setSpacing(10);
@@ -863,7 +863,7 @@ public:
     Slot(QWidget *view, QWidget *bar, Connecting *cover, bool synced, bool ghost) : view(view), bar(bar), cover(cover) {
         setAttribute(Qt::WA_StyledBackground);
         setObjectName("slot");
-        QString bg = ghost ? "transparent" : Theme::black.name();
+        QString bg = ghost ? "transparent" : Theme::terminalBg.name();
         setStyleSheet(Theme::css(synced ? "#slot { background: " + bg + "; border: 2px solid @syncedBorder; }" : "#slot { background: " + bg + "; }"));
         int pad = synced ? 4 : 0;
         auto *l = new QVBoxLayout(this);
@@ -1050,8 +1050,8 @@ QWidget *ConsoleView::draw(Pane *p, Session *tab) {
     auto *split = new QSplitter(p->sideBySide() ? Qt::Horizontal : Qt::Vertical);
     split->setHandleWidth(2);
     split->setChildrenCollapsible(false);
-    split->setStyleSheet(Theme::css(QString(ghost ? "QSplitter { background: transparent; }" : "QSplitter { background: @black; }") + " QSplitter::handle { background: rgba(255,255,255,0.14); }"
-                         "QSplitter::handle:hover { background: rgba(255,255,255,0.40); }"));
+    split->setStyleSheet(Theme::css(QString(ghost ? "QSplitter { background: transparent; }" : "QSplitter { background: @terminalBg; }") + " QSplitter::handle { background: @border; }"
+                         "QSplitter::handle:hover { background: @checkEdge; }"));
     split->addWidget(draw(p->first(), tab));
     split->addWidget(draw(p->second(), tab));
     // Where the separator was, once the splitter knows its size.
@@ -1071,9 +1071,9 @@ QWidget *ConsoleView::slot(Session *s, bool synced) {
     auto *bar = new QWidget;
     bar->setObjectName("terminalActions");
     bar->setAttribute(Qt::WA_StyledBackground);
-    // No edge at its foot: it fades into the terminal's black (in ghost mode, into the see-through).
+    // No edge at its foot: it fades into the terminal's background (in ghost mode, into the see-through).
     bar->setStyleSheet(Theme::css(ghost ? "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0)); }"
-                                        : "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @terminalActions, stop:0.45 @terminalActions, stop:1 @black); }"));
+                                        : "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @terminalActions, stop:0.45 @terminalActions, stop:1 @terminalBg); }"));
     auto *row = new QHBoxLayout(bar);
     row->setContentsMargins(6, 2, 6, 2);
     row->setSpacing(2);

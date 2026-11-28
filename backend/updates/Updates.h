@@ -18,6 +18,18 @@ struct Release {
     QJsonObject json() const { return {{"tag", tag}, {"version", version}, {"notes", notes}, {"url", url}}; }
 };
 
+/**
+ * What an install reports while it works. The steps are DOWNLOAD, VERIFY and INSTALL: each starts (`step`, with its
+ * label) and ends (`done`, with what came of it: the size, the key, the versions). `log` gets the lines of what runs,
+ * as they come: the output of apt above all. Called on the worker thread of the install.
+ */
+struct InstallProgress {
+    enum Step { DOWNLOAD, VERIFY, INSTALL };
+    std::function<void(Step, const QString &label, const QString &detail)> step;
+    std::function<void(Step, const QString &detail)> done;
+    std::function<void(const QString &line)> log;
+};
+
 /** Version numbers like 0.1.0 or 1.12.3. */
 namespace Versions {
 /** Only plain numbers: 0.2.0 yes, 0.2.0-rc1 no (they are not offered as updates). */
@@ -45,15 +57,15 @@ public:
     std::optional<Release> latest();
     /** Why this copy cannot update itself (in the user's language), or null if it can. */
     QString blocker() const;
-    /** Downloads the release's package, checks it and installs it; each step goes to `progress`. Throws Fail. */
-    void install(const Release &r, const std::function<void(const QString &)> &progress);
+    /** Downloads the release's package, checks it and installs it, telling `progress`. Throws Fail. */
+    void install(const Release &r, const InstallProgress &progress);
     /** Starts the app again once this backend and the app (its parent) have ended. */
     void restartAfterExit() const;
 
     /** The answer of the API: a release with the package for `arch` and its signature, and where to download them. */
     static std::optional<Release> parse(const QByteArray &json, const QString &arch, bool anyUrl, QJsonObject *assets);
-    /** The signature must be by an allowed key, for the "file" namespace. Throws Fail. */
-    static void verify(const QString &file, const QString &sig, const QString &signers);
+    /** The signature must be by an allowed key, for the "file" namespace; the answer is that key's name. Throws Fail. */
+    static QString verify(const QString &file, const QString &sig, const QString &signers);
 
 private:
     QString signers() const;
@@ -81,7 +93,10 @@ public:
 private:
     /** A check now, asked by hand: the answer is the release found, or null. */
     void check(const Reply &r);
-    /** The steps go out as "updateStep" events; the answer comes when it is installed. */
+    /**
+     * The steps go out as "updateStep" events (index, step, detail) when they start and "updateStepDone" (index,
+     * detail) when they end, the lines of apt as "updateLog" (line); the answer comes when it is installed.
+     */
     void install(const Reply &r);
     QJsonObject state() const;
     void publish();

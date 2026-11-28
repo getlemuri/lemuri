@@ -79,7 +79,7 @@ TitleBar::TitleBar(QWidget *window) : QWidget(window), window(window) {
     name->setStyleSheet(Theme::css("color: @topText; font-size: 13px; font-weight: bold;"));
     row->addWidget(name);
     version = new QLabel("v0.1");
-    version->setStyleSheet(Theme::css("color: @topFaint; background: rgba(255,255,255,0.10); border-radius: 3px; padding: 1px 4px; font-size: 11px;"));
+    version->setStyleSheet(Theme::css("color: @topFaint; background: @hoverSoft; border-radius: 3px; padding: 1px 4px; font-size: 11px;"));
     row->addWidget(version, 0, Qt::AlignVCenter);
     newer = new QPushButton("!");
     newer->setFixedSize(18, 18);
@@ -96,7 +96,7 @@ TitleBar::TitleBar(QWidget *window) : QWidget(window), window(window) {
         auto *b = new IconButton(icon, 14, QSize(40, 30), QString(), this);
         b->colour = Theme::topFaint;
         b->hoverColour = Theme::topFaint;
-        b->hoverBackground = QColor(255, 255, 255, 26);
+        b->hoverBackground = Theme::hoverSoft;
         b->radius = 8;
         b->stroke = 1.8;
         row->addWidget(b);

@@ -58,6 +58,7 @@ add_library(lemuri-ui STATIC
     src/widgets/look/Backdrop.cpp
     src/widgets/look/Icons.cpp
     src/widgets/look/Style.cpp
+    src/widgets/look/Theme.cpp
     src/widgets/parts/Ui.cpp
     src/terminal/Ghost.cpp
     src/terminal/TabStrip.cpp

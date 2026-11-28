@@ -51,8 +51,8 @@ QRect notMonitorSized(QRect r) {
 IconButton *control(const QString &icon, const QString &tip) {
     auto *b = new IconButton(icon, 13, QSize(22, 20), tip);
     b->colour = Theme::ghostControl;
-    b->hoverColour = Qt::white;
-    b->hoverBackground = QColor(255, 255, 255, 36);
+    b->hoverColour = Theme::actionHover;
+    b->hoverBackground = Theme::hover;
     b->checkedBackground = QColor(56, 146, 212, 90);
     return b;
 }
@@ -180,9 +180,9 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     shellTab = new IconButton("terminal", 13, QSize(26, 22), T("log.tab.terminal"));
     shellTab->setCheckable(true);
     shellTab->colour = Theme::ghostControl;
-    shellTab->hoverColour = Qt::white;
-    shellTab->hoverBackground = QColor(255, 255, 255, 36);
-    shellTab->checkedBackground = QColor(255, 255, 255, 40);
+    shellTab->hoverColour = Theme::actionHover;
+    shellTab->hoverBackground = Theme::hover;
+    shellTab->checkedBackground = Theme::hover;
     connect(shellTab, &QAbstractButton::clicked, this, [this](bool on) { showShell(on); });
     shellHead->addWidget(shellTab);
     shellHead->addStretch(1);

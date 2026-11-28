@@ -118,7 +118,9 @@ void TabStrip::paintEvent(QPaintEvent *) {
             shape.lineTo(r.bottomRight());
             shape.closeSubpath();
             p.setPen(Qt::NoPen);
-            p.setBrush(ghost ? QColor(255, 255, 255, on ? 34 : 18) : on ? Theme::surface : Theme::on);
+            QColor film = Theme::terminalFg;
+            film.setAlpha(on ? 34 : 18);
+            p.setBrush(ghost ? film : on ? Theme::surface : Theme::on);
             p.drawPath(shape);
         }
         QColor iconColour = tabs[i].state == State::Connected ? Theme::ok

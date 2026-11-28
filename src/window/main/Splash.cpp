@@ -88,7 +88,12 @@ void Splash::remember(bool on) {
     if (wanted() == on) return;
     QDir().mkpath(QFileInfo(startupFile()).path());
     QFile f(startupFile());
-    if (f.open(QIODevice::WriteOnly)) f.write(QJsonDocument(QJsonObject{{"splash", on}}).toJson(QJsonDocument::Compact));
+    // The file keeps the theme too (Theme::remember): only this choice changes.
+    QJsonObject o;
+    if (f.open(QIODevice::ReadOnly)) o = QJsonDocument::fromJson(f.readAll()).object();
+    f.close();
+    o["splash"] = on;
+    if (f.open(QIODevice::WriteOnly)) f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
 }
 
 Splash::Splash(std::function<void()> after) : after(std::move(after)) {

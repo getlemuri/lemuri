@@ -65,7 +65,7 @@ protected:
     void paintEvent(QPaintEvent *) override {
         if (!underMouse() || !click) return;
         QPainter p(this);
-        p.fillRect(rect(), QColor(255, 255, 255, 36));
+        p.fillRect(rect(), Theme::hover);
     }
     void enterEvent(QEnterEvent *) override { update(); }
     void leaveEvent(QEvent *) override { update(); }
@@ -423,12 +423,12 @@ QWidget *MainWindow::statusBar() {
     transferBar->setFixedSize(120, 8);
     transferBar->setTextVisible(false);
     transferBar->setRange(0, 1000);
-    transferBar->setStyleSheet(Theme::css("QProgressBar { background: rgba(255,255,255,0.15); border: none; border-radius: 3px; }"
+    transferBar->setStyleSheet(Theme::css("QProgressBar { background: @track; border: none; border-radius: 3px; }"
                                "QProgressBar::chunk { background: @accent; border-radius: 3px; }"));
     transferClose = new IconButton("close", 11, QSize(18, 18), T("transfer.cancel"));
     transferClose->colour = Theme::topFaint;
-    transferClose->hoverColour = Qt::white;
-    transferClose->hoverBackground = QColor(255, 255, 255, 36);
+    transferClose->hoverColour = Theme::text;
+    transferClose->hoverBackground = Theme::hover;
     connect(transferClose, &QAbstractButton::clicked, this, [this] {
         QList<Transfer> running;
         for (const Transfer &t : model->transfers())

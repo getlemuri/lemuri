@@ -17,7 +17,7 @@
 
 namespace {
 /** The dark theme for the standard controls too (dialogs, menus, tooltips), in the app's colours. */
-void darkTheme(QApplication &app) {
+void applyTheme(QApplication &app) {
     app.setStyle(new Style);
     QPalette p;
     p.setColor(QPalette::Window, Theme::headPanel);
@@ -79,7 +79,10 @@ int main(int argc, char *argv[]) {
     app.setQuitOnLastWindowClosed(false);
     app.setApplicationName("lemuri");
     app.setDesktopFileName("lemuri");
-    darkTheme(app);
+    // The theme chosen in the settings, before any window: its colours are read as the windows are made.
+    // LEMURI_THEME: another one for this run only (the pictures of each theme).
+    Theme::apply(qEnvironmentVariable("LEMURI_THEME", Theme::saved()));
+    applyTheme(app);
     app.setStyleSheet(Ui::menus());
 
     // "lemuri --toggle" (a global shortcut, F11 for example) or a second start: the running copy does it.

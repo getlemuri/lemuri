@@ -100,7 +100,7 @@ def main():
     env = dict(os.environ, HOME=home, LANG="C.UTF-8",
                LEMURI_UPDATE_API="http://127.0.0.1:%d/latest" % port, LEMURI_UPDATE_SIGNERS=signers, LEMURI_UPDATE_INSTALL=installer)
     core = Core(args.core, env)
-    steps = []
+    steps, done, lines = [], [], []
     try:
         print("no release yet")
         check(core.call("update.check") is None, "GitHub has no release: nothing to offer")
@@ -120,7 +120,14 @@ def main():
             e = core.events.get()
             if e.get("event") == "updateStep":
                 steps.append(e["step"])
+            elif e.get("event") == "updateStepDone":
+                done.append(e["index"])
+            elif e.get("event") == "updateLog":
+                lines.append(e["line"])
         check(len(steps) == 3 and DEB in steps[0], "steps shown: " + " / ".join(steps))
+        check(done == [0, 1, 2], "each step ended: %s" % done)
+        check(any(l.startswith("$ ") for l in lines) and any("packages" in l or "Good" in l for l in lines),
+              "the details shown: %d lines" % len(lines))
         os.remove(installed)
 
         def refused(what, deb, sig, words):
