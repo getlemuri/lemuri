@@ -59,6 +59,10 @@ install -Dm644 "$here/packaging/linux/io.github.getlemuri.lemuri.policy" "$deb/u
 mkdir -p "$work/shlib/debian"
 echo "Source: lemuri" > "$work/shlib/debian/control"
 depends=$(cd "$work/shlib" && dpkg-shlibdeps -O "$stage/bin/lemuri" "$stage/bin/lemuri-core" 2> /dev/null | sed -n 's/^shlibs:Depends=//p')
+# Built on Ubuntu 24.04, where Qt's libraries carry the t64 suffix (libqt6gui6t64); later releases (Ubuntu 25.04 on,
+# Debian 13) dropped it for some of them (libqt6gui6). Each takes the other name as an alternative, or apt refuses
+# the package there.
+depends=$(echo "$depends" | sed -E 's/(libqt6[a-z0-9]+)t64( \([^)]*\))?/\1t64\2 | \1\2/g')
 size=$(du -sk "$deb" | cut -f1)
 cat > "$deb/DEBIAN/control" << CONTROL
 Package: lemuri
