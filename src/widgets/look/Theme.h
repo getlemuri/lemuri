@@ -138,7 +138,7 @@ inline QColor terminalPalette[16] = {QColor("#2e3436"), QColor("#cc0000"), QColo
                                            QColor("#3465a4"), QColor("#75507b"), QColor("#06989a"), QColor("#d3d7cf"),
                                            QColor("#555753"), QColor("#ef2929"), QColor("#8ae234"), QColor("#fce94f"),
                                            QColor("#729fcf"), QColor("#ad7fa8"), QColor("#34e2e2"), QColor("#eeeeec")};
-inline QColor terminalActions("#101317");
+inline QColor terminalActions("#13211c");
 inline QColor terminalBg("#000000");
 inline QColor terminalFg("#d6dde6");
 inline QColor terminalSelection("#264f78");
