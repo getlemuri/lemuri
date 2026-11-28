@@ -86,13 +86,13 @@ QWidget *placeholder(const QList<QWidget *> &items) {
 
 QLabel *bigIcon(const QString &icon, const QColor &c, int side = 40) {
     auto *l = new QLabel;
-    l->setPixmap(Icons::pixmap(icon, side, c, 2, qApp->devicePixelRatio()));
+    Icons::show(l, icon, side, c);
     return l;
 }
 
-QLabel *strong(const QString &text, const QString &colour = Theme::text.name()) {
+QLabel *strong(const QString &text) {
     auto *l = new QLabel(text);
-    l->setStyleSheet(Theme::css(QString("font-size: 13px; font-weight: bold; color: %1;").arg(colour)));
+    Theme::style(l, "font-size: 13px; font-weight: bold; color: @text;");
     return l;
 }
 
@@ -256,7 +256,7 @@ void detail(QGridLayout *g, int row, const QString &caption, QWidget *value) {
     c->setMinimumWidth(140);
     auto *line = new QFrame;
     line->setFixedHeight(1);
-    line->setStyleSheet(Theme::css("background: @border;"));
+    Theme::style(line, "background: @border;");
     g->addWidget(c, row * 2, 0);
     g->addWidget(value ? value : Ui::faint(T("common.notSet")), row * 2, 1);
     g->addWidget(line, row * 2 + 1, 0, 1, 2);
@@ -430,10 +430,10 @@ HostSummaryView::HostSummaryView(Model *model, Actions *actions, const QString &
     nc->setContentsMargins(0, 0, 0, 0);
     noteText = new QPlainTextEdit(h->note);
     noteText->setPlaceholderText(T("notes.prompt"));
-    noteText->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono';"));
+    Theme::style(noteText, "font-family: 'DejaVu Sans Mono';");
     noteText->setMinimumHeight(100);
     noteUnsaved = new QLabel(T("notes.unsaved"));
-    noteUnsaved->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(noteUnsaved, "color: @warn;");
     savedNote = h->note;
     noteSave = Ui::primary(T("common.save"), "save", [this] {
         const Host *x = this->model->host(id);
@@ -677,7 +677,7 @@ void HostSummaryView::showSecurity() {
     if (bad > 0) text += " " + T("security.hover");
     QLabel *n = Ui::faint(text);
     n->setWordWrap(true);
-    n->setStyleSheet(Theme::css("color: @faint; font-size: 11px;"));
+    Theme::style(n, "color: @faint; font-size: 11px;");
     l->addWidget(n);
 }
 
@@ -687,7 +687,7 @@ QWidget *HostSummaryView::securityCard(const QString &prefix, const QString &ico
     QColor c = toneColour(t);
     auto *card = new QFrame;
     card->setObjectName("card");
-    card->setStyleSheet(Theme::css(QString("#card { background: @veil; border: 1px solid @border; border-top: 3px solid %1; border-radius: 6px; }").arg(c.name())));
+    Theme::style(card, QString("#card { background: @veil; border: 1px solid @border; border-top: 3px solid %1; border-radius: 6px; }").arg(c.name()));
     auto *col = new QVBoxLayout(card);
     col->setContentsMargins(12, 10, 12, 12);
     col->setSpacing(10);
@@ -697,13 +697,13 @@ QWidget *HostSummaryView::securityCard(const QString &prefix, const QString &ico
     badge->setFixedSize(34, 34);
     badge->setAlignment(Qt::AlignCenter);
     QColor bg = t == "none" ? Theme::on : QColor(int(c.red() * 0.35), int(c.green() * 0.35), int(c.blue() * 0.35));
-    badge->setStyleSheet(Theme::css(QString("background: %1; border-radius: 17px;").arg(bg.name())));
+    Theme::style(badge, QString("background: %1; border-radius: 17px;").arg(bg.name()));
     badge->setPixmap(Icons::pixmap(icon, 18, t == "none" ? Theme::text : c.lighter(140), 2, devicePixelRatioF()));
     head->addWidget(badge);
     auto *names = new QVBoxLayout;
     names->setSpacing(1);
     auto *tl = new QLabel(title);
-    tl->setStyleSheet(Theme::css("font-size: 14px; font-weight: bold;"));
+    Theme::style(tl, "font-size: 14px; font-weight: bold;");
     names->addWidget(tl);
     int toLook = int(std::count_if(checks.begin(), checks.end(), [](const QJsonObject &x) { return x["level"].toString() != "OK"; }));
     names->addWidget(Ui::faint(checks.isEmpty() ? QString() : toLook == 0 ? T("security.allGood") : T("security.toLook", toLook)));
@@ -731,7 +731,7 @@ QWidget *HostSummaryView::securityCard(const QString &prefix, const QString &ico
         QString s = shown(x);
         if (!s.isEmpty()) {
             QLabel *v = Ui::code(s);
-            v->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px; color: @faint;"));
+            Theme::style(v, "font-family: 'DejaVu Sans Mono'; font-size: 11px; color: @faint;");
             line->addWidget(v);
         }
         rc->addLayout(line);
@@ -742,8 +742,8 @@ QWidget *HostSummaryView::securityCard(const QString &prefix, const QString &ico
         if (x["level"].toString() != "OK" && x["fix"].isString()) {
             bool isBad = x["level"].toString() == "BAD";
             auto *fix = new QLabel((cid.startsWith("client.") ? "$ " : "→ ") + x["fix"].toString());
-            fix->setStyleSheet(Theme::css(QString("font-family: 'DejaVu Sans Mono'; font-size: 11px; border-radius: 3px; padding: 1px 6px; background: %1; color: %2;")
-                                       .arg(isBad ? Theme::errorBack.name() : Theme::warnBack.name(), isBad ? Theme::errorText.name() : Theme::warn.name())));
+            Theme::style(fix, QString("font-family: 'DejaVu Sans Mono'; font-size: 11px; border-radius: 3px; padding: 1px 6px; background: %1; color: %2;")
+                                   .arg(isBad ? "@errorBack" : "@warnBack", isBad ? "@errorText" : "@warn"));
             fix->setTextInteractionFlags(Qt::TextSelectableByMouse);
             auto *in = new QHBoxLayout;
             in->setContentsMargins(34, 0, 0, 0);
@@ -765,7 +765,7 @@ class Connecting : public QWidget {
 public:
     Connecting(Model *model, Session *s, QWidget *parent) : QWidget(parent), model(model), s(s) {
         setAttribute(Qt::WA_StyledBackground);
-        setStyleSheet(Theme::css("background: @terminalBg;"));
+        Theme::style(this, "background: @terminalBg;");
         auto *col = new QVBoxLayout(this);
         col->setAlignment(Qt::AlignCenter);
         col->setSpacing(10);
@@ -775,17 +775,17 @@ public:
         col->addWidget(spinner, 0, Qt::AlignHCenter);
         const Host *h = model->host(s->hostId);
         what = new QLabel;
-        what->setStyleSheet(Theme::css("color: @actionHover; font-size: 14px;"));
+        Theme::style(what, "color: @actionHover; font-size: 14px;");
         what->setAlignment(Qt::AlignCenter);
         col->addWidget(what, 0, Qt::AlignHCenter);
         why = new QLabel;
-        why->setStyleSheet(Theme::css("color: @errorSoft; font-size: 13px;"));
+        Theme::style(why, "color: @errorSoft; font-size: 13px;");
         why->setWordWrap(true);
         why->setMaximumWidth(520);
         why->setAlignment(Qt::AlignCenter);
         col->addWidget(why, 0, Qt::AlignHCenter);
         auto *where = new QLabel(h ? h->destination() : QString());
-        where->setStyleSheet(Theme::css("color: @actionIcon; font-size: 12px; font-family: 'DejaVu Sans Mono';"));
+        Theme::style(where, "color: @actionIcon; font-size: 12px; font-family: 'DejaVu Sans Mono';");
         col->addWidget(where, 0, Qt::AlignHCenter);
         buttons = new QWidget;
         auto *row = new QHBoxLayout(buttons);
@@ -863,8 +863,8 @@ public:
     Slot(QWidget *view, QWidget *bar, Connecting *cover, bool synced, bool ghost) : view(view), bar(bar), cover(cover) {
         setAttribute(Qt::WA_StyledBackground);
         setObjectName("slot");
-        QString bg = ghost ? "transparent" : Theme::terminalBg.name();
-        setStyleSheet(Theme::css(synced ? "#slot { background: " + bg + "; border: 2px solid @syncedBorder; }" : "#slot { background: " + bg + "; }"));
+        QString bg = ghost ? "transparent" : "@terminalBg";
+        Theme::style(this, synced ? "#slot { background: " + bg + "; border: 2px solid @syncedBorder; }" : "#slot { background: " + bg + "; }");
         int pad = synced ? 4 : 0;
         auto *l = new QVBoxLayout(this);
         l->setContentsMargins(pad, pad, pad, pad);
@@ -872,7 +872,7 @@ public:
         l->addWidget(bar);
         l->addWidget(view, 1);
         // The files view keeps its own sheet.
-        if (qobject_cast<TerminalView *>(view)) view->setStyleSheet(Theme::css("border: none;"));
+        if (qobject_cast<TerminalView *>(view)) Theme::style(view, "border: none;");
         cover->setParent(this);
     }
 
@@ -904,7 +904,7 @@ ConsoleView::ConsoleView(Model *model, Actions *actions, QWidget *extra, QWidget
 
 void ConsoleView::build(QWidget *extra) {
     setAttribute(Qt::WA_StyledBackground, !ghost);
-    setStyleSheet(Theme::css(ghost ? "" : "ConsoleView { background: transparent; }"));
+    Theme::style(this, ghost ? "" : "ConsoleView { background: transparent; }");
     auto *col = new QVBoxLayout(this);
     col->setContentsMargins(0, 0, 0, 0);
     col->setSpacing(0);
@@ -1050,8 +1050,8 @@ QWidget *ConsoleView::draw(Pane *p, Session *tab) {
     auto *split = new QSplitter(p->sideBySide() ? Qt::Horizontal : Qt::Vertical);
     split->setHandleWidth(2);
     split->setChildrenCollapsible(false);
-    split->setStyleSheet(Theme::css(QString(ghost ? "QSplitter { background: transparent; }" : "QSplitter { background: @terminalBg; }") + " QSplitter::handle { background: @border; }"
-                         "QSplitter::handle:hover { background: @checkEdge; }"));
+    Theme::style(split, QString(ghost ? "QSplitter { background: transparent; }" : "QSplitter { background: @terminalBg; }") + " QSplitter::handle { background: @border; }"
+                         "QSplitter::handle:hover { background: @checkEdge; }");
     split->addWidget(draw(p->first(), tab));
     split->addWidget(draw(p->second(), tab));
     // Where the separator was, once the splitter knows its size.
@@ -1072,8 +1072,8 @@ QWidget *ConsoleView::slot(Session *s, bool synced) {
     bar->setObjectName("terminalActions");
     bar->setAttribute(Qt::WA_StyledBackground);
     // No edge at its foot: it fades into the terminal's background (in ghost mode, into the see-through).
-    bar->setStyleSheet(Theme::css(ghost ? "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0)); }"
-                                        : "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @terminalActions, stop:0.45 @terminalActions, stop:1 @terminalBg); }"));
+    Theme::style(bar, ghost ? "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255,255,255,0.08), stop:1 rgba(255,255,255,0)); }"
+                                        : "#terminalActions { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 @terminalActions, stop:0.45 @terminalActions, stop:1 @terminalBg); }");
     auto *row = new QHBoxLayout(bar);
     row->setContentsMargins(6, 2, 6, 2);
     row->setSpacing(2);
@@ -1091,7 +1091,7 @@ QWidget *ConsoleView::slot(Session *s, bool synced) {
     rl->addStretch(1);
     for (QWidget *b : buttons) rl->addWidget(b);
     auto *title = new QLabel(s->view->windowTitle());
-    title->setStyleSheet(Theme::css("color: @faint; font-size: 11px; padding: 0 8px;"));
+    Theme::style(title, "color: @faint; font-size: 11px; padding: 0 8px;");
     title->setAlignment(Qt::AlignCenter);
     title->setMinimumWidth(0);
     connect(s->view, &QWidget::windowTitleChanged, title, &QLabel::setText);
@@ -1139,10 +1139,10 @@ ActivityLog::ActivityLog(Model *model, QWidget *parent) : QWidget(parent), model
     head->setFixedHeight(28);
     head->setObjectName("logHead");
     head->setAttribute(Qt::WA_StyledBackground);
-    head->setStyleSheet(Theme::css("#logHead { background: @veilHead; border-top-left-radius: 5px; border-top-right-radius: 5px; }"
+    Theme::style(head, "#logHead { background: @veilHead; border-top-left-radius: 5px; border-top-right-radius: 5px; }"
                         "#logHead QPushButton { border: none; border-radius: 0; background: transparent; color: @faint;"
                         " min-height: 28px; max-height: 28px; padding: 0 12px; border-right: 1px solid @border; }"
-                        "#logHead QPushButton:checked { background: @veilDeep; color: @text; font-weight: bold; }"));
+                        "#logHead QPushButton:checked { background: @veilDeep; color: @text; font-weight: bold; }");
     auto *row = new QHBoxLayout(head);
     row->setContentsMargins(6, 0, 4, 0);
     row->setSpacing(0);
@@ -1172,11 +1172,11 @@ ActivityLog::ActivityLog(Model *model, QWidget *parent) : QWidget(parent), model
     bodyLayout = new QVBoxLayout(body);
     bodyLayout->setContentsMargins(0, 0, 0, 0);
     tasks = grid({T("log.col.start"), T("log.col.end"), T("common.host"), T("log.col.description"), T("common.status")});
-    tasks->setStyleSheet(Theme::css("QTableWidget { border: none; }"));
+    Theme::style(tasks, "QTableWidget { border: none; }");
     for (int i = 0; i < 5; i++) tasks->setColumnWidth(i, QList<int>{150, 150, 150, 360, 320}[i]);
     tasks->horizontalHeader()->setStretchLastSection(true);
     sessions = grid({T("sessions.col.session"), T("sessions.col.destination"), T("common.status"), T("sessions.col.started")});
-    sessions->setStyleSheet(Theme::css("QTableWidget { border: none; }"));
+    Theme::style(sessions, "QTableWidget { border: none; }");
     sessions->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     connect(sessions, &QTableWidget::cellDoubleClicked, this, [this](int r, int) {
         int i = sessions->item(r, 0)->data(Qt::UserRole).toInt();

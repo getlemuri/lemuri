@@ -69,9 +69,10 @@ QImage render(const QSize &size) {
 
 void Backdrop::paint(QPainter &p, const QPainterPath &shape, const QRectF &area) {
     // A few sizes are kept: the main window, a dialog or two; a resize makes new ones.
-    static QHash<quint64, QImage> made;
+    // A change of theme starts them again (the key names the theme too).
+    static QHash<QString, QImage> made;
     QSize size = area.size().toSize().expandedTo(QSize(1, 1));
-    quint64 key = (quint64(size.width()) << 32) | quint64(size.height());
+    QString key = QString("%1 %2x%3").arg(Theme::current()).arg(size.width()).arg(size.height());
     auto it = made.constFind(key);
     if (it == made.constEnd()) {
         if (made.size() >= 6) made.clear();

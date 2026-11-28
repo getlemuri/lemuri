@@ -28,7 +28,9 @@ QPushButton *makeButton(const QString &text, const QString &icon, const char *ki
     auto *b = new QPushButton(text);
     b->setProperty("kind", kind);
     b->setCursor(Qt::PointingHandCursor);
-    QColor c = QString(kind) == "primary" ? QColor(Qt::white) : QString(kind) == "danger" ? Theme::dangerText : Theme::text;
+    // A reference to the theme's colour (not a copy), so that the icon follows a change of theme.
+    static const QColor white(Qt::white);
+    const QColor &c = QString(kind) == "primary" ? white : QString(kind) == "danger" ? Theme::dangerText : Theme::text;
     if (!icon.isEmpty()) {
         b->setIcon(Icons::icon(icon, 13, c));
         b->setIconSize(QSize(13, 13));
@@ -49,7 +51,7 @@ QLabel *message(const QString &text, bool selectable) {
 }  // namespace
 
 QString Ui::styleSheet() {
-    static const QString sheet = Theme::css(R"(
+    const QString sheet = QString(R"(
 * { color: @text; }
 QToolTip { background: @tip; color: @tipText; border: 1px solid @edge; font-size: 11px; padding: 3px 5px; }
 QPushButton { min-height: 24px; max-height: 24px; padding: 0 10px; border: 1px solid @edge; border-radius: 3px;
@@ -90,7 +92,7 @@ QScrollArea > QWidget#qt_scrollarea_viewport, QScrollArea > QWidget > QWidget { 
 QString Ui::menus() {
     // The backdrop's shade, rounded corners (the menu is see-through outside them: see Style::polish), each item a
     // rounded patch under the mouse.
-    static const QString sheet = Theme::css(R"(
+    const QString sheet = QString(R"(
 QMenu { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 @backdropMiddle, stop:1 @backdropTo);
     border: 1px solid @edge; border-radius: 7px; padding: 5px 0; }
 QMenu::item { padding: 5px 22px 5px 10px; margin: 0 5px; border-radius: 4px; }
@@ -103,7 +105,7 @@ QMenu::separator { height: 1px; background: @hoverSoft; margin: 4px 10px; }
 }
 
 QString Ui::scrollBars() {
-    static const QString sheet = Theme::css(R"(
+    const QString sheet = QString(R"(
 QScrollBar:vertical { width: 12px; background: transparent; border: none; margin: 0; }
 QScrollBar::handle:vertical { min-height: 24px; margin: 2px 2px 2px 1px; border-radius: 4px; border: 1px solid @handleEdge;
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 @handleTop, stop:1 @handleBottom); }
@@ -141,17 +143,17 @@ IconButton *Ui::action(const QString &icon, const QString &tip, std::function<vo
 
 QString Ui::chipStyle(const QString &tone) {
     // style.css, .dark .status-tone-*: the colour darkened for the background, lightened for the text.
-    QString bg = Theme::on.name(), fg = Theme::faint.name();
-    if (tone == "ok") bg = Theme::okBack.name(), fg = Theme::okText.name();
-    else if (tone == "warn") bg = Theme::warnBack.name(), fg = Theme::warn.name();
-    else if (tone == "error") bg = Theme::errorBack.name(), fg = Theme::errorText.name();
-    else if (tone == "info") bg = Theme::infoBack.name(), fg = Theme::infoText.name();
+    QString bg = "@on", fg = "@faint";
+    if (tone == "ok") bg = "@okBack", fg = "@okText";
+    else if (tone == "warn") bg = "@warnBack", fg = "@warn";
+    else if (tone == "error") bg = "@errorBack", fg = "@errorText";
+    else if (tone == "info") bg = "@infoBack", fg = "@infoText";
     return QString("background: %1; color: %2; border-radius: 3px; padding: 1px 6px; font-size: 11px;").arg(bg, fg);
 }
 
 QLabel *Ui::chip(const QString &tone, const QString &text) {
     auto *l = new QLabel(text);
-    l->setStyleSheet(Theme::css(chipStyle(tone)));
+    Theme::style(l, chipStyle(tone));
     l->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     return l;
 }
@@ -172,13 +174,13 @@ QLabel *Ui::hostState(Host::Reach r) {
 
 QLabel *Ui::faint(const QString &text) {
     auto *l = new QLabel(text);
-    l->setStyleSheet(Theme::css("color: @faint;"));
+    Theme::style(l, "color: @faint;");
     return l;
 }
 
 QLabel *Ui::code(const QString &text) {
     auto *l = new QLabel(text);
-    l->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px;"));
+    Theme::style(l, "font-family: 'DejaVu Sans Mono'; font-size: 11px;");
     l->setTextInteractionFlags(Qt::TextSelectableByMouse);
     return l;
 }
@@ -186,8 +188,8 @@ QLabel *Ui::code(const QString &text) {
 QWidget *Ui::panel(const QString &title, QWidget *body, QWidget *headExtra) {
     auto *p = new QFrame;
     p->setObjectName("panel");
-    p->setStyleSheet(Theme::css("#panel { border: 1px solid @border; background: @veil; }"
-                     "#panelHead { background: @veilHead; border-bottom: 1px solid @border; }"));
+    Theme::style(p, "#panel { border: 1px solid @border; background: @veil; }"
+                     "#panelHead { background: @veilHead; border-bottom: 1px solid @border; }");
     auto *col = new QVBoxLayout(p);
     col->setContentsMargins(1, 1, 1, 1);
     col->setSpacing(0);
@@ -197,7 +199,7 @@ QWidget *Ui::panel(const QString &title, QWidget *body, QWidget *headExtra) {
     auto *row = new QHBoxLayout(head);
     row->setContentsMargins(8, 6, 8, 6);
     auto *t = new QLabel(title);
-    t->setStyleSheet(Theme::css("font-weight: bold;"));
+    Theme::style(t, "font-weight: bold;");
     row->addWidget(t);
     row->addStretch(1);
     if (headExtra) row->addWidget(headExtra);
@@ -214,7 +216,7 @@ QWidget *Ui::bar(const QList<QWidget *> &left, const QList<QWidget *> &right) {
     auto *w = new QWidget;
     w->setObjectName("toolbar");
     w->setAttribute(Qt::WA_StyledBackground);
-    w->setStyleSheet(Theme::css("#toolbar { background: @veilHead; border: 1px solid @border; }"));
+    Theme::style(w, "#toolbar { background: @veilHead; border: 1px solid @border; }");
     auto *row = new QHBoxLayout(w);
     row->setContentsMargins(4, 4, 4, 4);
     row->setSpacing(4);
@@ -310,7 +312,7 @@ std::optional<QString> Ui::name(QWidget *parent, const QString &title, const QSt
     field->setMinimumWidth(360);
     d.body()->addWidget(field);
     auto *error = new QLabel;
-    error->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(error, "color: @warn;");
     d.body()->addWidget(error);
     QPushButton *ok = d.buttons(action);
     auto refresh = [&] {
@@ -416,7 +418,7 @@ FramedDialog::FramedDialog(QWidget *parent, const QString &title) : QDialog(pare
     setWindowTitle(title);
     setWindowFlag(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    setStyleSheet(Ui::styleSheet() + "QLabel { background: transparent; }");
+    Theme::style(this, Ui::styleSheet() + "QLabel { background: transparent; }");
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
     outer->setSpacing(0);
@@ -433,11 +435,11 @@ FramedDialog::FramedDialog(QWidget *parent, const QString &title) : QDialog(pare
     logo->setPixmap(pm);
     row->addWidget(logo);
     auto *brand = new QLabel("Lemuri");
-    brand->setStyleSheet(Theme::css("color: @topFaint;"));
+    Theme::style(brand, "color: @topFaint;");
     row->addWidget(brand);
     auto *name = new QLabel(title);
     name->setAlignment(Qt::AlignCenter);
-    name->setStyleSheet(Theme::css("font-weight: bold; font-size: 13px;"));
+    Theme::style(name, "font-weight: bold; font-size: 13px;");
     row->addWidget(name, 1);
     auto *close = new IconButton("close", 13, QSize(30, 26), T("window.close"));
     close->colour = Theme::topFaint;
@@ -458,7 +460,7 @@ FramedDialog::FramedDialog(QWidget *parent, const QString &title) : QDialog(pare
     foot = new QWidget;
     foot->setObjectName("dialogFoot");
     foot->setAttribute(Qt::WA_StyledBackground);
-    foot->setStyleSheet(Theme::css("#dialogFoot { background: @veilHead; border-top: 1px solid @edge; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }"));
+    Theme::style(foot, "#dialogFoot { background: @veilHead; border-top: 1px solid @edge; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }");
     auto *r = new QHBoxLayout(foot);
     r->setContentsMargins(10, 8, 10, 8);
     r->setSpacing(8);

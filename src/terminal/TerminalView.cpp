@@ -90,10 +90,23 @@ TerminalView::TerminalView(QWidget *parent) : QWidget(parent) {
     }();
     vterm_screen_set_callbacks(screen, &callbacks, this);
     vterm_screen_enable_altscreen(screen, 1);
+    colours();
+    // A change of theme: the new colours, the text as it is.
+    Theme::follow(this, [this] {
+        colours();
+        update();
+    });
+    VTermState *state = vterm_obtain_state(vt);
+    vterm_state_set_bold_highbright(state, 1);
+    vterm_screen_reset(screen, 1);
+}
+
+/** The default colours and the 16 ANSI ones, the theme's. */
+void TerminalView::colours() {
+    VTermState *state = vterm_obtain_state(vt);
     VTermColor fg, bg;
     vterm_color_rgb(&fg, FOREGROUND.red(), FOREGROUND.green(), FOREGROUND.blue());
     vterm_color_rgb(&bg, BACKGROUND.red(), BACKGROUND.green(), BACKGROUND.blue());
-    VTermState *state = vterm_obtain_state(vt);
 #if VTERM_VERSION_MAJOR > 0 || VTERM_VERSION_MINOR >= 2
     vterm_screen_set_default_colors(screen, &fg, &bg);
 #else
@@ -106,8 +119,6 @@ TerminalView::TerminalView(QWidget *parent) : QWidget(parent) {
         vterm_color_rgb(&c, q.red(), q.green(), q.blue());
         vterm_state_set_palette_color(state, i, &c);
     }
-    vterm_state_set_bold_highbright(state, 1);
-    vterm_screen_reset(screen, 1);
 }
 
 TerminalView::~TerminalView() {

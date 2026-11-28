@@ -99,6 +99,8 @@ void Shots::act(MainWindow *window, Model *model, Backend *backend, const QStrin
     else if (a == "import") actions->sshImport(arg);
     else if (a == "remove") actions->removeHost(arg);
     else if (a == "settings") SettingsDialog::open(model, actions, window);
+    // Another theme while the app runs: the picture should be the one of a start in that theme.
+    else if (a == "theme") Theme::change(arg);
     // The update offered by a check (a backend with LEMURI_UPDATE_API, as in tests/update_test.py), then
     // "click:<text>" presses a button of the dialog in front: the update's steps as they come.
     else if (a == "update")

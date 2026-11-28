@@ -6,8 +6,8 @@ What changes for users, version by version. The format follows [Keep a Changelog
 
 ### Added
 - Themes, in Settings › Appearance: Lemuri (the dark one so far), Night blue, Graphite and Light. The terminal takes
-  the theme's colours too (on Light, a white terminal with darker ANSI colours). The choice takes effect at the next
-  start.
+  the theme's colours too (on Light, a white terminal with darker ANSI colours), and so does ghost mode's see-through
+  veil. The theme changes at once, without a restart: open terminals keep their sessions and their text.
 
 ### Changed
 - The update window shows each step with its mark (done, in progress, failed) and what it gave (the size, the key

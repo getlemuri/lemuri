@@ -19,22 +19,7 @@ namespace {
 /** The dark theme for the standard controls too (dialogs, menus, tooltips), in the app's colours. */
 void applyTheme(QApplication &app) {
     app.setStyle(new Style);
-    QPalette p;
-    p.setColor(QPalette::Window, Theme::headPanel);
-    p.setColor(QPalette::WindowText, Theme::text);
-    p.setColor(QPalette::Base, Theme::bg);
-    p.setColor(QPalette::AlternateBase, Theme::control);
-    p.setColor(QPalette::Text, Theme::text);
-    p.setColor(QPalette::Button, Theme::border);
-    p.setColor(QPalette::ButtonText, Theme::text);
-    p.setColor(QPalette::Highlight, Theme::accent);
-    p.setColor(QPalette::HighlightedText, Qt::white);
-    p.setColor(QPalette::ToolTipBase, Theme::headPanel);
-    p.setColor(QPalette::ToolTipText, Theme::text);
-    p.setColor(QPalette::PlaceholderText, Theme::faint);
-    p.setColor(QPalette::Disabled, QPalette::Text, Theme::disabled);
-    p.setColor(QPalette::Disabled, QPalette::ButtonText, Theme::disabled);
-    app.setPalette(p);
+    app.setPalette(Theme::palette());
     // The interface font: "Helvetica Neue", 12 px (Noto Sans where it is missing).
     QFont f("Helvetica Neue");
     f.setStyleHint(QFont::SansSerif);
@@ -83,7 +68,7 @@ int main(int argc, char *argv[]) {
     // LEMURI_THEME: another one for this run only (the pictures of each theme).
     Theme::apply(qEnvironmentVariable("LEMURI_THEME", Theme::saved()));
     applyTheme(app);
-    app.setStyleSheet(Ui::menus());
+    Theme::style(nullptr, Ui::menus());
 
     // "lemuri --toggle" (a global shortcut, F11 for example) or a second start: the running copy does it.
     // Pictures without a screen run beside the real app and keep to themselves.

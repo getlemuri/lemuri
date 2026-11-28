@@ -19,7 +19,8 @@ class QVBoxLayout;
 
 /** The pieces the views are made of, in the colours of the Theme. */
 namespace Ui {
-/** The style sheet of the standard controls: buttons, fields, tables, menus, scroll bars, tooltips. */
+/** The style sheet of the standard controls: buttons, fields, tables, menus, scroll bars, tooltips. These sheets keep
+ * their @names: they are for Theme::style(). */
 QString styleSheet();
 /** The scroll bars of the whole app (a rounded thumb, no track), for windows that do not take styleSheet(). */
 QString scrollBars();

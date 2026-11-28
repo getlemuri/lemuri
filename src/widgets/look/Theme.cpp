@@ -1,13 +1,20 @@
 #include "widgets/look/Theme.h"
 
+#include <QApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPalette>
+#include <QPointer>
 #include <QRegularExpression>
+#include <QSet>
 #include <QStandardPaths>
+#include <QWidget>
+
+#include <vector>
 
 namespace Theme {
 namespace {
@@ -320,6 +327,26 @@ const QList<Palette> &palettes() {
 QString active = "lemuri";
 bool isLight = false;
 
+/** The property where style() keeps a widget's sheet with its @names. */
+constexpr const char *SHEET = "lemuriThemeSheet";
+QString appSheet;
+std::vector<std::pair<QPointer<QObject>, std::function<void()>>> followers;
+
+/** The first theme's colours, as the app started with them: a change starts again from these. */
+struct First {
+    QHash<QString, QColor> colours;
+    QList<QColor> terminal;
+};
+const First &first() {
+    static const First kept = [] {
+        First f;
+        for (auto it = all().begin(); it != all().end(); ++it) f.colours.insert(it.key(), *it.value());
+        for (const QColor &c : terminalPalette) f.terminal << c;
+        return f;
+    }();
+    return kept;
+}
+
 QString startupFile() {
     return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/startup.json";
 }
@@ -331,6 +358,12 @@ const QList<Choice> &choices() {
 }
 
 void apply(const QString &id) {
+    // Back to the first theme, then the differences of this one.
+    const First &f = first();
+    for (auto it = f.colours.begin(); it != f.colours.end(); ++it) *all().value(it.key()) = it.value();
+    for (int i = 0; i < 16; i++) terminalPalette[i] = f.terminal[i];
+    active = "lemuri";
+    isLight = false;
     for (const Palette &p : palettes()) {
         if (id != QLatin1String(p.id)) continue;
         for (auto it = p.colours.begin(); it != p.colours.end(); ++it) *all().value(it.key()) = it.value();
@@ -339,6 +372,67 @@ void apply(const QString &id) {
         isLight = p.light;
         return;
     }
+}
+
+void change(const QString &id) {
+    if (id == active) return;
+    apply(id);
+    qApp->setPalette(palette());
+    if (!appSheet.isEmpty()) qApp->setStyleSheet(css(appSheet));
+    const QList<QWidget *> widgets = QApplication::allWidgets();
+    for (QWidget *w : widgets) {
+        QVariant sheet = w->property(SHEET);
+        if (sheet.isValid()) w->setStyleSheet(css(sheet.toString()));
+    }
+    // A follower may make widgets or followers of its own: the list as it is now.
+    auto now = followers;
+    for (auto &[context, f] : now)
+        if (context) f();
+    for (QWidget *w : QApplication::allWidgets()) w->update();
+}
+
+QPalette palette() {
+    QPalette p;
+    p.setColor(QPalette::Window, headPanel);
+    p.setColor(QPalette::WindowText, text);
+    p.setColor(QPalette::Base, bg);
+    p.setColor(QPalette::AlternateBase, control);
+    p.setColor(QPalette::Text, text);
+    p.setColor(QPalette::Button, border);
+    p.setColor(QPalette::ButtonText, text);
+    p.setColor(QPalette::Highlight, accent);
+    p.setColor(QPalette::HighlightedText, Qt::white);
+    p.setColor(QPalette::ToolTipBase, headPanel);
+    p.setColor(QPalette::ToolTipText, text);
+    p.setColor(QPalette::PlaceholderText, faint);
+    p.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    return p;
+}
+
+void style(QWidget *w, const QString &sheet) {
+    if (!w) {
+        appSheet = sheet;
+        qApp->setStyleSheet(css(sheet));
+        return;
+    }
+    w->setProperty(SHEET, sheet);
+    w->setStyleSheet(css(sheet));
+}
+
+void follow(QObject *context, std::function<void()> f) {
+    std::erase_if(followers, [](const auto &e) { return !e.first; });
+    followers.emplace_back(context, std::move(f));
+}
+
+bool named(const QColor *c) {
+    static const QSet<const QColor *> colours = [] {
+        QSet<const QColor *> s;
+        for (QColor *one : all()) s.insert(one);
+        for (const QColor &one : terminalPalette) s.insert(&one);
+        return s;
+    }();
+    return colours.contains(c);
 }
 
 QString current() { return active; }

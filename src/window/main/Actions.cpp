@@ -83,13 +83,13 @@ QWidget *hostBadge(const QString &name) {
     row->setContentsMargins(2, 0, 6, 0);
     row->setSpacing(4);
     auto *icon = new QLabel;
-    icon->setPixmap(Icons::pixmap("terminal", 13, Theme::ok, 2, w->devicePixelRatioF()));
+    Icons::show(icon, "terminal", 13, Theme::ok);
     // A long name is cut with an ellipsis, so it does not push the commands away; the tooltip keeps it whole.
     QFont font("DejaVu Sans Mono");
     font.setPixelSize(12);
     auto *text = new QLabel(QFontMetrics(font).elidedText(name, Qt::ElideRight, BADGE_WIDTH));
     text->setFont(font);
-    text->setStyleSheet(Theme::css("color: @actionIcon;"));
+    Theme::style(text, "color: @actionIcon;");
     row->addWidget(icon);
     row->addWidget(text);
     return w;
@@ -235,12 +235,12 @@ public:
 private:
     static QLabel *caption(const QString &t) {
         auto *l = new QLabel(t);
-        l->setStyleSheet(Theme::css("color: @faint;"));
+        Theme::style(l, "color: @faint;");
         return l;
     }
     static QLabel *warning() {
         auto *l = new QLabel;
-        l->setStyleSheet(Theme::css("color: @warn;"));
+        Theme::style(l, "color: @warn;");
         l->setWordWrap(true);
         l->hide();
         return l;
@@ -488,7 +488,7 @@ void Actions::unlockVault(std::function<void()> then) {
     note->setWordWrap(true);
     d.body()->addWidget(note);
     auto *error = new QLabel;
-    error->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(error, "color: @warn;");
     d.body()->addWidget(error);
     QPushButton *ok = d.addButton(T("common.cancel"));
     connect(ok, &QPushButton::clicked, &d, &QDialog::reject);
@@ -552,7 +552,7 @@ void Actions::changeVaultPassword() {
         note->setWordWrap(true);
         d.body()->addWidget(note);
         auto *error = new QLabel;
-        error->setStyleSheet(Theme::css("color: @warn;"));
+        Theme::style(error, "color: @warn;");
         d.body()->addWidget(error);
         QPushButton *cancel = d.addButton(T("common.cancel"));
         connect(cancel, &QPushButton::clicked, &d, &QDialog::reject);
@@ -675,7 +675,7 @@ void Actions::editLaunch(int index) {
     }
     d.body()->addWidget(list);
     auto *error = new QLabel;
-    error->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(error, "color: @warn;");
     d.body()->addWidget(error);
     QPushButton *ok = d.buttons(T("launch.save"));
     auto chosen = [list] {

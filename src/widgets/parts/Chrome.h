@@ -4,6 +4,8 @@
 #include <QColor>
 #include <QWidget>
 
+#include "widgets/look/Theme.h"
+
 /**
  * A button that is only an icon: a rounded patch under the mouse, the icon a little
  * brighter; checkable ones keep a patch (or, for the activity bar, a white line on the left) while on.
@@ -14,10 +16,10 @@ public:
     IconButton(const QString &icon, int iconSide, QSize size, const QString &tip, QWidget *parent = nullptr);
 
     void setIconName(const QString &name) { iconName = name; update(); }
-    QColor colour = QColor("#a0a0a0");
-    QColor hoverColour = QColor("#e6e6e6");
-    QColor hoverBackground = QColor(255, 255, 255, 36);
-    QColor checkedBackground = Qt::transparent;
+    Theme::Colour colour = QColor("#a0a0a0");
+    Theme::Colour hoverColour = QColor("#e6e6e6");
+    Theme::Colour hoverBackground = Theme::hover;
+    Theme::Colour checkedBackground = Qt::transparent;
     int radius = 5;
     double stroke = 2;
     /** The activity bar's look: no patch, a 2 px white line on the left when checked. */
@@ -73,5 +75,5 @@ protected:
     void resizeEvent(QResizeEvent *) override;
 
 private:
-    QColor background;
+    Theme::Colour background;
 };

@@ -177,11 +177,11 @@ FilesSide::FilesSide(FilesView *owner, bool remote) : remote(remote), owner(owne
     auto *head = new QHBoxLayout;
     head->setSpacing(6);
     auto *icon = new QLabel;
-    icon->setPixmap(Icons::pixmap(remote ? "server" : "monitor", 16, remote ? Theme::ok : Theme::accent, 2, devicePixelRatioF()));
+    Icons::show(icon, remote ? "server" : "monitor", 16, remote ? Theme::ok : Theme::accent);
     head->addWidget(icon);
     const Host *h = owner->model->host(owner->session->hostId);
     auto *title = new QLabel(remote ? (h ? h->name : owner->session->title) : T("files.here"));
-    title->setStyleSheet(Theme::css("font-weight: bold;"));
+    Theme::style(title, "font-weight: bold;");
     head->addWidget(title);
     if (remote && h) head->addWidget(Ui::faint(h->destination()));
     head->addStretch(1);
@@ -201,7 +201,7 @@ FilesSide::FilesSide(FilesView *owner, bool remote) : remote(remote), owner(owne
     nav->addWidget(Ui::action("home", T("files.home"), [this] { open(this->remote ? QString() : QDir::homePath()); }));
     nav->addWidget(Ui::action("refresh", T("files.refresh"), [this] { reload(); }));
     where = new QLineEdit;
-    where->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px;"));
+    Theme::style(where, "font-family: 'DejaVu Sans Mono'; font-size: 11px;");
     connect(where, &QLineEdit::returnPressed, this, [this] { open(where->text().trimmed()); });
     nav->addSpacing(4);
     nav->addWidget(where, 1);
@@ -461,7 +461,7 @@ FilesView::FilesView(Model *model, Session *session, QWidget *parent) : QWidget(
     row->setContentsMargins(10, 0, 10, 0);
     row->setSpacing(14);
     auto *hint = Ui::faint(T("files.hint"));
-    hint->setStyleSheet(hint->styleSheet() + "font-size: 11px;");
+    Theme::style(hint, "color: @faint; font-size: 11px;");
     row->addWidget(hint);
     auto *hidden = new QCheckBox(T("files.hidden"));
     hidden->setStyleSheet("font-size: 11px;");
@@ -519,7 +519,7 @@ void FilesView::setGhost(bool on) {
     ghost = on;
     // All the colours here, on the view: a sheet of a child would win over these. The ghost window has not the main
     // window's sheet: the view brings it along.
-    setStyleSheet((on ? Ui::styleSheet() : QString()) + Theme::css(on ? "#files { background: transparent; }"
+    Theme::style(this, (on ? Ui::styleSheet() : QString()) + (on ? "#files { background: transparent; }"
                                   "#filesBar { background: rgba(0,0,0,0.30); }"
                                   "QTreeWidget { background: transparent; border: 1px solid rgba(255,255,255,0.10); }"
                                   "QHeaderView::section { background: rgba(255,255,255,0.07); }"

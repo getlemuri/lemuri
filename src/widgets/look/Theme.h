@@ -4,11 +4,18 @@
 #include <QList>
 #include <QString>
 
+#include <functional>
+
+class QObject;
+class QPalette;
+class QWidget;
+
 /**
  * Every colour of the interface, by what it is for. Style sheets name them as @name and go through css(); code uses
- * them directly. The values here are the first theme's (Lemuri, dark); apply() puts another theme's in their place,
- * once, at startup, before any window is made (a change takes effect at the next start). The splash screen's drawing
- * keeps its own.
+ * them directly. The values here are the first theme's (Lemuri, dark); apply() puts another theme's in their place at
+ * startup, change() while the app runs. What follows a change by itself: style sheets set with style(), colours kept
+ * as a Colour, icons made by Icons::icon(), whatever is painted from these colours; the rest asks follow(). The
+ * splash screen's drawing keeps its own.
  */
 namespace Theme {
 /** The themes, in the order the settings list them: an id (saved) and the key of its name. */
@@ -16,8 +23,19 @@ struct Choice {
     const char *id, *name;
 };
 const QList<Choice> &choices();
-/** Puts the colours of the theme `id` in place (an unknown id: the first theme). Before any window. */
+/** Puts the colours of the theme `id` in place (an unknown id: the first theme), at startup. */
 void apply(const QString &id);
+/**
+ * Another theme while the app runs: the colours, the application's palette and style sheet, every sheet set with
+ * style(), then what follow() asked for, then every widget painted again.
+ */
+void change(const QString &id);
+/** The application's palette in the colours of the theme. */
+QPalette palette();
+/** Sets a style sheet with @names on a widget (or, null, on the application), set again at each change. */
+void style(QWidget *w, const QString &sheet);
+/** Runs `f` at each change while `context` lives: for what keeps a colour of its own, a pixmap for example. */
+void follow(QObject *context, std::function<void()> f);
 /** The theme in use, and whether it is a light one. */
 QString current();
 bool light();
@@ -140,6 +158,26 @@ inline QColor handleEdge("#404041");
 inline QColor handleEdgeLit("#5a5a5c");
 
 inline constexpr int RADIUS = 5;
+
+/** Whether `c` is one of the colours above (not a copy of one). */
+bool named(const QColor *c);
+
+/**
+ * A colour kept by a widget: given one of the theme's, it stays that one through a change (it holds where it is, not
+ * what it was); given any other, it is that colour.
+ */
+class Colour {
+public:
+    Colour(const QColor &c) : ref(named(&c) ? &c : nullptr), value(c) {}
+    Colour(Qt::GlobalColor c) : value(c) {}
+    QColor get() const { return ref ? *ref : value; }
+    operator QColor() const { return get(); }
+    int alpha() const { return get().alpha(); }
+
+private:
+    const QColor *ref = nullptr;
+    QColor value;
+};
 
 /** A style sheet with its @names replaced by the colours above. */
 QString css(QString sheet);

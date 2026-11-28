@@ -50,7 +50,7 @@ QLabel *wrapped(const QString &text) {
 
 QLabel *warnLabel() {
     auto *l = new QLabel;
-    l->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(l, "color: @warn;");
     l->setWordWrap(true);
     l->hide();
     return l;
@@ -63,14 +63,14 @@ void setWarn(QLabel *l, const QString &text) {
 
 QLabel *bigCode(const QString &text, int px) {
     auto *l = new QLabel(text);
-    l->setStyleSheet(Theme::css(QString("font-family: 'DejaVu Sans Mono'; font-size: %1px; font-weight: bold;").arg(px)));
+    Theme::style(l, QString("font-family: 'DejaVu Sans Mono'; font-size: %1px; font-weight: bold;").arg(px));
     l->setTextInteractionFlags(Qt::TextSelectableByMouse);
     return l;
 }
 
 QPlainTextEdit *codeArea() {
     auto *t = new QPlainTextEdit;
-    t->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px;"));
+    Theme::style(t, "font-family: 'DejaVu Sans Mono'; font-size: 11px;");
     t->setLineWrapMode(QPlainTextEdit::NoWrap);
     t->setMinimumHeight(170);
     return t;
@@ -247,7 +247,7 @@ void TeamDialogs::myKey(Model *model, Actions *actions, QWidget *parent) {
         d.body()->addWidget(Ui::faint(T("mykey.label")));
         auto *line = new QLineEdit(card);
         line->setReadOnly(true);
-        line->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px;"));
+        Theme::style(line, "font-family: 'DejaVu Sans Mono'; font-size: 11px;");
         d.body()->addWidget(line);
         QLabel *f = bigCode(T("team.yourFingerprint", v.toObject()["fingerprint"].toString()), 16);
         f->setWordWrap(true);
@@ -266,7 +266,7 @@ void TeamDialogs::addContact(Model *model, Actions *actions, QWidget *parent) {
     d.body()->addWidget(Ui::faint(T("contact.card")));
     auto *card = new QLineEdit;
     card->setPlaceholderText("LEMURI-KEY 1 …");
-    card->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px;"));
+    Theme::style(card, "font-family: 'DejaVu Sans Mono'; font-size: 11px;");
     d.body()->addWidget(card);
     d.body()->addWidget(Ui::faint(T("contact.name")));
     auto *name = new QLineEdit;
@@ -590,7 +590,7 @@ TeamView::TeamView(Model *model, Actions *actions, QWidget *parent) : QWidget(pa
     stateChip = Ui::chip("warn", "");
     head->addWidget(stateChip);
     fingerprint = new QLabel;
-    fingerprint->setStyleSheet(Theme::css("font-family: 'DejaVu Sans Mono'; font-size: 11px; color: @faint;"));
+    Theme::style(fingerprint, "font-family: 'DejaVu Sans Mono'; font-size: 11px; color: @faint;");
     fingerprint->setTextInteractionFlags(Qt::TextSelectableByMouse);
     fingerprint->setWordWrap(true);
     fingerprint->setToolTip(T("team.yourFingerprint.tip"));
@@ -694,20 +694,20 @@ QWidget *TeamView::signIn() {
     outer->addStretch(2);
     auto *card = new QFrame;
     card->setObjectName("signIn");
-    card->setStyleSheet(Theme::css("#signIn { border: 1px solid @border; border-radius: 10px; background: @veil; }"));
+    Theme::style(card, "#signIn { border: 1px solid @border; border-radius: 10px; background: @veil; }");
     card->setFixedWidth(400);
     auto *col = new QVBoxLayout(card);
     col->setContentsMargins(32, 28, 32, 24);
     col->setSpacing(10);
 
     auto *icon = new QLabel;
-    icon->setPixmap(Icons::pixmap("lock", 44, Theme::vaultIcon, 1.6, devicePixelRatioF()));
+    Icons::show(icon, "lock", 44, Theme::vaultIcon, 1.6);
     icon->setAlignment(Qt::AlignCenter);
     icon->setMinimumHeight(48);
     col->addWidget(icon);
     loginTitle = new QLabel;
     loginTitle->setAlignment(Qt::AlignCenter);
-    loginTitle->setStyleSheet(Theme::css("font-size: 18px; font-weight: bold;"));
+    Theme::style(loginTitle, "font-size: 18px; font-weight: bold;");
     col->addWidget(loginTitle);
     loginText = Ui::faint("");
     loginText->setWordWrap(true);
@@ -725,7 +725,7 @@ QWidget *TeamView::signIn() {
     col->addWidget(again);
     loginError = new QLabel;
     loginError->setAlignment(Qt::AlignCenter);
-    loginError->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(loginError, "color: @warn;");
     col->addWidget(loginError);
     loginButton = Ui::primary("", "lock", [this] { unlock(); });
     loginButton->setMinimumHeight(34);
@@ -788,7 +788,7 @@ void TeamView::fill() {
     bool ok = model->teamState() == Model::TeamState::Ready;
     QString tone = ok ? "ok" : "warn";
     stateChip->setText(T(ok ? "sharing.state.ready" : "sharing.state.vaultLocked"));
-    stateChip->setStyleSheet(Ui::chipStyle(tone));
+    Theme::style(stateChip, Ui::chipStyle(tone));
     setWarn(message, ok ? QString() : model->teamMessage());
     fingerprint->setText(model->fingerprint().isEmpty() ? QString() : T("team.yourFingerprint", model->fingerprint()));
 

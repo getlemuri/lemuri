@@ -40,7 +40,7 @@ constexpr int EDGE = 6;
 
 QLabel *iconLabel(const QString &icon, int side, const QColor &colour) {
     auto *l = new QLabel;
-    l->setPixmap(Icons::pixmap(icon, side, colour, 2, qApp->devicePixelRatio()));
+    Icons::show(l, icon, side, colour);
     l->setFixedSize(side, side);
     return l;
 }
@@ -55,7 +55,7 @@ public:
         row->setSpacing(5);
         icon = iconLabel(iconName, 13, colour);
         text = new QLabel;
-        text->setStyleSheet(Theme::css("color: @topFaint; font-size: 12px; background: transparent;"));
+        Theme::style(text, "color: @topFaint; font-size: 12px; background: transparent;");
         row->addWidget(icon);
         row->addWidget(text);
         if (this->click) setCursor(Qt::PointingHandCursor);
@@ -92,7 +92,7 @@ MainWindow::MainWindow(Backend *backend, Model *model) : backend(backend), model
     setMouseTracking(true);
     qApp->installEventFilter(this);
     resize(1400 + 2 * frame, 860 + 2 * frame);
-    setStyleSheet(Ui::styleSheet());
+    Theme::style(this, Ui::styleSheet());
     actions = new Actions(model, this);
     layOut();
     trayIcon();
@@ -101,6 +101,16 @@ MainWindow::MainWindow(Backend *backend, Model *model) : backend(backend), model
     showNode();
     refreshStatus();
     refreshTransfers();
+    // A change of theme: the page in view is made again (its colours depend on what it shows), except the console,
+    // which follows by itself and keeps how its terminals are split; the status bar's icons drawn again.
+    Theme::follow(this, [this] {
+        if (!qobject_cast<ConsoleView *>(view.data())) {
+            anyShown = false;
+            showNode();
+        }
+        refreshStatus();
+        refreshTransfers();
+    });
 }
 
 /** The top bar, the activity bar, the host column beside the central area above the log, the status bar. */
@@ -125,11 +135,11 @@ void MainWindow::layOut() {
     vertical = new QSplitter(Qt::Vertical);
     vertical->setHandleWidth(3);
     vertical->setChildrenCollapsible(false);
-    vertical->setStyleSheet(Theme::css("QSplitter::handle { background: transparent; }"));
+    Theme::style(vertical, "QSplitter::handle { background: transparent; }");
     horizontal = new QSplitter(Qt::Horizontal);
     horizontal->setHandleWidth(3);
     horizontal->setChildrenCollapsible(false);
-    horizontal->setStyleSheet(Theme::css("QSplitter::handle { background: transparent; }"));
+    Theme::style(horizontal, "QSplitter::handle { background: transparent; }");
     horizontal->addWidget(hostColumn());
     column->hide();
     horizontal->addWidget(centralArea());
@@ -324,15 +334,15 @@ QWidget *MainWindow::hostColumn() {
     // The search box, then the icon commands; a thin line above the tree.
     auto *head = new QWidget;
     head->setObjectName("hostHead");
-    head->setStyleSheet(Theme::css("#hostHead { border-bottom: 1px solid @border; }"
-                        "#hostHead QLineEdit { background: transparent; border: none; padding: 0; min-height: 20px; }"));
+    Theme::style(head, "#hostHead { border-bottom: 1px solid @border; }"
+                        "#hostHead QLineEdit { background: transparent; border: none; padding: 0; min-height: 20px; }");
     auto *row = new QHBoxLayout(head);
     row->setContentsMargins(10, 6, 6, 6);
     row->setSpacing(2);
     auto *search = new QWidget;
     search->setObjectName("hostSearch");
     search->setAttribute(Qt::WA_StyledBackground);
-    search->setStyleSheet(Theme::css("#hostSearch { border: 1px solid @border; border-radius: 3px; background: @veilDeep; }"));
+    Theme::style(search, "#hostSearch { border: 1px solid @border; border-radius: 3px; background: @veilDeep; }");
     auto *sr = new QHBoxLayout(search);
     sr->setContentsMargins(8, 2, 8, 2);
     sr->setSpacing(6);
@@ -383,13 +393,13 @@ QWidget *MainWindow::centralArea() {
     areaHead = new QWidget;
     areaHead->setObjectName("areaHead");
     areaHead->setAttribute(Qt::WA_StyledBackground);
-    areaHead->setStyleSheet(Theme::css("#areaHead { background: @veilHead; border-bottom: 1px solid @border; }"));
+    Theme::style(areaHead, "#areaHead { background: @veilHead; border-bottom: 1px solid @border; }");
     areaHead->setMinimumHeight(38);
     auto *row = new QHBoxLayout(areaHead);
     row->setContentsMargins(14, 4, 12, 4);
     row->setSpacing(8);
     title = new QLabel;
-    title->setStyleSheet(Theme::css("font-size: 13px; font-weight: bold; background: transparent;"));
+    Theme::style(title, "font-size: 13px; font-weight: bold; background: transparent;");
     row->addWidget(title, 1);
     areaActions = new QHBoxLayout;
     areaActions->setSpacing(4);
@@ -418,13 +428,13 @@ QWidget *MainWindow::statusBar() {
     tr->setContentsMargins(8, 0, 4, 0);
     tr->setSpacing(6);
     transferText = new QLabel;
-    transferText->setStyleSheet(Theme::css("color: @topFaint; font-size: 12px;"));
+    Theme::style(transferText, "color: @topFaint; font-size: 12px;");
     transferBar = new QProgressBar;
     transferBar->setFixedSize(120, 8);
     transferBar->setTextVisible(false);
     transferBar->setRange(0, 1000);
-    transferBar->setStyleSheet(Theme::css("QProgressBar { background: @track; border: none; border-radius: 3px; }"
-                               "QProgressBar::chunk { background: @accent; border-radius: 3px; }"));
+    Theme::style(transferBar, "QProgressBar { background: @track; border: none; border-radius: 3px; }"
+                               "QProgressBar::chunk { background: @accent; border-radius: 3px; }");
     transferClose = new IconButton("close", 11, QSize(18, 18), T("transfer.cancel"));
     transferClose->colour = Theme::topFaint;
     transferClose->hoverColour = Theme::text;
@@ -608,7 +618,7 @@ void MainWindow::refreshTransfers() {
     for (const Transfer &t : all) (t.finished ? ended : running) << t;
     transferItem->setVisible(!all.isEmpty());
     if (all.isEmpty()) return;
-    transferText->setStyleSheet(Theme::css("color: @topFaint; font-size: 12px;"));
+    Theme::style(transferText, "color: @topFaint; font-size: 12px;");
     if (running.size() == 1 && ended.isEmpty()) {
         const Transfer &t = running[0];
         QString arrow = t.up ? "↑ " : "";
@@ -661,7 +671,7 @@ void MainWindow::refreshTransfers() {
         text = parts.join(" · ") + (why.isEmpty() ? "" : " · " + why.join("; "));
     }
     transferText->setText(text);
-    transferText->setStyleSheet(Theme::css(QString("color: %1; font-size: 12px;").arg(failed ? Theme::failed.name() : Theme::topFaint.name())));
+    Theme::style(transferText, failed ? "color: @failed; font-size: 12px;" : "color: @topFaint; font-size: 12px;");
     transferClose->setToolTip(T("window.close"));
     // A summary without errors goes by itself; one with errors stays until closed.
     if (!failed) {
@@ -810,7 +820,7 @@ void MainWindow::ask(int ask, const QString &kind, const QJsonObject &m) {
         d.body()->addWidget(note);
     }
     auto *error = new QLabel(m["error"].toString());
-    error->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(error, "color: @warn;");
     error->setVisible(!error->text().isEmpty());
     d.body()->addWidget(error);
     QPushButton *ok = d.buttons(vault ? T(create ? "vault.create.button" : "vault.unlock.button") : T("ssh.connect"));

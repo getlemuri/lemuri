@@ -1,8 +1,11 @@
 #include "widgets/look/Icons.h"
 
 #include "widgets/look/IconTraces.h"
+#include "widgets/look/Theme.h"
 
 #include <QGuiApplication>
+#include <QIconEngine>
+#include <QLabel>
 #include <QPainter>
 #include <QtMath>
 #include <cmath>
@@ -183,7 +186,46 @@ QPixmap Icons::pixmap(const QString &name, int side, const QColor &colour, doubl
     return pm;
 }
 
+namespace {
+/** Draws the icon each time it is asked for, so in the theme's colour of the moment. */
+class Engine : public QIconEngine {
+public:
+    Engine(const QString &name, int side, const QColor &colour, double stroke) : name(name), side(side), colour(colour), stroke(stroke) {}
+    void paint(QPainter *p, const QRect &rect, QIcon::Mode mode, QIcon::State) override {
+        QColor c = colour;
+        if (mode == QIcon::Disabled) c.setAlphaF(c.alphaF() * 0.35);
+        double s = std::min(rect.width(), rect.height());
+        Icons::paint(*p, name, QRectF(rect.x() + (rect.width() - s) / 2, rect.y() + (rect.height() - s) / 2, s, s), c, stroke);
+    }
+    QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override { return scaledPixmap(size, mode, state, 1); }
+    QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
+        QPixmap pm(size * scale);
+        pm.setDevicePixelRatio(scale);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing);
+        paint(&p, QRect(QPoint(0, 0), size), mode, state);
+        return pm;
+    }
+    QSize actualSize(const QSize &size, QIcon::Mode, QIcon::State) override { return size.boundedTo(QSize(side, side)); }
+    QList<QSize> availableSizes(QIcon::Mode, QIcon::State) override { return {QSize(side, side)}; }
+    QIconEngine *clone() const override { return new Engine(*this); }
+
+private:
+    QString name;
+    int side;
+    Theme::Colour colour;
+    double stroke;
+};
+}  // namespace
+
 QIcon Icons::icon(const QString &name, int side, const QColor &colour, double stroke) {
-    qreal ratio = qApp ? qApp->devicePixelRatio() : 1;
-    return QIcon(pixmap(name, side, colour, stroke, ratio));
+    return QIcon(new Engine(name, side, colour, stroke));
+}
+
+void Icons::show(QLabel *label, const QString &name, int side, const QColor &colour, double stroke) {
+    Theme::Colour c = colour;
+    auto draw = [label, name, side, c, stroke] { label->setPixmap(pixmap(name, side, c, stroke, label->devicePixelRatioF())); };
+    draw();
+    if (Theme::named(&colour)) Theme::follow(label, draw);
 }

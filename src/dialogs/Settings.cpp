@@ -93,8 +93,8 @@ public:
             detail->setText(text);
             detail->setVisible(!text.isEmpty());
         }
-        title->setStyleSheet(Theme::css(s == Todo ? "color: @faint;" : "color: @text;"));
-        detail->setStyleSheet(Theme::css(s == Failed ? "color: @errorText;" : "color: @faint;"));
+        Theme::style(title, s == Todo ? "color: @faint;" : "color: @text;");
+        Theme::style(detail, s == Failed ? "color: @errorText;" : "color: @faint;");
         if (s == Now) spin->start();
         else spin->stop();
         draw();
@@ -150,7 +150,7 @@ private:
 
 QLabel *warnLabel() {
     auto *l = new QLabel;
-    l->setStyleSheet(Theme::css("color: @warn;"));
+    Theme::style(l, "color: @warn;");
     l->setWordWrap(true);
     return l;
 }
@@ -399,7 +399,7 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
         };
         QLabel *now = new QLabel(T("update.wait"));
         now->setWordWrap(true);
-        now->setStyleSheet(Theme::css("font-size: 15px; font-weight: bold;"));
+        Theme::style(now, "font-size: 15px; font-weight: bold;");
         w->body()->addWidget(now);
         auto *bar = new QProgressBar;
         bar->setRange(0, 4 * 2);
@@ -407,8 +407,8 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
         bar->setTextVisible(false);
         bar->setFixedHeight(6);
         auto barColour = [bar](const char *c) {
-            bar->setStyleSheet(Theme::css(QString("QProgressBar { background: @control; border: none; border-radius: 3px; }"
-                                                  "QProgressBar::chunk { background: @%1; border-radius: 3px; }").arg(c)));
+            Theme::style(bar, QString("QProgressBar { background: @control; border: none; border-radius: 3px; }"
+                                                  "QProgressBar::chunk { background: @%1; border-radius: 3px; }").arg(c));
         };
         barColour("accent");
         w->body()->addWidget(bar);
@@ -432,7 +432,7 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
         more->setCheckable(true);
         more->setChecked(true);
         more->setAutoRaise(true);
-        more->setStyleSheet(Theme::css("QToolButton { color: @topFaint; border: none; padding: 2px 0; }"));
+        Theme::style(more, "QToolButton { color: @topFaint; border: none; padding: 2px 0; }");
         w->body()->addWidget(more, 0, Qt::AlignLeft);
         auto *log = new QPlainTextEdit;
         log->setReadOnly(true);
@@ -442,8 +442,8 @@ void UpdateDialogs::offer(Model *model, QWidget *parent, const QJsonObject &r) {
         QFont mono = QFontDatabase::systemFont(QFontDatabase::FixedFont);
         mono.setPointSizeF(std::max(8.0, QFont().pointSizeF() - 1));
         log->setFont(mono);
-        log->setStyleSheet(Theme::css("QPlainTextEdit { background: @terminalBg; color: @terminalFg; border: 1px solid @border;"
-                                      " border-radius: 6px; padding: 6px; }"));
+        Theme::style(log, "QPlainTextEdit { background: @terminalBg; color: @terminalFg; border: 1px solid @border;"
+                                      " border-radius: 6px; padding: 6px; }");
         w->body()->addWidget(log, 1);
         QObject::connect(more, &QToolButton::toggled, w, [=](bool on) {
             more->setArrowType(on ? Qt::DownArrow : Qt::RightArrow);
@@ -529,7 +529,7 @@ QWidget *group(const QString &title, const QList<QWidget *> &items) {
     col->setContentsMargins(0, 0, 0, 0);
     col->setSpacing(8);
     auto *t = new QLabel(title);
-    t->setStyleSheet(Theme::css("font-weight: bold; font-size: 13px;"));
+    Theme::style(t, "font-weight: bold; font-size: 13px;");
     col->addWidget(t);
     auto *inside = new QVBoxLayout;
     inside->setContentsMargins(14, 0, 0, 0);
@@ -582,11 +582,11 @@ struct Page {
     QWidget *body;
 };
 
-/** The theme, the language and the splash screen; the first two take effect at the next start. */
+/** The theme (at once), the language (at the next start) and the splash screen. */
 QWidget *appearancePage(const QJsonObject &ui, Choices &c) {
     c.theme = new QComboBox;
     for (const Theme::Choice &t : Theme::choices()) c.theme->addItem(T(t.name), QString(t.id));
-    c.theme->setCurrentIndex(std::max(0, c.theme->findData(Theme::saved())));
+    c.theme->setCurrentIndex(std::max(0, c.theme->findData(Theme::current())));
     auto *themeRow = line({new QLabel(T("settings.theme")), c.theme});
     c.language = new QComboBox;
     c.language->addItems({T("menu.language.auto"), "English", "Italiano"});
@@ -600,7 +600,7 @@ QWidget *appearancePage(const QJsonObject &ui, Choices &c) {
         c.dock->setChecked(Dock::pinned());
         window << c.dock << note(T("settings.dock.note"));
     }
-    return page({group(T("settings.theme"), {themeRow, note(T("settings.afterRestart"))}),
+    return page({group(T("settings.theme"), {themeRow}),
                  group(T("settings.language"), {languageRow, note(T("settings.afterRestart"))}), group(T("settings.window"), window)});
 }
 
@@ -712,11 +712,11 @@ QWidget *sections(const QList<Page> &pages, QDialog &d, QLineEdit **search) {
     auto *left = new QWidget;
     left->setObjectName("settingsLeft");
     left->setAttribute(Qt::WA_StyledBackground);
-    left->setStyleSheet(Theme::css("#settingsLeft { background: @veil; border-right: 1px solid @edge; }"
+    Theme::style(left, "#settingsLeft { background: @veil; border-right: 1px solid @edge; }"
                         "QListWidget { background: transparent; border: none; outline: none; }"
                         "QListWidget::item { padding: 5px 10px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }"
                         "QListWidget::item:hover { background: @controlHover; }"
-                        "QListWidget::item:selected { background: @listSelected; color: @text; font-weight: bold; }"));
+                        "QListWidget::item:selected { background: @listSelected; color: @text; font-weight: bold; }");
     left->setFixedWidth(220);
     auto *lc = new QVBoxLayout(left);
     lc->setContentsMargins(10, 10, 0, 10);
@@ -732,7 +732,7 @@ QWidget *sections(const QList<Page> &pages, QDialog &d, QLineEdit **search) {
     auto *rc = new QVBoxLayout(right);
     rc->setContentsMargins(0, 12, 0, 0);
     auto *title = new QLabel;
-    title->setStyleSheet(Theme::css("font-size: 17px; font-weight: 800; padding: 0 22px;"));
+    Theme::style(title, "font-size: 17px; font-weight: 800; padding: 0 22px;");
     rc->addWidget(title);
     auto *stack = new QStackedWidget;
     for (const Page &p : pages) {
@@ -743,7 +743,7 @@ QWidget *sections(const QList<Page> &pages, QDialog &d, QLineEdit **search) {
         stack->addWidget(scroll);
     }
     auto *empty = new QLabel(T("settings.noResults"));
-    empty->setStyleSheet(Theme::css("color: @faint; padding: 22px;"));
+    Theme::style(empty, "color: @faint; padding: 22px;");
     empty->setAlignment(Qt::AlignTop | Qt::AlignLeft);
     stack->addWidget(empty);
     rc->addWidget(stack, 1);
@@ -797,6 +797,7 @@ void buttons(FramedDialog &d, Model *model, const Choices &c) {
                                                                             {"theme", c.theme->currentData().toString()}}}});
         Splash::remember(c.splash->isChecked());
         Theme::remember(c.theme->currentData().toString());
+        Theme::change(c.theme->currentData().toString());
         model->setTypesCommands(c.types->isChecked());
         model->request("monitor.probeMinutes", {{"minutes", Choices::PROBE_MINUTES[c.probe->currentIndex()]}});
         if (c.lan->isChecked() != model->lanOn()) model->request("lan.on", {{"on", c.lan->isChecked()}});

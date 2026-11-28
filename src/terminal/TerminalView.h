@@ -86,6 +86,7 @@ protected:
     static QString announcedFolder(const QString &text);
 
 private:
+    void colours();
     bool typesCommands = false;
     /** The folder the shell last announced; forgotten when a command is run, until the next prompt says it again. */
     QString shellFolder;

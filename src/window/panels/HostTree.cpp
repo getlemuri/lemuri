@@ -50,8 +50,8 @@ HostTree::HostTree(Model *model, Actions *actions, QWidget *parent) : QTreeWidge
     setDropIndicatorShown(false);
     setDragDropMode(QAbstractItemView::DragDrop);
     // Everything is drawn in drawRow: the view only gives the rows and the scrolling.
-    setStyleSheet(Theme::css("QTreeWidget { background: transparent; border: none; outline: none; }"
-                  "QTreeWidget::item { height: 28px; }"));
+    Theme::style(this, "QTreeWidget { background: transparent; border: none; outline: none; }"
+                  "QTreeWidget::item { height: 28px; }");
     viewport()->setAutoFillBackground(false);
     setViewportMargins(0, 2, 0, 6);
     connect(model, &Model::hostsChanged, this, &HostTree::rebuild);

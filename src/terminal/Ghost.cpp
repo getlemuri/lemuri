@@ -60,7 +60,7 @@ IconButton *control(const QString &icon, const QString &tip) {
 QWidget *separator() {
     auto *s = new QWidget;
     s->setFixedSize(1, 14);
-    s->setStyleSheet(Theme::css("background: rgba(255,255,255,0.25);"));
+    Theme::style(s, "background: rgba(255,255,255,0.25);");
     return s;
 }
 }  // namespace
@@ -70,7 +70,7 @@ GhostWindow::GhostWindow(Model *model, Actions *actions, ActivityLog *log, QWidg
     setWindowTitle("Lemuri");
     setWindowFlag(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    setStyleSheet(Theme::css(QString("QSplitter::handle { background: rgba(255,255,255,0.10); }"
+    Theme::style(this, (QString("QSplitter::handle { background: rgba(255,255,255,0.10); }"
                           "QSlider::groove:horizontal { height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; }"
                           "QSlider::handle:horizontal { width: 12px; margin: -5px 0; border-radius: 6px; background: @text; }")) + Ui::scrollBars());
     hold.setSingleShot(true);
@@ -242,7 +242,7 @@ QWidget *GhostWindow::controls() {
     // A sun and a small slider: only the background changes, the text of the terminal stays readable.
     auto *sun = new QLabel;
     sun->setObjectName(GRIP);
-    sun->setPixmap(Icons::pixmap("sun", 13, Theme::ghostControl, 2, devicePixelRatioF()));
+    Icons::show(sun, "sun", 13, Theme::ghostControl);
     sun->setToolTip(T("ghost.opacity"));
     r->addWidget(sun);
     opacity = new QSlider(Qt::Horizontal);
@@ -304,7 +304,11 @@ void GhostWindow::paintEvent(QPaintEvent *) {
     p.setCompositionMode(QPainter::CompositionMode_Source);
     p.fillRect(rect(), Qt::transparent);
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0, 0, 0, int(alpha * 255)));
+    // The terminal's background, see-through: black on the dark themes, near white on the light one, so that the
+    // text stays readable on it.
+    QColor veil = Theme::terminalBg;
+    veil.setAlphaF(alpha);
+    p.setBrush(veil);
     double r = docked.isEmpty() && !maximized ? 8 : 0;
     p.drawRoundedRect(QRectF(rect()), r, r);
 }
@@ -317,7 +321,7 @@ void GhostWindow::showTeam(bool show) {
     if (show && !teamPage) {
         // Made the first time; it has not the main window's sheet, so it brings it along.
         teamPage = new QWidget;
-        teamPage->setStyleSheet(Ui::styleSheet());
+        Theme::style(teamPage, Ui::styleSheet());
         auto *l = new QVBoxLayout(teamPage);
         l->setContentsMargins(12, 8, 12, 8);
         l->addWidget(new TeamView(model, actions));

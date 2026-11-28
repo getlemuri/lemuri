@@ -28,14 +28,14 @@ void IconButton::paintEvent(QPaintEvent *) {
         if (isChecked()) p.fillRect(0, 0, 2, height(), Theme::activityActive);
     } else if (isChecked() && checkedBackground.alpha()) {
         p.setPen(Qt::NoPen);
-        p.setBrush(checkedBackground);
+        p.setBrush(checkedBackground.get());
         p.drawRoundedRect(rect(), radius, radius);
     } else if (hover) {
         p.setPen(Qt::NoPen);
-        p.setBrush(hoverBackground);
+        p.setBrush(hoverBackground.get());
         p.drawRoundedRect(rect(), radius, radius);
     }
-    QColor c = (hover || (activity && isChecked())) ? hoverColour : colour;
+    QColor c = (hover || (activity && isChecked())) ? hoverColour.get() : colour.get();
     if (!isEnabled()) c.setAlphaF(0.35);
     double s = side * (iconName == "ghost" ? 1.2 : 1.0);
     QRectF box((width() - s) / 2, (height() - s) / 2, s, s);
@@ -76,17 +76,17 @@ TitleBar::TitleBar(QWidget *window) : QWidget(window), window(window) {
     row->addWidget(logo);
 
     auto *name = new QLabel("Lemuri");
-    name->setStyleSheet(Theme::css("color: @topText; font-size: 13px; font-weight: bold;"));
+    Theme::style(name, "color: @topText; font-size: 13px; font-weight: bold;");
     row->addWidget(name);
     version = new QLabel("v0.1");
-    version->setStyleSheet(Theme::css("color: @topFaint; background: @hoverSoft; border-radius: 3px; padding: 1px 4px; font-size: 11px;"));
+    Theme::style(version, "color: @topFaint; background: @hoverSoft; border-radius: 3px; padding: 1px 4px; font-size: 11px;");
     row->addWidget(version, 0, Qt::AlignVCenter);
     newer = new QPushButton("!");
     newer->setFixedSize(18, 18);
     newer->setCursor(Qt::PointingHandCursor);
-    newer->setStyleSheet(Theme::css("QPushButton { background: @amber; border: none; border-radius: 9px; color: @bg; font-weight: bold;"
+    Theme::style(newer, "QPushButton { background: @amber; border: none; border-radius: 9px; color: @bg; font-weight: bold;"
                          " font-size: 12px; padding: 0; min-height: 18px; max-height: 18px; }"
-                         "QPushButton:hover { background: @warn; }"));
+                         "QPushButton:hover { background: @warn; }");
     newer->hide();
     connect(newer, &QPushButton::clicked, this, &TitleBar::updateClicked);
     row->addWidget(newer, 0, Qt::AlignVCenter);
@@ -144,7 +144,7 @@ void Panel::paintEvent(QPaintEvent *) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(Qt::NoPen);
-    p.setBrush(background);
+    p.setBrush(background.get());
     p.drawRoundedRect(rect(), Theme::RADIUS, Theme::RADIUS);
 }
 
