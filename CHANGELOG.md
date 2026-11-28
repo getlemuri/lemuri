@@ -10,6 +10,7 @@ What changes for users, version by version. The format follows [Keep a Changelog
   veil. The theme changes at once, without a restart: open terminals keep their sessions and their text.
 
 ### Changed
+- The app icon: its tile is near black now, with a hint of green behind the lemur.
 - The update window shows each step with its mark (done, in progress, failed) and what it gave (the size, the key
   that signed, the versions), and below, as in Synaptic, the output of apt as it comes. Long texts wrap instead of
   being cut, and a failure says apt's own reason.
